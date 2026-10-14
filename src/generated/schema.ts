@@ -13262,7 +13262,7 @@ export interface operations {
                         changes?: {
                             /** @enum {string} */
                             kind: "create" | "edit" | "edit_section" | "move" | "rename" | "merge" | "archive" | "copy" | "find_replace" | "page_type";
-                            /** @description Specific human-readable change, for example 'Move Trey Jensen under Beakr'. */
+                            /** @description Specific human-readable change, for example 'Move Dana Lee under Acme Corp'. */
                             label: string;
                             /** @description Why this hierarchy or content change is intended. */
                             reason: string;

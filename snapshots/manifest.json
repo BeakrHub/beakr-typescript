@@ -2,11 +2,11 @@
   "sources": {
     "beakr-engine": {
       "repository": "BeakrHub/beakr-engine",
-      "commit": "ed759d4d5b1f61b85f47989148da1b0b82cc0884",
+      "commit": "1ac7d0894a23fd371da66aebd1ae506e9f955361",
       "uncommitted_changes": false,
       "files": {
-        "docs/api/CHANGELOG.md": "sha256:fadf1aa0766e269def5ba5f3f8402e62491826f7e5118573bdcc29fdc900123f",
-        "docs/api/public-openapi.json": "sha256:e3738aa078992b7a734d806cc2e2d2bbe92e72763f702b0c87ba8a48296989d9"
+        "docs/api/CHANGELOG.md": "sha256:6334c3d7578486bd4151be9afdcd9b0557cafe6a843f98a64e4f225c3b41c76a",
+        "docs/api/public-openapi.json": "sha256:268088e85f60f1c2ed8346259870a0cacbbf14460b52c9f7e21b255ee8fec37d"
       }
     },
     "beakr-python": {

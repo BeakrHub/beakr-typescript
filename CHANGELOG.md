@@ -103,7 +103,8 @@ Each release lists the public API changes it supports, taken from the API change
 ### Conventions
 
 - **Examples.** Example addresses in the contract use domains reserved for
-  documentation (`example.com`), and example paths are neutral (`deals/acme/...`).
+  documentation (`example.com`), example paths are neutral (`deals/acme/...`), and
+  example people and organizations are fictional.
 - **Timestamps and IDs.** Every response timestamp is ISO 8601 UTC and every
   Beakr-created object is identified by a UUID; fields that carry a provider's
   or a document's own identifier are named in the reference. Two Knowledge

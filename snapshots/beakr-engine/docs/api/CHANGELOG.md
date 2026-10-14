@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=e3738aa078992b7a734d806cc2e2d2bbe92e72763f702b0c87ba8a48296989d9 changelog sha256=2afdeb33a522afd4e5aaf6d38d8fe168b1156627da2986eada49a041c14dcb1c -->
+<!-- contract-stamp: public-openapi sha256=268088e85f60f1c2ed8346259870a0cacbbf14460b52c9f7e21b255ee8fec37d changelog sha256=41bd0d0ccaa468d0228c9cf12be064408fdbb07cf299fec2be3c3023030db16c -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -89,7 +89,8 @@ The first public version.
 ### Conventions
 
 - **Examples.** Example addresses in the contract use domains reserved for
-  documentation (`example.com`), and example paths are neutral (`deals/acme/...`).
+  documentation (`example.com`), example paths are neutral (`deals/acme/...`), and
+  example people and organizations are fictional.
 - **Timestamps and IDs.** Every response timestamp is ISO 8601 UTC and every
   Beakr-created object is identified by a UUID; fields that carry a provider's
   or a document's own identifier are named in the reference. Two Knowledge

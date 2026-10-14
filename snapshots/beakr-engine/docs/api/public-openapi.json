@@ -20236,7 +20236,7 @@
                               "type": "string"
                             },
                             "label": {
-                              "description": "Specific human-readable change, for example 'Move Trey Jensen under Beakr'.",
+                              "description": "Specific human-readable change, for example 'Move Dana Lee under Acme Corp'.",
                               "type": "string"
                             },
                             "reason": {
