@@ -103,6 +103,38 @@ Many files or whole directories go up as one batch with one indexing job:
 `const batch = await beakr.uploads.uploadMany(["results", "summary.pdf"], { projectId })`,
 then `await beakr.jobs.wait(batch)` (or pass `wait: true`).
 
+### Know when Knowledge is ready
+
+Uploaded files reach a project's Knowledge in the background after indexing. Wait for it
+before asking questions that depend on those files, and retry what failed:
+
+```ts
+import { KnowledgeFailedError } from "@beakr/sdk";
+
+// The batch's own files: indexing, then Knowledge.
+const result = await beakr.uploads.uploadMany("./docs", {
+  projectId,
+  wait: "knowledge",
+  knowledgeWait: { timeoutMs: 30 * 60_000 },
+});
+console.log(result.batch?.knowledge); // { queued: 0, running: 0, created: 41, failed: 1, ... }
+
+// The whole project.
+const status = await beakr.projects.waitUntilReady(projectId, { timeoutMs: 15 * 60_000 });
+for (const failed of status.failed_files ?? []) {
+  console.log(failed.path, failed.error_code, failed.reason); // knowledgeFailures() lists all
+}
+if (status.failed) await beakr.projects.retryFailed(projectId); // or retryFailed(projectId, [id])
+
+await beakr.projects.waitUntilReady(projectId, { raiseOnFailure: true }).catch((error) => {
+  if (error instanceof KnowledgeFailedError) console.log(error.status.failed_files);
+});
+```
+
+`ready` is true when nothing is queued or running (`KnowledgeTimeoutError` at the timeout).
+Failed files never end a wait early; `error_code` is one of `processing_failed`, `timed_out`,
+`concurrent_update` or `compile_failed`, and a retry is safe to repeat.
+
 Every file goes through the resumable upload (a small file is one part); an interrupted one
 rejects with `UploadInterruptedError`, whose `uploadId` resumes it with
 `beakr.uploads.resume`. Folder uploads do not follow symbolic links. Node-only

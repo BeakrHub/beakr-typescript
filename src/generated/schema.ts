@@ -1693,6 +1693,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/knowledge-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a project's Knowledge status
+         * @description A project's Knowledge status: whether it is ready, its coverage, and what failed.
+         *
+         *     Readable by anyone with VIEWER access to the project, because the Files tab
+         *     shows the coverage sentence to everyone who can open it. Queueing the work
+         *     (POST /project-knowledge) still requires member access. The counts are
+         *     scoped to the caller's own readable files, so a viewer is told about
+         *     coverage of exactly the files they could open themselves.
+         *
+         *     A project that does not exist and one the caller cannot read are the same
+         *     404, so the route is not an existence oracle. (The web app treats this 404
+         *     and the 403 it used to answer alike.)
+         */
+        get: operations["get_project_knowledge_status_route_v1_projects__project_id__knowledge_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/knowledge/failed-files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List failed Knowledge files
+         * @description Files in the project whose latest attempt to reach Knowledge failed, newest first.
+         *
+         *     Each says why in a public code and sentence, and whether you may retry it.
+         *     Covers the files you can read; a project you cannot read is a 404.
+         */
+        get: operations["list_knowledge_failed_files_route_v1_projects__project_id__knowledge_failed_files_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/knowledge/retry-failed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry failed Knowledge files
+         * @description Send the project's failed files to Knowledge again: all of them, or the ones named.
+         *
+         *     Safe to repeat. A file already queued or running is left alone, and one
+         *     whose latest attempt did not fail is never re-sent, so calling this again
+         *     before the retried files finish queues nothing new. Needs permission to add
+         *     files to the project; a project you cannot read is a 404.
+         */
+        post: operations["retry_failed_knowledge_route_v1_projects__project_id__knowledge_retry_failed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/members": {
         parameters: {
             query?: never;
@@ -2948,6 +3026,11 @@ export interface components {
              */
             id: string;
             /**
+             * Knowledge Status
+             * @description Where the file is in reaching the project's Knowledge: `queued`, `running`, `created`, `failed`, `stale`, `incomplete` or `skipped`; null when Knowledge was not requested for it.
+             */
+            knowledge_status?: string | null;
+            /**
              * Path
              * @description Path where it lives.
              */
@@ -3010,6 +3093,60 @@ export interface components {
              * @description Optional new title for the artifact.
              */
             title?: string | null;
+        };
+        /**
+         * BatchKnowledgeSummary
+         * @description How a batch's files are doing in reaching the project's Knowledge.
+         */
+        BatchKnowledgeSummary: {
+            /**
+             * Created
+             * @description Files added to Knowledge.
+             * @default 0
+             */
+            created?: number;
+            /**
+             * Failed
+             * @description Files whose attempt to reach Knowledge failed.
+             * @default 0
+             */
+            failed?: number;
+            /**
+             * Not Requested
+             * @description Files uploaded without asking for Knowledge.
+             * @default 0
+             */
+            not_requested?: number;
+            /**
+             * Other
+             * @description Files in Knowledge that need another pass (`stale` or `incomplete`).
+             * @default 0
+             */
+            other?: number;
+            /**
+             * Queued
+             * @description Files waiting to be added to Knowledge.
+             * @default 0
+             */
+            queued?: number;
+            /**
+             * Ready
+             * @description True when none of the batch's files is queued or running for Knowledge.
+             * @default true
+             */
+            ready?: boolean;
+            /**
+             * Running
+             * @description Files being added to Knowledge right now.
+             * @default 0
+             */
+            running?: number;
+            /**
+             * Skipped
+             * @description Files that finished without producing Knowledge (nothing to add).
+             * @default 0
+             */
+            skipped?: number;
         };
         /**
          * BlockedOrgJoinOut
@@ -3232,6 +3369,8 @@ export interface components {
              * @description Id of the batch.
              */
             batch_id: string;
+            /** @description The batch's files in Knowledge, counted from each file's `knowledge_status`; null before any file is created. */
+            knowledge?: components["schemas"]["BatchKnowledgeSummary"] | null;
             /**
              * Status
              * @description Current status of the bulk status.
@@ -5263,6 +5402,155 @@ export interface components {
              */
             total?: number | null;
         };
+        /**
+         * KnowledgeFailedFile
+         * @description One file whose latest attempt to reach the project's Knowledge failed.
+         */
+        KnowledgeFailedFile: {
+            /**
+             * Artifact Id
+             * Format: uuid
+             * @description Id of the file.
+             * @example 3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40
+             */
+            artifact_id: string;
+            /**
+             * Error Code
+             * @description Why it failed: `processing_failed` (the file could not be read), `timed_out`, `concurrent_update` (another Knowledge update ran at the same time) or `compile_failed` (anything else).
+             * @enum {string}
+             */
+            error_code: "processing_failed" | "timed_out" | "concurrent_update" | "compile_failed";
+            /**
+             * Failed At
+             * Format: date-time
+             * @description When the attempt that failed started.
+             */
+            failed_at: string;
+            /**
+             * Filename
+             * @description The file's name.
+             */
+            filename: string;
+            /**
+             * Path
+             * @description The file's path in the project, folders included, as Knowledge reads and `POST /v1/artifacts/read` name it; its name when it sits in no folder.
+             */
+            path: string;
+            /**
+             * Reason
+             * @description One sentence describing `error_code`, safe to show to a person.
+             */
+            reason: string;
+            /**
+             * Retryable
+             * @description Whether you may retry this file (`POST /v1/projects/{project_id}/knowledge/retry-failed`): you can edit it. Every failure code is worth a retry.
+             */
+            retryable: boolean;
+        };
+        /** KnowledgeFailedFilePage */
+        KnowledgeFailedFilePage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["KnowledgeFailedFile"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @default false
+             * @example false
+             */
+            has_more?: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * KnowledgeRetryFileResult
+         * @description What a retry did with one file.
+         */
+        KnowledgeRetryFileResult: {
+            /**
+             * Artifact Id
+             * Format: uuid
+             * @description Id of the file.
+             * @example 3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40
+             */
+            artifact_id: string;
+            /**
+             * Outcome
+             * @description `queued` (sent to Knowledge again), `already_queued` (already queued or running; nothing was done), `not_failed` (its latest attempt did not fail; nothing was done), `not_found` (no file with this id in the project that you can read) or `skipped` (it failed but cannot be retried now; see `reason`).
+             * @enum {string}
+             */
+            outcome: "queued" | "already_queued" | "not_failed" | "not_found" | "skipped";
+            /**
+             * Reason
+             * @description Why a `skipped` file was not retried.
+             */
+            reason?: string | null;
+        };
+        /**
+         * KnowledgeRetryRequest
+         * @description Which failed files to send to Knowledge again.
+         */
+        KnowledgeRetryRequest: {
+            /**
+             * Artifact Ids
+             * @description Files to retry, up to 500. Omit to retry every failed file in the project (up to 500 per call; `has_more` says when more remain).
+             */
+            artifact_ids?: string[] | null;
+        };
+        /**
+         * KnowledgeRetryResponse
+         * @description The result of retrying a project's failed files.
+         */
+        KnowledgeRetryResponse: {
+            /**
+             * Already Queued
+             * @description Files already queued or running; left alone.
+             * @default 0
+             */
+            already_queued?: number;
+            /**
+             * Files
+             * @description Each file this call considered, with what happened to it.
+             */
+            files?: components["schemas"]["KnowledgeRetryFileResult"][];
+            /**
+             * Has More
+             * @description True when every failed file was requested and more failed files remain than one call retries; call again once these finish.
+             * @default false
+             * @example false
+             */
+            has_more?: boolean;
+            /**
+             * Not Failed
+             * @description Named files whose latest attempt did not fail.
+             * @default 0
+             */
+            not_failed?: number;
+            /**
+             * Not Found
+             * @description Named files not found in the project.
+             * @default 0
+             */
+            not_found?: number;
+            /**
+             * Queued
+             * @description Files sent to Knowledge again.
+             * @default 0
+             */
+            queued?: number;
+            /**
+             * Skipped
+             * @description Failed files that could not be retried now.
+             * @default 0
+             */
+            skipped?: number;
+        };
         /** KnowledgeScope */
         KnowledgeScope: {
             /**
@@ -6830,6 +7118,119 @@ export interface components {
             tags?: string[];
         };
         /**
+         * ProjectKnowledgeActivity
+         * @description Whether a project's Knowledge is still being built, and how many files failed.
+         *
+         *     Counted over the caller's readable files, with the same per-file status as
+         *     ``GET /v1/projects/{project_id}/knowledge-summary``, which has the full
+         *     picture (coverage, and the failed files with their reasons).
+         */
+        ProjectKnowledgeActivity: {
+            /**
+             * Failed
+             * @description Files whose latest attempt to be added to Knowledge failed.
+             * @default 0
+             */
+            failed?: number;
+            /**
+             * Queued
+             * @description Files waiting to be added to Knowledge.
+             * @default 0
+             */
+            queued?: number;
+            /**
+             * Ready
+             * @description True when nothing is queued or running for Knowledge.
+             * @default true
+             */
+            ready?: boolean;
+            /**
+             * Running
+             * @description Files being added to Knowledge right now.
+             * @default 0
+             */
+            running?: number;
+        };
+        /**
+         * ProjectKnowledgeStatusResponse
+         * @description A project's Knowledge status: coverage counts, readiness and the files that failed.
+         *
+         *     Counts cover the files the caller can read. ``queued``, ``running`` and
+         *     ``failed`` break the coverage counts down further: ``queued + running`` is
+         *     ``syncing``, and ``failed`` is part of ``eligible``.
+         */
+        ProjectKnowledgeStatusResponse: {
+            /**
+             * Eligible
+             * @description How many qualify.
+             * @default 0
+             */
+            eligible?: number;
+            /**
+             * Failed
+             * @description Files whose latest attempt to be added to Knowledge failed (a subset of `eligible`).
+             * @default 0
+             */
+            failed?: number;
+            /**
+             * Failed Files
+             * @description The most recently failed files, newest first (up to `failed_limit`).
+             */
+            failed_files?: components["schemas"]["KnowledgeFailedFile"][];
+            /**
+             * Failed Files Next Cursor
+             * @description Pass as `cursor` to `GET /v1/projects/{project_id}/knowledge/failed-files` for the failed files after these; null when `failed_files` holds them all.
+             */
+            failed_files_next_cursor?: string | null;
+            /**
+             * Knowledge Skipped
+             * @description Files that finished processing without producing Knowledge (a subset of `synced`).
+             * @default 0
+             */
+            knowledge_skipped?: number;
+            /**
+             * Oldest Pending At
+             * @description Time of the oldest pending (ISO 8601, UTC).
+             */
+            oldest_pending_at?: string | null;
+            /**
+             * Queued
+             * @description Files waiting for their turn to be added to Knowledge.
+             * @default 0
+             */
+            queued?: number;
+            /**
+             * Ready
+             * @description True when nothing is queued or running, so answers from this project's Knowledge reflect every file that will be added. Failed files do not make it false; check `failed`.
+             * @default true
+             */
+            ready?: boolean;
+            /**
+             * Running
+             * @description Files being added to Knowledge right now.
+             * @default 0
+             */
+            running?: number;
+            /**
+             * Synced
+             * @description Files in the project already compiled into Knowledge.
+             * @default 0
+             */
+            synced?: number;
+            /**
+             * Syncing
+             * @description Files in the project still being compiled into Knowledge (`queued` plus `running`).
+             * @default 0
+             */
+            syncing?: number;
+            /**
+             * Total
+             * @description The total count.
+             * @default 0
+             */
+            total?: number;
+        };
+        /**
          * ProjectMemberAdd
          * @example {
          *       "principal_id": "8f2c6a1e-5b3d-4e7f-a9c0-1d2e3f4a5b6c",
@@ -7065,6 +7466,8 @@ export interface components {
              * @default false
              */
             is_shared?: boolean;
+            /** @description Knowledge build state, present only when the list was asked for it with `include_knowledge=true`. */
+            knowledge?: components["schemas"]["ProjectKnowledgeActivity"] | null;
             /**
              * Member Count
              * @description Count of distinct users/access subjects with project access.
@@ -15441,6 +15844,8 @@ export interface operations {
                 member_only?: boolean;
                 /** @description Deprecated; use project or label filters */
                 group_id?: string | null;
+                /** @description Add each project's Knowledge build state (`knowledge`): files queued, running and failed, and whether it is ready. */
+                include_knowledge?: boolean;
                 /** @description Opaque cursor from a previous page's `next_cursor`. */
                 cursor?: string | null;
                 /** @description Page size, 1 to 200. */
@@ -15712,6 +16117,165 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PendingMemberInvitationOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_project_knowledge_status_route_v1_projects__project_id__knowledge_summary_get: {
+        parameters: {
+            query?: {
+                /** @description How many failed files to include in `failed_files`, newest first. */
+                failed_limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectKnowledgeStatusResponse"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_knowledge_failed_files_route_v1_projects__project_id__knowledge_failed_files_get: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeFailedFilePage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    retry_failed_knowledge_route_v1_projects__project_id__knowledge_retry_failed_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeRetryRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeRetryResponse"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
