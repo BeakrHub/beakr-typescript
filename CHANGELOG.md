@@ -3,32 +3,19 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## @beakr/sdk 0.1.0 (unreleased)
+## @beakr/sdk 0.1.0 (2026-10-14)
 
-### SDK
+### Changes
 
-- `files.read(reference, { unit, offset, maxChars })` calls
-  `POST /v1/artifacts/read`: a file id, version id, citation token or path, with
-  `unit` (or `#<unit>` after the path) for the window around one place.
-- Uploads send `relative_path` on completion: `uploads.uploadFolder` and
-  `uploadMany` record each file's path from its directory's parent
-  (`docs/guides/a.md`, mirrored or not), `uploadEntries` an entry's
-  `relativePath` (default: its `path` when that names directories), and
-  `uploads.upload` / `resume` take `relativePath`.
-- A 429 `credits_exhausted` or `quota_exceeded` is thrown at once instead of
-  being retried: no retry within seconds can succeed. Other 429s are retried as
-  before.
-- External users are addressed by `user_id`: `externalUsers.get`, `update`,
-  `delete` and `endUserTokens.mint({ externalUserId })` throw `ValidationError`
-  for anything but a uuid, since an `external_id` is unique only per creating
-  service account. `externalUsers.list({ externalId })` finds the one your
-  credential created.
-- `knowledge.research` waits up to 170s for its answer (`RESEARCH_TIMEOUT_MS`),
-  or the client's `timeoutMs` if that is longer: the engine allows research up
-  to 150s, and the 60s default gave up on slow answers the engine was still
-  producing.
-- `publicSource` keeps `location.unit_locator`, `location.upload_path`, and a
-  compact record's `excerpts` and `cited_passages`, which it used to drop.
+- `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
+  and lists (`ls`) original indexed files. It requires `projects:read`; a
+  project-restricted credential must supply one of its authorized projects.
+  The feature returns 404 until enabled. Scan notices identify incomplete results.
+- `POST /v1/knowledge/research` supports an optional research engine with
+  `checked`, `not_checked`, `stopped_early`, `subtasks`, `engine`, `lead_model`,
+  and `sources_consulted` fields. Its optional stronger lead shares the same
+  project restrictions. The caller rate limit is now 30 requests per minute;
+  concurrent-run and usage limits still apply.
 
 ### Documented surface
 
@@ -52,7 +39,10 @@ Each release lists the public API changes it supports, taken from the API change
   `gaps`, `turns`, `duration_s` and `cost_usd`; `ConversationImported`
   `created`, `appended`, `pending_compound`, `compound_queued` and `stored`;
   `IntegrationOut` `connection_role` and `health_status`; and the Knowledge page,
-  search and revision fields. Behavior is unchanged.
+  search and revision fields. Fields that are never null no longer say they
+  can be: `expires_at` on `UploadSessionOut`, `UploadPartUrl`,
+  `BulkPrepareResponse`, `CreatedLinkOut` and `SendableLinkOut`, and `error` on
+  `ErrorEnvelope` and `FailedFileOut`. Behavior is unchanged.
 - **Documented Knowledge request bodies.** `POST /v1/knowledge/research`
   (`query`, optional `project_id`), `POST /v1/knowledge/wiki/command` (`command`
   and its arguments, flat, plus `scope`, `detail` and `help` with `topic`) and
@@ -173,7 +163,7 @@ Each release lists the public API changes it supports, taken from the API change
 - Clerk OAuth tokens act as the person in the organization the request names
   (`X-Org-Id`, else their active organization), within the token's scopes, and
   only in an organization the person is a member of. An `X-Org-Id` that names no
-  organization answers `404 not_found` rather than falling back to the active
+  organization answers `404 unknown_organization` rather than falling back to the active
   organization. A Clerk OAuth token that is malformed or refused is not
   verified again for a short while, and an address that keeps presenting
   refused tokens answers `429 rate_limited` with `Retry-After`.
