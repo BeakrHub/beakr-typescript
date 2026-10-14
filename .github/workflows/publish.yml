@@ -1,0 +1,63 @@
+# Publish @beakr/sdk to npm when a GitHub release is published.
+#
+# PREPARED, NOT ENABLED. Nothing is uploaded until both:
+#   1. npm has a Trusted Publisher for @beakr/sdk: GitHub Actions, owner
+#      `BeakrHub`, repository `beakr-typescript`, workflow `publish.yml`,
+#      environment `npm` (the @beakr scope must exist first); and
+#   2. the repository variable NPM_PUBLISH_ENABLED is `true`.
+# No npm token is stored: npm authenticates the upload with GitHub's OIDC token
+# (trusted publishing needs npm 11.5.1 or newer) and records provenance.
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  # Every gate in ci.yml (freshness, typecheck, tests on every Node, AMR
+  # vectors, release versions and notes) must pass before anything is built.
+  ci:
+    if: vars.NPM_PUBLISH_ENABLED == 'true'
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  publish:
+    needs: ci
+    if: vars.NPM_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: npm with trusted publishing
+        run: npm install -g npm@^11.5.1
+
+      - name: Release tag matches the package version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          version="$(node -p 'require("./package.json").version')"
+          if [ "$TAG" != "v$version" ]; then
+            echo "Release tag $TAG does not match package.json version $version"
+            exit 1
+          fi
+
+      - name: Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publish
+        run: npm publish --provenance --access public

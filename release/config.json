@@ -1,0 +1,10 @@
+{
+  "package": "@beakr/sdk",
+  "changelog_intro": "Releases of `@beakr/sdk`, the Beakr TypeScript SDK.",
+  "version_files": [
+    ["package.json", "(?s)^\\{\\s*\"name\": \"@beakr/sdk\",\\s*\"version\": \"([^\"]+)\""],
+    ["package-lock.json", "(?s)^\\{\\s*\"name\": \"@beakr/sdk\",\\s*\"version\": \"([^\"]+)\""],
+    ["package-lock.json", "\"packages\": \\{\\s*\"\": \\{\\s*\"name\": \"@beakr/sdk\",\\s*\"version\": \"([^\"]+)\""],
+    ["src/version.ts", "export const VERSION = \"([^\"]+)\""]
+  ]
+}

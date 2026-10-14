@@ -1,0 +1,127 @@
+# beakr-typescript CI: freshness against the engine contract, typecheck, tests
+# on every supported Node, and the release check.
+#
+# src/generated (the engine's documented public contract, the only contract
+# this package is built from) is checked against the engine files committed
+# under snapshots/beakr-engine, and the shared release scripts against
+# BeakrHub/beakr-python's, committed under snapshots/beakr-python; each is
+# pinned to a commit in snapshots/manifest.json (scripts/refresh_snapshots.py
+# refreshes them from local checkouts). No other repository is read and no
+# secret is needed. The engine's own CI checks this repository and beakr-python
+# out on the branch named like its own and runs these checks against the real
+# repositories, so drift shows up there before a refresh here.
+# test/shipped-surface.test.ts packs the package and fails on any route in it
+# outside that contract.
+# publish.yml calls this workflow and publishes only when it passes.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # The committed snapshots stand in for engine and beakr-python checkouts.
+  BEAKR_ENGINE_PATH: ${{ github.workspace }}/snapshots/beakr-engine
+  BEAKR_PYTHON_PATH: ${{ github.workspace }}/snapshots/beakr-python
+
+jobs:
+  checks:
+    name: freshness-and-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Snapshots match their manifest
+        run: python3 scripts/refresh_snapshots.py verify
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install
+        run: npm ci
+
+      - name: Generated layer is current
+        run: |
+          set -euo pipefail
+          npm run generate
+          if [ -n "$(git status --porcelain -- src/generated)" ]; then
+            git status --short -- src/generated
+            echo "src/generated is stale against the engine contract: run npm run generate"
+            exit 1
+          fi
+
+      - name: Shared release scripts match the Python SDK's
+        run: |
+          set -euo pipefail
+          for script in prepare_release.py contract_compat.py; do
+            diff -u "$BEAKR_PYTHON_PATH/scripts/$script" "scripts/$script"
+          done
+
+      - name: Release versions and notes
+        run: python3 scripts/prepare_release.py check
+
+      - name: Package contents
+        run: |
+          set -euo pipefail
+          npm run build
+          npm pack --dry-run
+
+  # package.json declares engines.node >=18, so the SDK is tested on every
+  # supported major, not only the newest. Dependencies are installed and the
+  # package built once on Node 22, the toolchain's own runtime; the matrix
+  # Node then runs the typecheck, a runtime smoke of the built dist/ (node:test,
+  # which Node 18 has), and the full vitest suite. vitest 4 and vite need Node
+  # 20+, so on Node 18 the suite cannot start; the smoke covers the paths that
+  # differ by Node version there (the credentials file without
+  # process.getBuiltinModule, the CLI token bridge, retries, ESM and CJS).
+  node-versions:
+    name: node-${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["18", "20", "22"]
+    steps:
+      # test/contract-coverage.test.ts and test/shipped-surface.test.ts read the
+      # engine's public contract from snapshots/beakr-engine.
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install and build
+        run: |
+          npm ci
+          npm run build
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Node version
+        run: |
+          node --version
+          node -e "console.log('process.getBuiltinModule:', typeof process.getBuiltinModule)"
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Runtime smoke of the built package
+        run: npm run test:node-smoke
+
+      - name: Tests (full vitest suite)
+        if: matrix.node != '18'
+        run: npm test
