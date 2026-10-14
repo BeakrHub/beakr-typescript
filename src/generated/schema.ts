@@ -818,6 +818,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search and read original documents
+         * @description Search and read the original documents' text: the `documents` tool for API callers. Search and read the original documents' text: the ``documents`` tool for API callers.
+         *
+         *     Behind the ``documents_api`` flag. Same commands and arguments as Beakr's own
+         *     agents use (``beakr/engines/tools/documents``): ``grep`` (ripgrep options across
+         *     every document in scope), ``read`` (line-numbered text of one document) and ``ls``.
+         *
+         *     Body:
+         *         command: grep | read | ls (required).
+         *         arguments: that command's options, e.g. {"pattern": "comfort letter", "output_mode": "files_with_matches"}.
+         *         project_id: Optional project scope (UUID).
+         */
+        post: operations["documents_v1_knowledge_documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/research": {
         parameters: {
             query?: never;
@@ -3172,7 +3201,7 @@ export interface components {
             /**
              * Expires At
              * Format: date-time
-             * @description When it expires (ISO 8601, UTC); null if it does not.
+             * @description When it expires (ISO 8601, UTC).
              * @example 2026-10-03T09:30:42Z
              */
             expires_at: string;
@@ -3815,7 +3844,7 @@ export interface components {
             /**
              * Expires At
              * Format: date-time
-             * @description When it expires (ISO 8601, UTC); null if it does not.
+             * @description When it expires (ISO 8601, UTC).
              * @example 2026-10-03T09:30:42Z
              */
             expires_at: string;
@@ -3841,6 +3870,27 @@ export interface components {
              * @description The link token. Shown on the first response only; absent from an idempotent replay.
              */
             token?: string | null;
+        };
+        /** DocumentsResult */
+        DocumentsResult: {
+            /**
+             * Content
+             * @description Document text and citations, with scan and continuation notices.
+             */
+            content: string;
+            /**
+             * Is Error
+             * @description Whether it is error.
+             * @default false
+             */
+            is_error?: boolean;
+            /**
+             * Sources
+             * @description The sources it cites or draws on.
+             */
+            sources?: {
+                [key: string]: components["schemas"]["ResearchSource"];
+            };
         };
         /**
          * DownloadUrl
@@ -4097,7 +4147,7 @@ export interface components {
         ErrorEnvelope: {
             /** @description Legacy error detail kept for existing clients; read `error` instead. */
             detail?: unknown;
-            /** @description What went wrong, or null. */
+            /** @description What went wrong. */
             error: components["schemas"]["ApiError"];
         } & {
             [key: string]: unknown;
@@ -4337,7 +4387,7 @@ export interface components {
         FailedFileOut: {
             /**
              * Error
-             * @description What went wrong, or null.
+             * @description What went wrong.
              */
             error: string;
             /**
@@ -7241,6 +7291,12 @@ export interface components {
              */
             answer: string;
             /**
+             * Checked
+             * @description Checked.
+             * @default null
+             */
+            checked?: string | null;
+            /**
              * Citations
              * @description The cited documents in citation order, as public source records: `source_ref` to cite in a later Knowledge write, `name`, `filename`, `location`, a brief `evidence.excerpt`, and, for a document cited at several passages, `cited_passages` and one brief entry per passage in `excerpts`.
              */
@@ -7263,11 +7319,25 @@ export interface components {
              */
             cost_usd?: number | null;
             /**
+             * Coverage
+             * @description How complete this result is: returned and total counts, and whether more exist.
+             * @default null
+             */
+            coverage?: {
+                [key: string]: unknown;
+            } | null;
+            /**
              * Duration S
              * @description How long the research took, in seconds.
              * @default null
              */
             duration_s?: number | null;
+            /**
+             * Engine
+             * @description Engine.
+             * @default null
+             */
+            engine?: string | null;
             /**
              * Entities
              * @description The key people, organizations and projects the answer mentions.
@@ -7281,11 +7351,23 @@ export interface components {
              */
             gaps?: string | null;
             /**
+             * Lead Model
+             * @description Lead model.
+             * @default null
+             */
+            lead_model?: string | null;
+            /**
              * Next
              * @description Present when the response budget shortened or left out excerpts: how to read a cited passage in full.
              * @default null
              */
             next?: string[] | null;
+            /**
+             * Not Checked
+             * @description Not checked.
+             * @default null
+             */
+            not_checked?: string | null;
             /**
              * Sources
              * @description The sources the raw answer cites, keyed by the citation key its `{{key}}` tokens use, each with its `source_ref`; `citations` describes the documents.
@@ -7293,6 +7375,24 @@ export interface components {
             sources?: {
                 [key: string]: components["schemas"]["ResearchSource"];
             };
+            /**
+             * Sources Consulted
+             * @description Sources consulted.
+             * @default null
+             */
+            sources_consulted?: number | null;
+            /**
+             * Stopped Early
+             * @description Stopped early.
+             * @default null
+             */
+            stopped_early?: boolean | null;
+            /**
+             * Subtasks
+             * @description Subtasks.
+             * @default null
+             */
+            subtasks?: number | null;
             /**
              * Text
              * @description The answer with each cited document shown as [1], [2] ... in order of first use; `citations[n-1]` is document [n], and every passage of one document shares its number. When nothing was found the answer says so.
@@ -7883,7 +7983,7 @@ export interface components {
             /**
              * Expires At
              * Format: date-time
-             * @description When it expires (ISO 8601, UTC); null if it does not.
+             * @description When it expires (ISO 8601, UTC).
              * @example 2026-10-03T09:30:42Z
              */
             expires_at: string;
@@ -8822,7 +8922,7 @@ export interface components {
             /**
              * Expires At
              * Format: date-time
-             * @description When it expires (ISO 8601, UTC); null if it does not.
+             * @description When it expires (ISO 8601, UTC).
              * @example 2026-10-03T09:30:42Z
              */
             expires_at: string;
@@ -8990,7 +9090,7 @@ export interface components {
             /**
              * Expires At
              * Format: date-time
-             * @description When it expires (ISO 8601, UTC); null if it does not.
+             * @description When it expires (ISO 8601, UTC).
              * @example 2026-10-03T09:30:42Z
              */
             expires_at: string;
@@ -12378,6 +12478,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    documents_v1_knowledge_documents_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description Options for the selected documents command: pattern, document, start_line/end_line, project, path, glob, head_limit, offset, after_document. */
+                    arguments?: {
+                        [key: string]: unknown;
+                    };
+                    /**
+                     * @description Search indexed text, read a document window, or list files.
+                     * @enum {string}
+                     */
+                    command: "grep" | "read" | "ls";
+                    /**
+                     * Format: uuid
+                     * @description Limit to this project. Required for project-restricted credentials.
+                     */
+                    project_id?: string;
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentsResult"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

@@ -50,6 +50,7 @@ export const OPERATIONS = {
   "interviews.linkResult": { method: "GET", path: "/v1/interview/sendables/links/{link_id}/result" },
   "interviews.revokeLink": { method: "POST", path: "/v1/interview/sendables/links/{link_id}/revoke" },
   "jobs.getJob": { method: "GET", path: "/v1/jobs/{job_id}" },
+  "knowledge.documents": { method: "POST", path: "/v1/knowledge/documents" },
   "knowledge.research": { method: "POST", path: "/v1/knowledge/research" },
   "knowledge.runWikiCommand": { method: "POST", path: "/v1/knowledge/wiki/command" },
   "knowledge.listWikiPages": { method: "GET", path: "/v1/knowledge/wiki/pages" },
@@ -532,6 +533,12 @@ export class JobsApi {
 /** Public operations tagged knowledge. */
 export class KnowledgeApi {
   constructor(private readonly transport: Transport) {}
+
+  /** POST /v1/knowledge/documents (Search and read original documents) */
+  documents(args?: { body?: NonNullable<operations["documents_v1_knowledge_documents_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["documents_v1_knowledge_documents_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/knowledge/documents", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
 
   /** POST /v1/knowledge/research (Research a question) */
   research(args?: { body?: NonNullable<operations["research_v1_knowledge_research_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["research_v1_knowledge_research_post"]>> {

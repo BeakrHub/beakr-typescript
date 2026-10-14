@@ -112,6 +112,15 @@ export class Knowledge extends Resource {
     return checked(result, options.check ?? true);
   }
 
+  /** Search/read/list original indexed documents. Scan notices describe incomplete results. */
+  documents(command: "grep" | "read" | "ls", args: JsonObject = {}, projectId?: string): Promise<unknown> {
+    return this.transport.request({
+      method: "POST",
+      path: "/v1/knowledge/documents",
+      body: { command, arguments: args, ...(projectId ? { project_id: projectId } : {}) },
+    });
+  }
+
   /**
    * A cited answer from Knowledge and connected sources. Waits up to
    * {@link RESEARCH_TIMEOUT_MS} (or the client's timeout, if longer): the engine
