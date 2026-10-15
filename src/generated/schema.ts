@@ -13113,10 +13113,19 @@ export interface operations {
                      * @enum {string}
                      */
                     detail?: "full";
+                    /**
+                     * @description links: in (default) or out.
+                     * @enum {string}
+                     */
+                    direction?: "in" | "out";
                     /** @description End date YYYY-MM-DD (for timeline). */
                     end_date?: string;
                     /** @description rows: card titles containing this. */
                     entity?: string;
+                    /** @description rows: one field from view=fields, instead of attribute. */
+                    field_id?: string;
+                    /** @description rows: counts and totals per entity, entity_type, year or column. */
+                    group_by?: string;
                     /** @description timeline: include estimated dates (default true). False keeps only day/month/year precision. */
                     include_approx?: boolean;
                     /** @description If true, timeline returns each section's full markdown content. Automatically enabled when timeline_query is set. */
@@ -13150,9 +13159,11 @@ export interface operations {
                     parent?: string;
                     /** @description Title prefix (for completions). */
                     prefix?: string;
-                    /** @description For grep: the pattern. text mode matches a literal case-insensitive SUBSTRING, so a distinctive term or exact phrase hits and a natural-language question does not; regex mode is POSIX and matches per line, so `^` and `$` anchor to line starts and ends. For sections: the semantic query. For rows: a literal substring across cells. */
+                    /** @description For grep: the pattern. text mode matches a literal case-insensitive SUBSTRING, so a distinctive term or exact phrase hits and a natural-language question does not; regex mode is POSIX and matches per line, so `^` and `$` anchor to line starts and ends. For sections: the semantic query. For rows: words across cells, not meaning. */
                     query?: string;
-                    /** @description For links: keep only linking cards whose Connections row to this page states a relation containing this text (case-insensitive), e.g. 'annex of', 'measured'. */
+                    /** @description rows: attribute, to and query are regexes. */
+                    regex?: boolean;
+                    /** @description links: stated relation contains this, e.g. 'lender'. */
                     relation?: string;
                     /** @description Revision number (for cat --rev, show, diff start). */
                     rev?: number;
@@ -13187,8 +13198,15 @@ export interface operations {
                     timeline_query?: string;
                     /** @description For suggest_parent: the title of a page that does not exist yet. Use this instead of `page` when asking where a page you are about to create should be filed. */
                     title?: string;
+                    /** @description rows, table connections: rows whose To names this page. */
+                    to?: string;
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
+                    /**
+                     * @description rows: values (default) or fields (field names, counts, examples).
+                     * @enum {string}
+                     */
+                    view?: "values" | "fields";
                 } & {
                     [key: string]: unknown;
                 };
