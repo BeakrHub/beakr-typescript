@@ -858,7 +858,7 @@ export interface paths {
         put?: never;
         /**
          * Research a question
-         * @description A cited answer to `query`, researched across Knowledge, uploaded files and connected integrations. Pass `project_id` to research one project. Typical latency is 5 to 15 seconds, up to 45 when it reads documents from connected integrations. `text` numbers its sources [1], [2] in order of first use, and `citations[n-1]` is source [n]. A credential limited to projects must pass one of its projects, and its research does not use connected integrations.
+         * @description A cited answer to `query`, researched across Knowledge, uploaded files and connected integrations. Pass `project_id` to research one project. Typical latency is 5 to 15 seconds, up to 45 when it reads documents from connected integrations. `text` cites each source by its readable reference in parentheses (`(memo.pdf › p. 7)`), and `citations` lists the cited documents in order of first use. A credential limited to projects must pass one of its projects, and its research does not use connected integrations.
          */
         post: operations["research_v1_knowledge_research_post"];
         delete?: never;
@@ -7695,7 +7695,7 @@ export interface components {
             answer: string;
             /**
              * Checked
-             * @description Checked.
+             * @description What the research covered: the sources and scopes it read.
              * @default null
              */
             checked?: string | null;
@@ -7737,7 +7737,7 @@ export interface components {
             duration_s?: number | null;
             /**
              * Engine
-             * @description Engine.
+             * @description Which research engine answered.
              * @default null
              */
             engine?: string | null;
@@ -7755,7 +7755,7 @@ export interface components {
             gaps?: string | null;
             /**
              * Lead Model
-             * @description Lead model.
+             * @description The model that led the research and wrote the answer.
              * @default null
              */
             lead_model?: string | null;
@@ -7767,7 +7767,7 @@ export interface components {
             next?: string[] | null;
             /**
              * Not Checked
-             * @description Not checked.
+             * @description What it did not cover and a reader would still have to open; treat the answer as incomplete for those.
              * @default null
              */
             not_checked?: string | null;
@@ -7780,25 +7780,25 @@ export interface components {
             };
             /**
              * Sources Consulted
-             * @description Sources consulted.
+             * @description How many distinct sources the research read, cited or not.
              * @default null
              */
             sources_consulted?: number | null;
             /**
              * Stopped Early
-             * @description Stopped early.
+             * @description True when the research reached its time or step limit and answered from what it had; `not_checked` says what is missing.
              * @default null
              */
             stopped_early?: boolean | null;
             /**
              * Subtasks
-             * @description Subtasks.
+             * @description How many parallel research subtasks the lead started.
              * @default null
              */
             subtasks?: number | null;
             /**
              * Text
-             * @description The answer with each cited document shown as [1], [2] ... in order of first use; `citations[n-1]` is document [n], and every passage of one document shares its number. When nothing was found the answer says so.
+             * @description The answer with each citation shown as the readable reference in parentheses: `(memo.pdf › p. 7)`, several passages of one document `(memo.pdf › p. 7, p. 9)`, `(#deals › message 2026-03-04 14:02 UTC)`, `(PROJ-12)`, `(Page Title › Section)`. `citations` lists the documents in order of first use. When nothing was found the answer says so.
              */
             text: string;
             /**
@@ -7847,7 +7847,7 @@ export interface components {
         };
         /**
          * RunAnswer
-         * @description A completed run's answer: numbered text, the raw text and its cited sources.
+         * @description A completed run's answer: readable text, the raw text and its cited sources.
          */
         RunAnswer: {
             /**
@@ -7864,7 +7864,7 @@ export interface components {
             }[];
             /**
              * Text
-             * @description The answer with each cited source shown as [1], [2] ... in order of first use; `sources[n-1]` is source [n].
+             * @description The answer with each citation shown as the readable reference in parentheses (`(memo.pdf › p. 7)`, `(Page Title › Section)`); `sources` lists the cited documents in order of first use.
              */
             text: string;
         };
@@ -7907,7 +7907,7 @@ export interface components {
          *     }
          */
         RunStatusResponse: {
-            /** @description The run's answer, once `status` is `completed`: numbered text, the raw text and its cited sources. Null before then. */
+            /** @description The run's answer, once `status` is `completed`: readable text, the raw text and its cited sources. Null before then. */
             answer?: components["schemas"]["RunAnswer"] | null;
             /**
              * Completed At
@@ -8546,7 +8546,7 @@ export interface components {
         SourceExcerpt: {
             /**
              * Citation Key
-             * @description The passage's citation token.
+             * @description The passage's citation key. The text cites the passage by its readable reference instead; a Knowledge write still accepts the key.
              * @default null
              */
             citation_key?: string | null;
@@ -8596,7 +8596,7 @@ export interface components {
             provider_item_id?: string | null;
             /**
              * Unit Locator
-             * @description Where the cited passage sits inside the source, as precisely as the citation recorded it: `p. 7` (PDF), `slide 3` (PowerPoint), `sheet 2, B4:D9` (a spreadsheet), `block 8` (Word, which stores no pages), `lines 12-19` or `para 3` (text), `message 2026-03-01 14:02 UTC` (Slack, email), `chars 120-480`. `<display_path> › <unit_locator>` (e.g. `tax-memo.docx › p. 7`, `#deals › message 2026-03-04 14:02 UTC`) is the one reference to go to, what `read_file` accepts for a file (`#` in place of ` › ` too), what to cite inline in an answer to a person, and a `reference` a Knowledge write may cite.
+             * @description Where the cited passage sits inside the source, as precisely as the citation recorded it: `p. 7` (PDF), `slide 3` (PowerPoint), `sheet 2, B4:D9` (a spreadsheet), `block 8` (Word, which stores no pages), `lines 12-19` or `para 3` (text), `message 2026-03-01 14:02 UTC` (Slack, email), `chars 120-480`. `<display_path> › <unit_locator>` (e.g. `tax-memo.docx › p. 7`, `#deals › message 2026-03-04 14:02 UTC`) is the one reference to go to, what `read_file` accepts for a file (`#` in place of ` › ` too), and a `reference` a Knowledge write may cite. The text names the same citation by the file's short name: `(tax-memo.docx › p. 7)`.
              * @default null
              */
             unit_locator?: string | null;
@@ -8668,10 +8668,16 @@ export interface components {
             citation_key?: string | null;
             /**
              * Cited Passages
-             * @description On a compact `cat` or `sections` read: this record stands for one document, and the read cites this many of its passages. `sources` on the page or a token lists each passage with its excerpt.
+             * @description On a compact `cat` or `sections` read: this record stands for one document, and the read cites this many of its passages. `sources` on the page lists each passage with its excerpt.
              * @default null
              */
             cited_passages?: number | null;
+            /**
+             * Cited Places
+             * @description Every place in this document the text cites (`p. 7`, `slide 3`, `message 2026-03-04 14:02 UTC`), in order. Left out first when the response budget is tight: the text names each one inline.
+             * @default null
+             */
+            cited_places?: string[] | null;
             /**
              * Evidence
              * @description The evidence that supports it.
@@ -8709,6 +8715,12 @@ export interface components {
              * @default null
              */
             provider?: string | null;
+            /**
+             * Reference
+             * @description The name the text cites this document by, when it is not `filename` (or `name`): two files of one name are told apart by their folders (`Closing/memo.pdf`), an issue is named by its key (`PROJ-12`). The text reads `(<reference> › <place>)`, e.g. `(memo.pdf › p. 7)`, `(#deals › message 2026-03-04 14:02 UTC)`, `(Page Title › Section)`.
+             * @default null
+             */
+            reference?: string | null;
             /**
              * Section
              * @description For a Knowledge section: its `title`, and the dates of the event it records (`event_start`, `event_end`, `date_precision`).
