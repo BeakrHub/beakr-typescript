@@ -13085,6 +13085,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    /** @description rows: continue a capped card scan after this card. */
+                    after_card?: string;
                     /** @description Keyset cursor for provenance: return only the sections that follow this section id in page order. Pass the last section id of the previous window to walk the whole page. */
                     after_section?: string;
                     /** @description sources: the second half of the keyset cursor, paired with after_title. Sources are ordered by (title, source_id), so a window boundary can fall inside a run of records that share a title -- Invoice.pdf on a matter page -- and a title-only cursor would skip the whole run. Copy the value the previous window's trailer printed. */
