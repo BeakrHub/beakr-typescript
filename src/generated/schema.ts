@@ -1093,6 +1093,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/sources/{source_type}/{source_id}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Undo a source's compiled Knowledge contributions
+         * @description Undo a source's compiled Knowledge contributions.
+         *
+         *     For an uploaded file use source_type `artifact` and its version UUID as
+         *     source_id. Undo versions newest first to remove a whole file's contribution.
+         *     Requires `kb:write`; project-restricted credentials must supply an allowed
+         *     project_id. File bytes are not deleted. Later edits can prevent a complete
+         *     undo: inspect status, skipped, conflicts and proposals before deleting files.
+         *     Idempotency-Key retries replay the original outcome for 24 hours.
+         *     A `blocked` result can include applied changes; HTTP 200 is not proof that
+         *     every contribution was removed. An unknown source returns `noop`.
+         */
+        post: operations["revert_wiki_source_v1_knowledge_wiki_sources__source_type___source_id__revert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/write": {
         parameters: {
             query?: never;
@@ -7292,7 +7321,7 @@ export interface components {
             answer: string;
             /**
              * Checked
-             * @description Checked.
+             * @description The evidence and areas the agent reports examining.
              * @default null
              */
             checked?: string | null;
@@ -7334,7 +7363,7 @@ export interface components {
             duration_s?: number | null;
             /**
              * Engine
-             * @description Engine.
+             * @description The research engine that produced this result.
              * @default null
              */
             engine?: string | null;
@@ -7352,7 +7381,7 @@ export interface components {
             gaps?: string | null;
             /**
              * Lead Model
-             * @description Lead model.
+             * @description The configured model used by the lead research agent.
              * @default null
              */
             lead_model?: string | null;
@@ -7364,7 +7393,7 @@ export interface components {
             next?: string[] | null;
             /**
              * Not Checked
-             * @description Not checked.
+             * @description The evidence and areas the agent reports not examining.
              * @default null
              */
             not_checked?: string | null;
@@ -7377,19 +7406,19 @@ export interface components {
             };
             /**
              * Sources Consulted
-             * @description Sources consulted.
+             * @description Number of source records collected during research, including sources not cited in the final answer.
              * @default null
              */
             sources_consulted?: number | null;
             /**
              * Stopped Early
-             * @description Stopped early.
+             * @description Whether the agent was instructed to wrap up because it reached its step or time budget.
              * @default null
              */
             stopped_early?: boolean | null;
             /**
              * Subtasks
-             * @description Subtasks.
+             * @description Number of research subtasks started by the lead agent.
              * @default null
              */
             subtasks?: number | null;
@@ -10242,6 +10271,83 @@ export interface components {
              * @default
              */
             title?: string;
+        };
+        /** WikiSourceRevertConflict */
+        WikiSourceRevertConflict: {
+            /**
+             * Change Id
+             * Format: uuid
+             * @description Id of the change.
+             */
+            change_id: string;
+            /**
+             * Commit Id
+             * Format: uuid
+             * @description Id of the commit.
+             */
+            commit_id: string;
+            /**
+             * Page Id
+             * @description Id of the page.
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id: string | null;
+            /**
+             * Reason
+             * @description Why, in a few words.
+             */
+            reason: string;
+        };
+        /** WikiSourceRevertResult */
+        WikiSourceRevertResult: {
+            /**
+             * Applied
+             * @description Number of inverse changes successfully applied.
+             */
+            applied: number;
+            /**
+             * Commit Ids
+             * @description Ids of the commits.
+             * @default []
+             */
+            commit_ids?: string[];
+            /**
+             * Commits Processed
+             * @description Number of source-associated commits considered by this undo operation.
+             */
+            commits_processed: number;
+            /**
+             * Conflict Details
+             * @description Changes requiring review, with the original commit and affected page. These pages have not been reverted; page_ids lists only successfully changed pages.
+             */
+            conflict_details?: components["schemas"]["WikiSourceRevertConflict"][];
+            /**
+             * Conflicts
+             * @description Number of source-associated commits whose undo reported conflicts; conflict_details lists the individual changes requiring review.
+             */
+            conflicts: number;
+            /**
+             * Page Ids
+             * @description Ids of the pages.
+             * @default []
+             */
+            page_ids?: string[];
+            /**
+             * Proposals
+             * @description The proposals.
+             */
+            proposals: string[];
+            /**
+             * Skipped
+             * @description How many were skipped.
+             * @default 0
+             */
+            skipped?: number;
+            /**
+             * Status
+             * @description Current status of the wiki source revert.
+             */
+            status: string;
         };
         /** WikiToolOutcome */
         WikiToolOutcome: {
@@ -13361,6 +13467,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WikiSearchResult"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revert_wiki_source_v1_knowledge_wiki_sources__source_type___source_id__revert_post: {
+        parameters: {
+            query?: {
+                project_id?: string | null;
+            };
+            header?: never;
+            path: {
+                source_type: string;
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiSourceRevertResult"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
