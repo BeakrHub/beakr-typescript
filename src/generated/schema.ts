@@ -13200,7 +13200,7 @@ export interface operations {
                     timeline_query?: string;
                     /** @description For suggest_parent: the title of a page that does not exist yet. Use this instead of `page` when asking where a page you are about to create should be filed. */
                     title?: string;
-                    /** @description rows, table connections: rows whose To names this page. */
+                    /** @description rows, table connections: rows involving this page. */
                     to?: string;
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
