@@ -38,14 +38,18 @@ export interface ReadFileOptions {
  */
 export class Files extends Resource {
   /**
-   * Read a file's extracted text by a file id, a version id, a citation token
-   * (`{{artifact:<uuid>-u3}}`) or its path as a Sources line prints it
-   * (`deals/acme/Closing/memo.docx`, or a trailing part naming one file).
-   * With `unit`, or ` › <unit>` after the path (`memo.pdf › p. 7`), the window is the
-   * text around that place; a token's own passage is its unit. Continue a plain
-   * read with `next_offset` as `offset`, a paged unit with `next_reference`.
-   * Rejects with `NotFoundError` when the reference reaches no readable file and
-   * `ConflictError` (`ambiguous_reference`) when a path names several.
+   * Read a file's extracted text by a file id, a version id, a source record's
+   * `source_ref` (`beakr-source:v1:...`, from any Knowledge read or research
+   * answer), a citation token (`{{artifact:<uuid>-u3}}`) or its path as a Sources
+   * line prints it (`deals/acme/Closing/memo.docx`, or a trailing part naming one
+   * file). With `unit`, or ` › <unit>` after the reference (`memo.pdf › p. 7`), the
+   * window is the text around that place; a token's or source_ref's own passage is
+   * its unit. Continue a plain read with `next_offset` as `offset`, a paged unit
+   * with `next_reference`. Rejects with `NotFoundError` when the reference reaches
+   * no readable file, `ConflictError` (`ambiguous_reference`) when a path names
+   * several, and `ValidationError` for a Knowledge page's source_ref
+   * (`knowledge_page`: read it with the knowledge_base `cat` command) or a
+   * connected item's (`not_a_file`): only uploads and canvases are files.
    */
   read(reference: string, options: ReadFileOptions = {}): Promise<FileRead> {
     const body: BodyOf<"/v1/artifacts/read", "post"> = {
