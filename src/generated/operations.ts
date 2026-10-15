@@ -105,6 +105,9 @@ export const OPERATIONS = {
   "projects.updateProject": { method: "PATCH", path: "/v1/projects/{project_id}" },
   "projects.deleteProject": { method: "DELETE", path: "/v1/projects/{project_id}" },
   "projects.createProjectMembershipInvitation": { method: "POST", path: "/v1/projects/{project_id}/invite" },
+  "projects.getProjectKnowledgeStatus": { method: "GET", path: "/v1/projects/{project_id}/knowledge-summary" },
+  "projects.listKnowledgeFailedFiles": { method: "GET", path: "/v1/projects/{project_id}/knowledge/failed-files" },
+  "projects.retryFailedKnowledge": { method: "POST", path: "/v1/projects/{project_id}/knowledge/retry-failed" },
   "projects.listMembers": { method: "GET", path: "/v1/projects/{project_id}/members" },
   "projects.addMember": { method: "POST", path: "/v1/projects/{project_id}/members" },
   "projects.removeMember": { method: "DELETE", path: "/v1/projects/{project_id}/members/{principal_type}/{principal_id}" },
@@ -863,6 +866,30 @@ export class ProjectsApi {
   /** POST /v1/projects/{project_id}/invite (Invite someone by email) */
   createProjectMembershipInvitation(args: { path: operations["create_project_membership_invitation_route_v1_projects__project_id__invite_post"]["parameters"]["path"]; body: NonNullable<operations["create_project_membership_invitation_route_v1_projects__project_id__invite_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["create_project_membership_invitation_route_v1_projects__project_id__invite_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/invite`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/projects/{project_id}/knowledge-summary (Get a project's Knowledge status) */
+  getProjectKnowledgeStatus(args: { path: operations["get_project_knowledge_status_route_v1_projects__project_id__knowledge_summary_get"]["parameters"]["path"]; query?: NonNullable<operations["get_project_knowledge_status_route_v1_projects__project_id__knowledge_summary_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["get_project_knowledge_status_route_v1_projects__project_id__knowledge_summary_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge-summary`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/projects/{project_id}/knowledge/failed-files (List failed Knowledge files) */
+  listKnowledgeFailedFiles(args: { path: operations["list_knowledge_failed_files_route_v1_projects__project_id__knowledge_failed_files_get"]["parameters"]["path"]; query?: NonNullable<operations["list_knowledge_failed_files_route_v1_projects__project_id__knowledge_failed_files_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_knowledge_failed_files_route_v1_projects__project_id__knowledge_failed_files_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge/failed-files`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/projects/{project_id}/knowledge/failed-files, following its cursor. */
+  listKnowledgeFailedFilesAll(args: { path: operations["list_knowledge_failed_files_route_v1_projects__project_id__knowledge_failed_files_get"]["parameters"]["path"]; query?: NonNullable<operations["list_knowledge_failed_files_route_v1_projects__project_id__knowledge_failed_files_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_knowledge_failed_files_route_v1_projects__project_id__knowledge_failed_files_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge/failed-files`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** POST /v1/projects/{project_id}/knowledge/retry-failed (Retry failed Knowledge files) */
+  retryFailedKnowledge(args: { path: operations["retry_failed_knowledge_route_v1_projects__project_id__knowledge_retry_failed_post"]["parameters"]["path"]; body?: NonNullable<operations["retry_failed_knowledge_route_v1_projects__project_id__knowledge_retry_failed_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["retry_failed_knowledge_route_v1_projects__project_id__knowledge_retry_failed_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge/retry-failed`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 

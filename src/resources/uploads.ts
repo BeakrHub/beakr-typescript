@@ -13,6 +13,7 @@ import {
 import { sha256Hex } from "../sha256.js";
 import { uploadBatch, type BatchUpload, type UploadManyOptions } from "./batch-upload.js";
 import { Jobs, type Job, type JobWaitOptions } from "./jobs.js";
+import { waitForKnowledge, type KnowledgeWaitOptions } from "./knowledge-readiness.js";
 import { nodeBuiltin } from "../node-builtins.js";
 
 /**
@@ -251,11 +252,22 @@ export class Uploads extends Resource {
    * `folderId` when given). Up to {@link MAX_BATCH_FILES} files. Resolves to
    * the batch's completion; indexing runs as one job, so
    * `await beakr.jobs.wait(batch)` waits for it, or pass `wait` here.
+   *
+   * `wait: "knowledge"` then also waits until none of the batch's files is
+   * queued or running for Knowledge (`knowledgeWait` sets how) and adds the
+   * final {@link batchStatus} as `batch`: each file's `knowledge_status` and
+   * the batch's `knowledge` counts, including `failed`.
    */
   async uploadMany(
     files: string | string[] | Iterable<FolderEntry> | AsyncIterable<FolderEntry>,
-    options: UploadManyOptions & { wait?: boolean | JobWaitOptions },
-  ): Promise<BatchUpload & { job?: Job }> {
+    options: UploadManyOptions & {
+      wait?: boolean | JobWaitOptions | "index" | "knowledge";
+      knowledgeWait?: KnowledgeWaitOptions;
+    },
+  ): Promise<BatchUpload & { job?: Job; batch?: JsonObject }> {
+    if (options.wait === "knowledge" && options.ingest === false) {
+      throw new TypeError('wait: "knowledge" needs ingest; these files stay out of Knowledge');
+    }
     const entries: FolderEntry[] = [];
     const paths =
       typeof files === "string"
@@ -288,12 +300,24 @@ export class Uploads extends Resource {
     if (!options.wait) return batch;
     const job = await new Jobs(this.transport).wait(
       batch,
-      options.wait === true ? {} : options.wait,
+      typeof options.wait === "object" ? options.wait : {},
     );
-    return { ...batch, job };
+    if (options.wait !== "knowledge") return { ...batch, job };
+    const status = await waitForKnowledge(
+      this.transport,
+      `batch ${batch.batch_id}`,
+      () => this.batchStatus(batch.batch_id),
+      options.knowledgeWait,
+    );
+    return { ...batch, job, batch: status };
   }
 
-  /** Per-file indexing status of an {@link uploadMany} batch, with counts. */
+  /**
+   * Per-file status of an {@link uploadMany} batch, with counts: each file's
+   * indexing `status` and `knowledge_status`, the indexing `summary`, and the
+   * batch's `knowledge` counts (`queued`, `running`, `created`, `failed`,
+   * `ready`...).
+   */
   batchStatus(batchId: string): Promise<JsonObject> {
     return this.transport.request({ method: "GET", path: `/v1/bulk/${enc(batchId)}/status` });
   }

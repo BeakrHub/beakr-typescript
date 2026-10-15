@@ -7,6 +7,57 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- **Know when a project's Knowledge is ready.**
+  `GET /v1/projects/{project_id}/knowledge-summary` (`projects:read`) is now
+  documented, under Projects. Alongside its coverage counts it reports `queued` and `running`
+  files (together `syncing`) and `failed` files (part of `eligible`), `ready`
+  (true when nothing is queued or running), and the most
+  recently failed files in `failed_files` (`failed_limit`, default 20), each with
+  `artifact_id`, `filename`, `path`, a public `error_code`
+  (`processing_failed`, `timed_out`, `concurrent_update` or `compile_failed`),
+  a `reason` safe to show a person, `failed_at` and `retryable`. A project the
+  caller cannot read now answers `404 not_found`, the same as one that does not
+  exist (it answered `403` before).
+- `GET /v1/projects/{project_id}/knowledge/failed-files` (`projects:read`) pages
+  through every failed file, newest first; `failed_files_next_cursor` from the
+  summary is its first `cursor`.
+- `POST /v1/projects/{project_id}/knowledge/retry-failed` (`uploads:write`)
+  sends the project's failed files, or the `artifact_ids` named, to Knowledge
+  again, up to 500 per call, and reports each file's `outcome` (`queued`,
+  `already_queued`, `not_failed`, `not_found` or `skipped`). Repeating it is
+  safe: files already queued or running are left alone. It needs permission to
+  add files to the project (`403 forbidden` otherwise) and is limited to 10
+  requests per minute.
+- `GET /v1/projects` takes `include_knowledge=true` to add each project's
+  `knowledge` (`queued`, `running`, `failed`, `ready`).
+- `GET /v1/bulk/{batch_id}/status` adds each file's `knowledge_status` and a
+  `knowledge` breakdown for the batch (`queued`, `running`, `created`, `failed`,
+  `skipped`, `other`, `not_requested`, `ready`).
+- Knowledge reads (`POST /v1/knowledge/wiki/command`: `sections`, `cat`, `grep`,
+  `rows`, `sources` and the rest) and answers (`POST /v1/knowledge/research`
+  `text`, and a finished run's `answer.text`) no longer show
+  `{{key}}` citation tokens. Each citation reads as its readable reference in
+  parentheses: `Base rent is $48,000 per year (memo.pdf › p. 7).`, several
+  passages of one document `(memo.pdf › p. 7, p. 9)`, a Slack message
+  `(#deals › message 2026-03-04 14:02 UTC)`, an email
+  `(Q3 budget · from ana@example.com · 2026-03-01 14:02)`, an issue `(PROJ-12)`,
+  a Knowledge page `(Page Title › Section)`. Research `text` uses this form in
+  place of `[1]`, `[2]`; the raw `answer` keeps its tokens. Source records gain
+  `cited_places` (every place the text cites in the document) and `reference`
+  (the name the text uses, when it is not `filename` or `name`). `citation_key`
+  is unchanged. `POST /v1/knowledge/wiki/write` accepts every reference a read
+  prints as a citation's `reference`, Knowledge pages (`Page Title › Section`)
+  included; a short file name that several readable files share resolves to the
+  one Knowledge cites. A write's prose may cite inline the same way: a
+  reference in parentheses after a claim (`Rent is $5 (memo.pdf › p. 7).`) is
+  stored as that citation, and one that names nothing the caller may cite is
+  refused with `citation_not_citeable`. A `conversation`, `agent_note` or
+  `user_note` citation may carry a `key` in its own namespace
+  (`conversation:call-with-ana`) and be cited inline as `{{conversation:call-with-ana}}`.
+  `POST /v1/knowledge/documents` results and `POST /v1/knowledge/wiki/write`
+  results name citations the same readable way. `ResearchResult` fields `checked`, `not_checked`,
+  `sources_consulted`, `subtasks`, `stopped_early`, `engine` and `lead_model`
+  now say what they hold.
 - `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
   and lists (`ls`) original indexed files. It requires `projects:read`; a
   project-restricted credential must supply one of its authorized projects.
@@ -676,6 +727,17 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Know when Knowledge is ready.** `projects.knowledgeStatus(projectId)` reads
+  the project's Knowledge status (`ready`, `queued`, `running`, `failed` and the
+  newest `failed_files` with their `error_code` and `reason`);
+  `projects.waitUntilReady(projectId, { timeoutMs, pollMs })` polls it until
+  nothing is queued or running and resolves to it (`onStatus` sees each read), rejecting with
+  `KnowledgeTimeoutError`, or `KnowledgeFailedError` with `raiseOnFailure`;
+  `projects.knowledgeFailures(projectId)` lists every failed file; and
+  `projects.retryFailed(projectId, artifactIds?)` sends failed files to
+  Knowledge again. `uploads.uploadMany(files, { wait: "knowledge" })` waits for
+  the batch's indexing and then for its files' Knowledge, and adds the final
+  batch status as `batch`.
 - **First release.** `@beakr/sdk` is developed and released from this
   repository (it was developed inside `beakr-cli`).
 - **The documented surface.** `Beakr` exposes the documented resources, and

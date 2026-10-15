@@ -60,6 +60,17 @@ export type {
 } from "./resources/interviews.js";
 export type { Label, LabelPage } from "./resources/labels.js";
 export {
+  KnowledgeFailedError,
+  KnowledgeTimeoutError,
+  waitForKnowledge,
+  type KnowledgeWaitOptions,
+} from "./resources/knowledge-readiness.js";
+export type {
+  KnowledgeFailedFile,
+  KnowledgeRetryResult,
+  ProjectKnowledgeStatus,
+} from "./resources/projects.js";
+export {
   JobFailedError,
   JobTimeoutError,
   TERMINAL_JOB_STATUSES,
