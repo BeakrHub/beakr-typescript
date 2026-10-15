@@ -9032,6 +9032,11 @@ export interface components {
             /** @description Cursor for the next older page of messages; absent when the response was not paged. */
             oldest_message_cursor?: components["schemas"]["MessageCursor"] | null;
             /**
+             * Origin
+             * @description Where the conversation started: null for the web app or the API, or slack, email or text when the person messaged Beakr there.
+             */
+            origin?: string | null;
+            /**
              * Profile Builder Meta
              * @description Knowledge-profile setup state, for a setup conversation.
              */
@@ -9168,6 +9173,11 @@ export interface components {
             model_overrides?: {
                 [key: string]: string;
             } | null;
+            /**
+             * Origin
+             * @description Where the conversation started: null for the web app or the API, or slack, email or text when the person messaged Beakr there.
+             */
+            origin?: string | null;
             /**
              * Project Ids
              * @description Ids of the projects it covers.
