@@ -13,7 +13,13 @@ import {
 import { sha256Hex } from "../sha256.js";
 import { uploadBatch, type BatchUpload, type UploadManyOptions } from "./batch-upload.js";
 import { Jobs, type Job, type JobWaitOptions } from "./jobs.js";
-import { waitForKnowledge, type KnowledgeWaitOptions } from "./knowledge-readiness.js";
+import {
+  alreadyUploadedOutcome,
+  waitForFilesKnowledge,
+  waitForKnowledge,
+  type AlreadyUploaded,
+  type KnowledgeWaitOptions,
+} from "./knowledge-readiness.js";
 import { nodeBuiltin } from "../node-builtins.js";
 
 /**
@@ -25,6 +31,16 @@ export const MULTIPART_THRESHOLD = 64 * 1024 * 1024;
 export const PRESIGN_WINDOW = 8;
 
 export type FileBody = Uint8Array | ArrayBuffer | Blob;
+
+/** What {@link Uploads.uploadMany} resolves to; `job`, `status` and the rest come with a wait. */
+export type UploadManyResult = BatchUpload & {
+  job?: Job;
+  batch?: JsonObject;
+  /** The upload's outcome: the job's status, or `succeeded` when its only failures are duplicates. */
+  status?: string;
+  /** Files already in Beakr: rejected as duplicates, with the copy that was kept. */
+  duplicates?: AlreadyUploaded[];
+};
 
 export interface UploadedPart {
   part_number: number;
@@ -257,6 +273,13 @@ export class Uploads extends Resource {
    * queued or running for Knowledge (`knowledgeWait` sets how) and adds the
    * final {@link batchStatus} as `batch`: each file's `knowledge_status` and
    * the batch's `knowledge` counts, including `failed`.
+   *
+   * With a wait, `status` is the upload's outcome. A file whose bytes are
+   * already in the same place is not stored twice: it is listed in
+   * `duplicates` (`path`, `artifact_id`, and `duplicate_of`, the file that was
+   * kept), and when every failed file is such a duplicate `status` is
+   * `"succeeded"` though `job` reports `failed`. With `wait: "knowledge"` each
+   * kept file's Knowledge is waited for too (`kept_knowledge_status`).
    */
   async uploadMany(
     files: string | string[] | Iterable<FolderEntry> | AsyncIterable<FolderEntry>,
@@ -264,7 +287,7 @@ export class Uploads extends Resource {
       wait?: boolean | JobWaitOptions | "index" | "knowledge";
       knowledgeWait?: KnowledgeWaitOptions;
     },
-  ): Promise<BatchUpload & { job?: Job; batch?: JsonObject }> {
+  ): Promise<UploadManyResult> {
     if (options.wait === "knowledge" && options.ingest === false) {
       throw new TypeError('wait: "knowledge" needs ingest; these files stay out of Knowledge');
     }
@@ -302,14 +325,27 @@ export class Uploads extends Resource {
       batch,
       typeof options.wait === "object" ? options.wait : {},
     );
-    if (options.wait !== "knowledge") return { ...batch, job };
+    let result: UploadManyResult = { ...batch, job, status: String(job.status) };
+    if (job.status === "failed") {
+      result = { ...result, ...alreadyUploadedOutcome(await this.batchStatus(batch.batch_id)) };
+    }
+    if (options.wait !== "knowledge") return result;
     const status = await waitForKnowledge(
       this.transport,
       `batch ${batch.batch_id}`,
       () => this.batchStatus(batch.batch_id),
       options.knowledgeWait,
     );
-    return { ...batch, job, batch: status };
+    result = { ...result, batch: status };
+    const kept = [...new Set((result.duplicates ?? []).map((d) => d.duplicate_of.artifact_id))];
+    if (kept.length) {
+      const knowledge = await waitForFilesKnowledge(this.transport, kept, options.knowledgeWait);
+      result.duplicates = (result.duplicates ?? []).map((d) => ({
+        ...d,
+        kept_knowledge_status: knowledge[d.duplicate_of.artifact_id] ?? null,
+      }));
+    }
+    return result;
   }
 
   /**

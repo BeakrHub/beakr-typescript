@@ -97,3 +97,73 @@ export async function waitForKnowledge<T extends JsonObject>(
     interval = Math.min(maxInterval, interval * backoff);
   }
 }
+
+/** A file the upload duplicated: the batch rejected it and kept `duplicate_of`. */
+export interface AlreadyUploaded extends JsonObject {
+  path: string | null;
+  artifact_id: string | null;
+  duplicate_of: JsonObject & { artifact_id: string; title?: string | null };
+  /** With `wait: "knowledge"`: the kept file's Knowledge status once it settled. */
+  kept_knowledge_status?: string | null;
+}
+
+/**
+ * The batch's duplicate files, and whether they are its only failures.
+ *
+ * Indexing does not store bytes already in the same place twice: it rejects the
+ * new file as `duplicate` and keeps the existing one (`duplicate_of`). That is
+ * "already uploaded", not a failure, so an upload whose only failed files are
+ * duplicates reads `succeeded` (Python's `already_uploaded_outcome`).
+ */
+export function alreadyUploadedOutcome(batchStatus: JsonObject): {
+  duplicates: AlreadyUploaded[];
+  status?: "succeeded";
+} {
+  const files = (batchStatus["artifacts"] as JsonObject[] | undefined) ?? [];
+  const duplicates: AlreadyUploaded[] = [];
+  for (const item of files) {
+    const keptRef = item["duplicate_of"] as JsonObject | null | undefined;
+    if (item["error_code"] !== "duplicate" || !keptRef || !keptRef["artifact_id"]) continue;
+    duplicates.push({
+      path: (item["path"] as string | undefined) ?? null,
+      artifact_id: (item["id"] as string | undefined) ?? null,
+      duplicate_of: { ...keptRef, artifact_id: String(keptRef["artifact_id"]) },
+    });
+  }
+  const failed = Number((batchStatus["summary"] as JsonObject | undefined)?.["failed"] ?? 0);
+  return duplicates.length && failed <= duplicates.length
+    ? { duplicates, status: "succeeded" }
+    : { duplicates };
+}
+
+/**
+ * Poll each file (`GET /v1/artifacts/{id}`) until none is queued or running for
+ * Knowledge; resolves to `{ [fileId]: knowledge_status }`. Used for the copy an
+ * upload duplicated, which is not one of the batch's files.
+ */
+export async function waitForFilesKnowledge(
+  transport: Transport,
+  fileIds: string[],
+  options: KnowledgeWaitOptions = {},
+): Promise<Record<string, string | null>> {
+  const statuses: Record<string, string | null> = {};
+  await waitForKnowledge(
+    transport,
+    `${fileIds.length} kept file(s)`,
+    async () => {
+      for (const fileId of fileIds) {
+        const artifact = await transport.request<JsonObject>({
+          method: "GET",
+          path: `/v1/artifacts/${encodeURIComponent(fileId)}`,
+        });
+        statuses[fileId] = (artifact["knowledge_status"] as string | null | undefined) ?? null;
+      }
+      const all = Object.values(statuses);
+      const queued = all.filter((s) => s === "queued").length;
+      const running = all.filter((s) => s === "running").length;
+      return { queued, running, ready: queued + running === 0, files: { ...statuses } };
+    },
+    { ...options, raiseOnFailure: false, onStatus: undefined },
+  );
+  return statuses;
+}

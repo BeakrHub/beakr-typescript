@@ -165,3 +165,90 @@ describe("uploads.uploadMany({ wait: 'knowledge' })", () => {
     ).rejects.toBeInstanceOf(TypeError);
   });
 });
+
+/**
+ * An upload whose bytes are already there. Indexing does not store them twice:
+ * it rejects the new file as `duplicate` and keeps the existing one, and the
+ * batch job reads `failed`. The upload did what was asked, so `status` reads
+ * `succeeded`, the duplicate names the kept file, and a Knowledge wait waits for it.
+ */
+describe("uploads.uploadMany with a duplicate file", () => {
+  const S3 = "https://s3.example.test/bucket";
+  const upload = () => [
+    json({
+      batch_id: "b1",
+      expires_at: "2026-10-14T13:00:00Z",
+      folder_paths: [],
+      uploads: [{ path: "a.md", key: "k/a.md", url: `${S3}/a.md?sig=1`, headers: {} }],
+    }),
+    new Response(null, { status: 200 }),
+    json({
+      batch_id: "b1",
+      artifacts: [{ id: "a1" }],
+      folders: [],
+      failed: [],
+      job_id: "j1",
+      status_url: "/v1/jobs/j1",
+    }),
+    json({
+      job_id: "j1",
+      status: "failed",
+      error: { code: "upload_failed", message: "Some files failed." },
+    }),
+  ];
+  const duplicateBatch = (alsoFailed = 0) =>
+    json({
+      batch_id: "b1",
+      status: "completed",
+      artifacts: [
+        {
+          id: "a1",
+          path: "a.md",
+          title: "a.md",
+          status: "index_failed",
+          error_code: "duplicate",
+          error: "This file has already been uploaded",
+          duplicate_of: { artifact_id: "kept1", title: "a.md" },
+        },
+      ],
+      summary: { total: 1, failed: 1 + alsoFailed },
+      knowledge: { queued: 0, running: 0, failed: 0, ready: true },
+    });
+  const files = [{ path: "a.md", data: new Uint8Array([97]) }];
+
+  it("reports it as already uploaded and waits for the kept file's Knowledge", async () => {
+    const { fetch, calls } = mockFetch([
+      ...upload(),
+      duplicateBatch(),
+      duplicateBatch(),
+      json({ id: "kept1", knowledge_status: "running" }),
+      json({ id: "kept1", knowledge_status: "created" }),
+    ]);
+    const { beakr, sleeps } = client(fetch);
+    const result = await beakr.uploads.uploadMany(files, {
+      projectId: "p1",
+      wait: "knowledge",
+      knowledgeWait: { pollMs: 1000 },
+    });
+    expect(result.job?.status).toBe("failed");
+    expect(result.status).toBe("succeeded");
+    expect(result.duplicates).toEqual([
+      {
+        path: "a.md",
+        artifact_id: "a1",
+        duplicate_of: { artifact_id: "kept1", title: "a.md" },
+        kept_knowledge_status: "created",
+      },
+    ]);
+    expect(path(calls.at(-1)!.url)).toBe("/v1/artifacts/kept1");
+    expect(sleeps).toEqual([1000]);
+  });
+
+  it("keeps a real failure beside a duplicate failed", async () => {
+    const { fetch } = mockFetch([...upload(), duplicateBatch(1)]);
+    const { beakr } = client(fetch);
+    const result = await beakr.uploads.uploadMany(files, { projectId: "p1", wait: true });
+    expect(result.status).toBe("failed");
+    expect(result.duplicates).toHaveLength(1);
+  });
+});

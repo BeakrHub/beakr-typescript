@@ -62,7 +62,10 @@ export type { Label, LabelPage } from "./resources/labels.js";
 export {
   KnowledgeFailedError,
   KnowledgeTimeoutError,
+  alreadyUploadedOutcome,
+  waitForFilesKnowledge,
   waitForKnowledge,
+  type AlreadyUploaded,
   type KnowledgeWaitOptions,
 } from "./resources/knowledge-readiness.js";
 export type {
@@ -84,6 +87,7 @@ export {
   UploadInterruptedError,
   type FileBody,
   type UploadComplete,
+  type UploadManyResult,
   type UploadFileOptions,
   type UploadSession,
   type UploadedPart,
