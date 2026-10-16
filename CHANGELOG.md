@@ -64,7 +64,8 @@ Each release lists the public API changes it supports, taken from the API change
   takes `reviewed_hash`, the `content_hash` echoed back: when the stored
   proposal no longer hashes to it, nothing is applied and the answer is `409`
   with `code` `proposal_changed`. Accepting a proposal that changes a card's
-  table rows may require it (`422` `review_required`).
+  table rows may require it (`422` `review_required`); proposal reads say so
+  with `changes_card_tables`.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
