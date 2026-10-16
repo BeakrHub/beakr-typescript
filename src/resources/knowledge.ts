@@ -1,6 +1,6 @@
 import { KnowledgeCommandError } from "../errors.js";
 import { publicSource, type SourceRecord } from "../sources.js";
-import type { JsonObject } from "../types.js";
+import type { JsonObject, ResponseOf } from "../types.js";
 import { Resource, enc } from "./base.js";
 
 /**
@@ -13,6 +13,28 @@ export const RESEARCH_TIMEOUT_MS = 170_000;
 export const QUICK_RESEARCH_TIMEOUT_MS = 30_000;
 
 /** Options for {@link Knowledge.research}. */
+/** A documents command's response; a `search` adds `results`. */
+export type DocumentsResult = ResponseOf<"/v1/knowledge/documents", "post">;
+
+export interface DocumentsSearchOptions {
+  /** Documents per page (default 8, max 25). */
+  limit?: number;
+  /** Documents to skip. */
+  offset?: number;
+  /** Best passages per document (default 2, max 5). */
+  passages?: number;
+  /** A folder, a glob, or one document's path. */
+  path?: string;
+  /** Drive-path globs; `!` excludes. */
+  glob?: string | string[];
+  /** File kinds: pdf, docx, xlsx, csv, pptx, md, txt, email, ... */
+  type?: string | string[];
+  /** Search inside one document: id, path, title or citation token. */
+  document?: string;
+  /** A project id or name; omit for everything you can read. */
+  projectId?: string;
+}
+
 export interface ResearchOptions {
   /** A short cited answer within 15 seconds from one search. */
   quick?: boolean;
@@ -120,13 +142,38 @@ export class Knowledge extends Resource {
     return checked(result, options.check ?? true);
   }
 
-  /** Search/read/list original indexed documents. Scan notices describe incomplete results. */
-  documents(command: "grep" | "read" | "ls", args: JsonObject = {}, projectId?: string): Promise<unknown> {
+  /**
+   * Search/read/list original indexed documents. Scan notices describe incomplete
+   * results. `projectId` is a project id or name; without it a command covers
+   * everything you can read.
+   */
+  documents(
+    command: "grep" | "read" | "ls" | "search",
+    args: JsonObject = {},
+    projectId?: string,
+  ): Promise<unknown> {
     return this.transport.request({
       method: "POST",
       path: "/v1/knowledge/documents",
       body: { command, arguments: args, ...(projectId ? { project_id: projectId } : {}) },
     });
+  }
+
+  /**
+   * Passages of the original documents ranked by meaning, grouped by document
+   * (`documents` `search`). For when you do not know a document's words; `grep`
+   * finds and counts every literal mention. The response's `results` is one source
+   * record per matching document, best first (`source_ref`, `location` with
+   * `display_path`, `file_id` and `version_id`, `match`, `score`, and its best
+   * `passages`). Download a result's file with `files.downloadLink(sourceRef)`.
+   */
+  documentsSearch(query: string, options: DocumentsSearchOptions = {}): Promise<DocumentsResult> {
+    const { projectId, ...rest } = options;
+    const args: JsonObject = { query };
+    for (const [key, value] of Object.entries(rest)) {
+      if (value !== undefined) args[key] = value as JsonObject[string];
+    }
+    return this.documents("search", args, projectId) as Promise<DocumentsResult>;
   }
 
   /**

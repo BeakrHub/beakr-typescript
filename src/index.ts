@@ -13,6 +13,8 @@ export {
   resultText,
   type KnowledgeResult,
   type ResearchOptions,
+  type DocumentsResult,
+  type DocumentsSearchOptions,
 } from "./resources/knowledge.js";
 export type {
   ConversationClient,
@@ -109,7 +111,14 @@ export {
   type UploadManyOptions,
 } from "./resources/batch-upload.js";
 export { detectArtifactType, guessMimeType } from "./resources/file-types.js";
-export type { DownloadLocation, DownloadedFile, FileRead, ReadFileOptions } from "./resources/files.js";
+export type {
+  DownloadLink,
+  DownloadLocation,
+  DownloadedFile,
+  DownloadedReference,
+  FileRead,
+  ReadFileOptions,
+} from "./resources/files.js";
 export type {
   BodyOf,
   JsonObject,

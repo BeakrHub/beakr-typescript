@@ -97,6 +97,10 @@ await beakr.uploads.uploadEntries(
 
 const { data, filename } = await beakr.files.download(artifactId); // any runtime
 await beakr.files.downloadTo(artifactId, "./downloads"); // Node
+
+// Search the original documents by meaning, then download a result in one step.
+const found = await beakr.knowledge.documentsSearch("who covers losses from defects");
+const link = await beakr.files.downloadLink(found.results![0]!.source_ref!);
 ```
 
 Many files or whole directories go up as one batch with one indexing job:

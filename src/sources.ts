@@ -21,6 +21,8 @@ export interface SourceLocation {
   provider_item_id?: string;
   /** Beakr's copy of the document: `beakr.files.download(file_id)`. */
   file_id?: string;
+  /** The version of Beakr's copy the passage was read from. */
+  version_id?: string;
 }
 
 export interface SourceEvidence {
@@ -147,6 +149,7 @@ export function publicSource(source: Row, citationKey?: string): SourceRecord {
       upload_path: str(location["upload_path"]),
       provider_item_id: str(location["provider_item_id"] ?? first("provider_file_id", "remote_file_id")),
       file_id: fileId,
+      version_id: fileId ? str(location["version_id"]) : undefined,
     }),
     evidence: cleaned<SourceEvidence>({
       excerpt: str(evidence["excerpt"] ?? first("excerpt", "excerpt_text", "quote")),

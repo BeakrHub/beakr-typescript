@@ -22,6 +22,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/artifacts/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get a download link by reference
+         * @description A short-lived signed URL for a file's original bytes, by any reference a read hands out.
+         *
+         *     The reference resolves exactly as ``POST /v1/artifacts/read`` resolves it, so a
+         *     source record's ``source_ref`` from a Knowledge read, research or a documents
+         *     search downloads its file in one call. A reference that reaches no readable
+         *     file (none, another organization's, outside a project-restricted credential's
+         *     projects) is the same ``404``.
+         *
+         *     The URL signs the version row the caller's lookup returned; its storage key
+         *     was checked against the file's organization where it was written, as
+         *     ``GET /v1/artifacts/versions/{version_id}/download-url`` relies on.
+         */
+        post: operations["download_url_route_v1_artifacts_download_url_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/artifacts/read": {
         parameters: {
             query?: never;
@@ -829,16 +859,20 @@ export interface paths {
         put?: never;
         /**
          * Search and read original documents
-         * @description Search and read the original documents' text: the `documents` tool for API callers. Search and read the original documents' text: the ``documents`` tool for API callers.
+         * @description Search and read the original documents: the `documents` tool for API callers. Search and read the original documents: the ``documents`` tool for API callers.
          *
          *     Behind the ``documents_api`` flag. Same commands and arguments as Beakr's own
          *     agents use (``beakr/engines/tools/documents``): ``grep`` (ripgrep options across
-         *     every document in scope), ``read`` (line-numbered text of one document) and ``ls``.
+         *     every document in scope), ``read`` (line-numbered text of one document), ``ls``,
+         *     and ``search`` (passages ranked by meaning, grouped by document; the response
+         *     adds ``results``, one public source record per document with its passages).
          *
          *     Body:
-         *         command: grep | read | ls (required).
+         *         command: grep | read | ls | search (required).
          *         arguments: that command's options, e.g. {"pattern": "comfort letter", "output_mode": "files_with_matches"}.
-         *         project_id: Optional project scope (UUID).
+         *         project_id: Optional scope: a project id or name (``project`` is accepted too).
+         *             Without one, a command covers everything the caller can read; a
+         *             project-restricted credential, all of its projects.
          */
         post: operations["documents_v1_knowledge_documents_post"];
         delete?: never;
@@ -858,7 +892,7 @@ export interface paths {
         put?: never;
         /**
          * Research a question
-         * @description A cited answer to `query`, researched across Knowledge, uploaded files and connected integrations. Pass `project_id` to research one project. Typical latency is 5 to 15 seconds, up to 45 when it reads documents from connected integrations. Pass `quick: true` for a short answer within 15 seconds from one search of Knowledge and uploaded files, without connected integrations. `text` cites each source by its readable reference in parentheses (`(memo.pdf › p. 7)`), and `citations` lists the cited documents in order of first use. A credential limited to projects must pass one of its projects, and its research does not use connected integrations.
+         * @description A cited answer to `query`, researched across Knowledge, uploaded files and connected integrations. Pass `project_id` to research one project. Typical latency is 5 to 15 seconds, up to 45 when it reads documents from connected integrations. `text` cites each source by its readable reference in parentheses (`(memo.pdf › p. 7)`), and `citations` lists the cited documents in order of first use. A credential limited to projects must pass one of its projects, and its research does not use connected integrations.
          */
         post: operations["research_v1_knowledge_research_post"];
         delete?: never;
@@ -4024,12 +4058,146 @@ export interface components {
              */
             is_error?: boolean;
             /**
+             * Next
+             * @description `search` only: what the response budget left out, and how to get it.
+             * @default null
+             */
+            next?: string[] | null;
+            /**
+             * Results
+             * @description `search` only: one public source record per matching document, best first, with `location.file_id` and `location.version_id`, its `match` and `score`, and its best `passages`. Pass a record's or passage's `source_ref` to `POST /v1/artifacts/download-url` for the original file.
+             * @default null
+             */
+            results?: components["schemas"]["DocumentsSearchResult"][] | null;
+            /**
              * Sources
              * @description The sources it cites or draws on.
              */
             sources?: {
                 [key: string]: components["schemas"]["ResearchSource"];
             };
+        };
+        /**
+         * DocumentsSearchPassage
+         * @description One matching passage of a document a ``search`` found.
+         */
+        DocumentsSearchPassage: {
+            /**
+             * Citation Key
+             * @description Key to cite it with.
+             * @default null
+             */
+            citation_key?: string | null;
+            /**
+             * Excerpt
+             * @description A brief excerpt of the passage, centred on the query's words.
+             * @default null
+             */
+            excerpt?: string | null;
+            /**
+             * Line End
+             * @description Last indexed line of the passage.
+             * @default null
+             */
+            line_end?: number | null;
+            /**
+             * Line Start
+             * @description First indexed line of the passage, as `documents read` numbers lines (`start_line`).
+             * @default null
+             */
+            line_start?: number | null;
+            /**
+             * Match
+             * @description `strong`, `moderate` or `weak`: how close the passage's meaning is to the query, on the embedding model's calibrated scale.
+             * @default null
+             */
+            match?: string | null;
+            /**
+             * Score
+             * @description The ranking score (meaning and word overlap); higher is better.
+             * @default null
+             */
+            score?: number | null;
+            /**
+             * Section
+             * @description The heading path the passage sits under.
+             * @default null
+             */
+            section?: string | null;
+            /**
+             * Source Ref
+             * @description Reusable reference to this passage: a later Knowledge write cites it, `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.
+             * @default null
+             */
+            source_ref?: string | null;
+            /**
+             * Unit Locator
+             * @description Where the passage sits: `p. 7`, ...
+             * @default null
+             */
+            unit_locator?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * DocumentsSearchResult
+         * @description One document a ``search`` found: its public source record and its best passages.
+         */
+        DocumentsSearchResult: {
+            /**
+             * Filename
+             * @description The document's file name.
+             * @default null
+             */
+            filename?: string | null;
+            /**
+             * @description Where the document lives: `display_path`, `file_id` and `version_id`.
+             * @default null
+             */
+            location?: components["schemas"]["SourceLocation"] | null;
+            /**
+             * Match
+             * @description Its best passage's match label.
+             * @default null
+             */
+            match?: string | null;
+            /**
+             * Name
+             * @description The document's title in Beakr.
+             * @default null
+             */
+            name?: string | null;
+            /**
+             * Passages
+             * @description Its best matching passages, best first.
+             */
+            passages?: components["schemas"]["DocumentsSearchPassage"][];
+            /**
+             * Provider
+             * @description `upload` for a file Beakr holds, else the connected service.
+             * @default null
+             */
+            provider?: string | null;
+            /**
+             * Score
+             * @description Its best passage's score.
+             * @default null
+             */
+            score?: number | null;
+            /**
+             * Source Kind
+             * @description What kind of source the document is.
+             * @default null
+             */
+            source_kind?: string | null;
+            /**
+             * Source Ref
+             * @description Reusable reference to the document: a later Knowledge write cites it, `POST /v1/artifacts/read` opens it, `POST /v1/artifacts/download-url` downloads it.
+             * @default null
+             */
+            source_ref?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * DownloadUrl
@@ -4534,6 +4702,51 @@ export interface components {
              * @description Path where it lives.
              */
             path: string;
+        };
+        /**
+         * FileDownloadOut
+         * @description A short-lived signed URL for one file version's original bytes.
+         */
+        FileDownloadOut: {
+            /**
+             * Expires In
+             * @description Seconds the URL stays valid
+             */
+            expires_in: number;
+            /** @description The file and the version the URL downloads */
+            file: components["schemas"]["FileReadFileOut"];
+            /**
+             * Filename
+             * @description The file name the download is saved as
+             */
+            filename: string;
+            /**
+             * Mime Type
+             * @description The stored file's content type
+             */
+            mime_type?: string | null;
+            /**
+             * Url
+             * @description Signed URL; fetch it without Beakr credentials before it expires
+             */
+            url: string;
+        };
+        /**
+         * FileDownloadRequest
+         * @description Sign a download of one file's original bytes, named by any reference a read hands out.
+         */
+        FileDownloadRequest: {
+            /**
+             * Inline
+             * @description Ask a browser to display the file instead of saving it.
+             * @default false
+             */
+            inline?: boolean;
+            /**
+             * Reference
+             * @description The file to download, in any form POST /v1/artifacts/read takes: a source record's source_ref (beakr-source:v1:...), its id or a version id, a citation token, or its path. A ` › <unit>` suffix is accepted and ignored. A reference that names a version downloads that version; any other, the current version. Knowledge pages, connected items and canvases have no stored file and are refused (knowledge_page, not_a_file, no_original_file).
+             */
+            reference: string;
         };
         /**
          * FileReadFileOut
@@ -8637,6 +8850,13 @@ export interface components {
              * @default null
              */
             url?: string | null;
+            /**
+             * Version Id
+             * @description On a documents `search` result: the version of the file the passage was read from, in the Files API; `GET /v1/artifacts/versions/{version_id}/download-url` signs a download of exactly that version. From any file record, pass its `source_ref` to `POST /v1/artifacts/download-url` to download in one step. Knowledge pages and connected items have no version and no download.
+             * @default null
+             * @example c1a7e5d2-4b9f-4f38-a612-7d0e9b3c5f81
+             */
+            version_id?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -10827,6 +11047,57 @@ export interface operations {
             };
         };
     };
+    download_url_route_v1_artifacts_download_url_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FileDownloadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileDownloadOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     read_file_route_v1_artifacts_read_post: {
         parameters: {
             query?: never;
@@ -12959,19 +13230,16 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    /** @description Options for the selected documents command: pattern, document, start_line/end_line, project, path, glob, head_limit, offset, after_document. */
+                    /** @description Options for the selected documents command. grep: pattern, output_mode, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further. */
                     arguments?: {
                         [key: string]: unknown;
                     };
                     /**
-                     * @description Search indexed text, read a document window, or list files.
+                     * @description grep: literal/regex matches across indexed text; read: a document's lines; ls: the file tree; search: passages ranked by meaning, grouped by document (adds `results`).
                      * @enum {string}
                      */
-                    command: "grep" | "read" | "ls";
-                    /**
-                     * Format: uuid
-                     * @description Limit to this project. Required for project-restricted credentials.
-                     */
+                    command: "grep" | "read" | "ls" | "search";
+                    /** @description Limit to this project: its id or name (a name may match several projects you can read). Without it a command covers everything you can read; a project-restricted credential, all of its projects. */
                     project_id?: string;
                 } & {
                     [key: string]: unknown;
@@ -13031,11 +13299,6 @@ export interface operations {
                     project_id?: string | null;
                     /** @description The question to answer. */
                     query: string;
-                    /**
-                     * @description Answer within 15 seconds from one search of Knowledge and uploaded documents, with a short cited answer. Connected services are not searched. The response's engine is quick, and stopped_early is true when the answer is the cited results without a written summary.
-                     * @default false
-                     */
-                    quick?: boolean;
                 } & {
                     [key: string]: unknown;
                 };

@@ -19,6 +19,16 @@ function baseName(name: string): string {
   return name.split(/[\\/]/).pop() || name;
 }
 
+/** A signed download of a file's original bytes (`POST /v1/artifacts/download-url`). */
+export type DownloadLink = ResponseOf<"/v1/artifacts/download-url", "post">;
+
+/** A file's bytes saved from {@link Files.downloadReference}. */
+export interface DownloadedReference {
+  data: Uint8Array;
+  filename: string;
+  file: DownloadLink["file"];
+}
+
 /** One window of a file's text (`POST /v1/artifacts/read`). */
 export type FileRead = ResponseOf<"/v1/artifacts/read", "post">;
 
@@ -66,7 +76,47 @@ export class Files extends Resource {
     });
   }
 
-  /** A short-lived presigned URL for the current version's original bytes. */
+  /**
+   * A short-lived signed URL for a file's original bytes, by any reference
+   * {@link Files.read} takes: a source record's `source_ref` (from a Knowledge
+   * read, research answer or documents search), a file or version id, a citation
+   * token or a path. A reference that names a version downloads that version; any
+   * other, the current one. Rejects with `ValidationError` for a Knowledge page's
+   * or connected item's reference (`knowledge_page`, `not_a_file`), `ConflictError`
+   * for a Beakr document with no stored original (`no_original_file`) and
+   * `NotFoundError` for a file you cannot read.
+   */
+  downloadLink(
+    reference: string,
+    options: { inline?: boolean; signal?: AbortSignal } = {},
+  ): Promise<DownloadLink> {
+    const body: BodyOf<"/v1/artifacts/download-url", "post"> = {
+      reference,
+      inline: options.inline ?? false,
+    };
+    return this.transport.request<DownloadLink>({
+      method: "POST",
+      path: "/v1/artifacts/download-url",
+      body,
+      idempotent: true,
+      signal: options.signal,
+    });
+  }
+
+  /** The original bytes and name of the file a reference names, in any runtime. */
+  async downloadReference(
+    reference: string,
+    options: { signal?: AbortSignal } = {},
+  ): Promise<DownloadedReference> {
+    const link = await this.downloadLink(reference, options);
+    const data = await this.transport.getExternalBytes(link.url, options);
+    return { data, filename: baseName(String(link.filename || reference)), file: link.file };
+  }
+
+  /**
+   * A short-lived presigned URL for the current version's original bytes.
+   * {@link Files.downloadLink} does this in one request, from any reference.
+   */
   async downloadUrl(artifactId: string): Promise<DownloadLocation> {
     const artifact = await this.transport.request<JsonObject>({
       method: "GET",
