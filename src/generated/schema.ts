@@ -13205,10 +13205,10 @@ export interface operations {
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
                     /**
-                     * @description rows: values (default) or fields (field names, counts, examples).
+                     * @description rows: values (default), fields (field names, counts, examples) or groups (one page_type's likely synonym names).
                      * @enum {string}
                      */
-                    view?: "values" | "fields";
+                    view?: "values" | "fields" | "groups";
                 } & {
                     [key: string]: unknown;
                 };
