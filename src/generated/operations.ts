@@ -635,8 +635,8 @@ export class KnowledgeApi {
   }
 
   /** POST /v1/knowledge/wiki/proposals/{proposal_id}/accept (Accept a Knowledge proposal) */
-  acceptProposal(args: { path: operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"]>> {
-    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/accept`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+  acceptProposal(args: { path: operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"]["parameters"]["path"]; body?: NonNullable<operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/accept`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
