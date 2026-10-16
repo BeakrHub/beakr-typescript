@@ -82,8 +82,20 @@ class Proposals extends Resource {
     return this.transport.request({ method: "GET", path: `/v1/knowledge/wiki/proposals/${enc(proposalId)}` });
   }
 
-  accept(proposalId: string): Promise<unknown> {
-    return this.transport.request({ method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(proposalId)}/accept` });
+  /**
+   * Apply a proposal. `reviewedHash` is the `content_hash` of the {@link get} you
+   * reviewed, sent unchanged: a proposal that changed since is refused (409
+   * `proposal_changed`) and nothing is applied, and a proposal that changes a card's
+   * table rows can require it (422 `review_required`). This never reads the proposal
+   * to fill it in, because a hash from a read made at accept time would bind the
+   * accept to whatever the proposal is then rather than to what was reviewed.
+   */
+  accept(proposalId: string, options: { reviewedHash?: string } = {}): Promise<unknown> {
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/knowledge/wiki/proposals/${enc(proposalId)}/accept`,
+      ...(options.reviewedHash !== undefined ? { body: { reviewed_hash: options.reviewedHash } } : {}),
+    });
   }
 
   dismiss(proposalId: string): Promise<unknown> {
