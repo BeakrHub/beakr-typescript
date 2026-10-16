@@ -7,7 +7,13 @@ export {
   type TokenPair,
 } from "./core.js";
 export * from "./errors.js";
-export { RESEARCH_TIMEOUT_MS, resultText, type KnowledgeResult } from "./resources/knowledge.js";
+export {
+  QUICK_RESEARCH_TIMEOUT_MS,
+  RESEARCH_TIMEOUT_MS,
+  resultText,
+  type KnowledgeResult,
+  type ResearchOptions,
+} from "./resources/knowledge.js";
 export type {
   ConversationClient,
   SourceRead,

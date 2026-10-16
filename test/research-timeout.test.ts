@@ -8,7 +8,7 @@
  * RESEARCH_TIMEOUT_MS (170s); other requests keep the client's timeout.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RESEARCH_TIMEOUT_MS } from "../src/index.js";
+import { QUICK_RESEARCH_TIMEOUT_MS, RESEARCH_TIMEOUT_MS } from "../src/index.js";
 import { client, json, mockFetch } from "./helpers.js";
 
 afterEach(() => {
@@ -34,6 +34,19 @@ describe("research timeout", () => {
     await beakr.projects.list();
     expect(RESEARCH_TIMEOUT_MS).toBeGreaterThan(150_000);
     expect(seen).toEqual([RESEARCH_TIMEOUT_MS, 60_000]);
+  });
+
+  it("sends quick and waits only as long as a quick run takes", async () => {
+    const seen = timeouts();
+    const { fetch, calls } = mockFetch([json({ text: "ok", engine: "quick" }), json({ text: "ok" })]);
+    const { beakr } = client(fetch, { timeoutMs: 5_000 });
+    await beakr.knowledge.research("What changed?", undefined, { quick: true });
+    await beakr.knowledge.research("What changed?", "p1");
+    expect(seen).toEqual([QUICK_RESEARCH_TIMEOUT_MS, RESEARCH_TIMEOUT_MS]);
+    expect(calls.map((call) => call.body)).toEqual([
+      { query: "What changed?", quick: true },
+      { query: "What changed?", project_id: "p1" },
+    ]);
   });
 
   it("keeps a longer client timeout", async () => {

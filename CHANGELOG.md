@@ -7,6 +7,12 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/research` takes `quick`: `true` answers within 15
+  seconds from one search of Knowledge and uploaded files, with a short cited
+  answer. Connected integrations are not searched. The response's `engine` is
+  `quick`, and `stopped_early` is `true` when the answer is the cited results
+  without a written summary. Leaving `quick` out keeps research as before;
+  a `quick` that is not a boolean is `422 invalid_quick`.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
