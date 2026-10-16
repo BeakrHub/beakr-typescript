@@ -858,7 +858,7 @@ export interface paths {
         put?: never;
         /**
          * Research a question
-         * @description A cited answer to `query`, researched across Knowledge, uploaded files and connected integrations. Pass `project_id` to research one project. Typical latency is 5 to 15 seconds, up to 45 when it reads documents from connected integrations. `text` cites each source by its readable reference in parentheses (`(memo.pdf › p. 7)`), and `citations` lists the cited documents in order of first use. A credential limited to projects must pass one of its projects, and its research does not use connected integrations.
+         * @description A cited answer to `query`, researched across Knowledge, uploaded files and connected integrations. Pass `project_id` to research one project. Typical latency is 5 to 15 seconds, up to 45 when it reads documents from connected integrations. Pass `quick: true` for a short answer within 15 seconds from one search of Knowledge and uploaded files, without connected integrations. `text` cites each source by its readable reference in parentheses (`(memo.pdf › p. 7)`), and `citations` lists the cited documents in order of first use. A credential limited to projects must pass one of its projects, and its research does not use connected integrations.
          */
         post: operations["research_v1_knowledge_research_post"];
         delete?: never;
@@ -13031,6 +13031,11 @@ export interface operations {
                     project_id?: string | null;
                     /** @description The question to answer. */
                     query: string;
+                    /**
+                     * @description Answer within 15 seconds from one search of Knowledge and uploaded documents, with a short cited answer. Connected services are not searched. The response's engine is quick, and stopped_early is true when the answer is the cited results without a written summary.
+                     * @default false
+                     */
+                    quick?: boolean;
                 } & {
                     [key: string]: unknown;
                 };

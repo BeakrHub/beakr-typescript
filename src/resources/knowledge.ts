@@ -9,6 +9,14 @@ import { Resource, enc } from "./base.js";
  * documents from connected services), so a 60s client would give up first.
  */
 export const RESEARCH_TIMEOUT_MS = 170_000;
+/** Milliseconds a quick research call waits: the engine ends a quick run within 16s. */
+export const QUICK_RESEARCH_TIMEOUT_MS = 30_000;
+
+/** Options for {@link Knowledge.research}. */
+export interface ResearchOptions {
+  /** A short cited answer within 15 seconds from one search. */
+  quick?: boolean;
+}
 
 /** The door's reply: `{content: [{type, text}], outcome, sources}`. */
 export interface KnowledgeResult extends JsonObject {
@@ -124,14 +132,21 @@ export class Knowledge extends Resource {
   /**
    * A cited answer from Knowledge and connected sources. Waits up to
    * {@link RESEARCH_TIMEOUT_MS} (or the client's timeout, if longer): the engine
-   * allows research up to 150s.
+   * allows research up to 150s. With `{ quick: true }` the engine answers within
+   * 15 seconds from one search of Knowledge and uploaded files (no connected
+   * sources); the answer's `engine` is `quick`, and `stopped_early` is true when
+   * it is the cited results without a written summary.
    */
-  research(query: string, projectId?: string): Promise<unknown> {
+  research(query: string, projectId?: string, options: ResearchOptions = {}): Promise<unknown> {
     return this.transport.request({
       method: "POST",
       path: "/v1/knowledge/research",
-      body: projectId ? { query, project_id: projectId } : { query },
-      minTimeoutMs: RESEARCH_TIMEOUT_MS,
+      body: {
+        query,
+        ...(projectId ? { project_id: projectId } : {}),
+        ...(options.quick ? { quick: true } : {}),
+      },
+      minTimeoutMs: options.quick ? QUICK_RESEARCH_TIMEOUT_MS : RESEARCH_TIMEOUT_MS,
     });
   }
 }
