@@ -15,6 +15,7 @@ export const OPERATIONS = {
   "files.getArtifactContent": { method: "GET", path: "/v1/artifacts/{artifact_id}/content" },
   "files.createKnowledgeFromArtifact": { method: "POST", path: "/v1/artifacts/{artifact_id}/knowledge" },
   "files.moveArtifact": { method: "POST", path: "/v1/artifacts/{artifact_id}/move" },
+  "files.downloadUrl": { method: "POST", path: "/v1/artifacts/download-url" },
   "files.readFile": { method: "POST", path: "/v1/artifacts/read" },
   "uploads.getDownloadUrl": { method: "GET", path: "/v1/artifacts/versions/{version_id}/download-url" },
   "endUserTokens.listEndUserTokens": { method: "GET", path: "/v1/auth/end-user-tokens" },
@@ -353,6 +354,12 @@ export class FilesApi {
   /** POST /v1/artifacts/{artifact_id}/move (Move a file to another project) */
   moveArtifact(args: { path: operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]["parameters"]["path"]; body: NonNullable<operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/artifacts/${enc(String(args.path.artifact_id))}/move`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/artifacts/download-url (Get a download link by reference) */
+  downloadUrl(args: { body: NonNullable<operations["download_url_route_v1_artifacts_download_url_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["download_url_route_v1_artifacts_download_url_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/artifacts/download-url", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
