@@ -50,3 +50,41 @@ it("downloadLink signs any reference in one request", async () => {
   expect(new URL(calls[0]!.url).pathname).toBe("/v1/artifacts/download-url");
   expect(calls[0]!.body).toEqual({ reference: "beakr-source:v1:key:cmFnOjE.f1", inline: true });
 });
+
+it("rows sends the rows command with every map-walk argument named as the engine names it", async () => {
+  const { fetch, calls } = mockFetch([json({ content: "rows", sources: {}, is_error: false })]);
+  const { beakr } = client(fetch);
+  await beakr.knowledge.rows("connections", {
+    pageType: "matter",
+    entity: "Stripe",
+    to: "Acme",
+    connectedTo: "Acme",
+    groupBy: "relation",
+    regex: true,
+    view: "values",
+    match: "similar",
+    afterCard: "c1",
+    scope: "Platform",
+  });
+  expect(calls[0]!.body).toEqual({
+    command: "rows",
+    table: "connections",
+    page_type: "matter",
+    entity: "Stripe",
+    to: "Acme",
+    connected_to: "Acme",
+    group_by: "relation",
+    regex: true,
+    view: "values",
+    match: "similar",
+    after_card: "c1",
+    scope: "Platform",
+  });
+});
+
+it("rows reads facts as of a date and by field id", async () => {
+  const { fetch, calls } = mockFetch([json({ content: "rows", sources: {}, is_error: false })]);
+  const { beakr } = client(fetch);
+  await beakr.knowledge.rows("facts", { asOf: "2026-01-31", fieldId: "facts:abc" });
+  expect(calls[0]!.body).toEqual({ command: "rows", table: "facts", as_of: "2026-01-31", field_id: "facts:abc" });
+});
