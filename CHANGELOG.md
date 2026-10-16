@@ -828,6 +828,11 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Accept the proposal you reviewed.** `knowledge.proposals.accept(proposalId,
+  { reviewedHash })` sends the `content_hash` of the `knowledge.proposals.get`
+  you reviewed, unchanged: a proposal that changed since is refused (`409`
+  `proposal_changed`) and nothing is applied. The method never reads the
+  proposal to fill the hash in.
 - **Know when Knowledge is ready.** `projects.knowledgeStatus(projectId)` reads
   the project's Knowledge status (`ready`, `queued`, `running`, `failed` and the
   newest `failed_files` with their `error_code` and `reason`);
