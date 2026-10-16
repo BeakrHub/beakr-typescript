@@ -3,9 +3,9 @@
     "beakr-engine": {
       "repository": "BeakrHub/beakr-engine",
       "commit": "3fdf3497388f23b6f374d8b7ed89f53dea54041c",
-      "uncommitted_changes": false,
+      "uncommitted_changes": true,
       "files": {
-        "docs/api/CHANGELOG.md": "sha256:af7734a392e2822ac711e6dfdbb5d54d4ea0681ef9157b72bdabd04d4502cce9",
+        "docs/api/CHANGELOG.md": "sha256:f5896315ae8b8bc33ba6277b871d788dd56abe99fa3c419a539614b95fe170b6",
         "docs/api/public-openapi.json": "sha256:32b7b8b72356541a503399ffce483df0557e00162715abe19db243daeaabeb5a"
       }
     },
