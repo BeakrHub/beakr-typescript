@@ -5371,6 +5371,13 @@ export interface components {
              */
             limit?: number | null;
             /**
+             * Next Cursor
+             * @description Opaque cursor for the next chronological timeline window without timeline_query; repeat the same filters with it.
+             * @default null
+             * @example null
+             */
+            next_cursor?: string | null;
+            /**
              * Next Offset
              * @description Where the next window starts, if any.
              * @default null
@@ -5388,6 +5395,18 @@ export interface components {
              * @default null
              */
             returned?: number | null;
+            /**
+             * Scan Complete
+             * @description True only when an unqueried chronological timeline scan reached the end of the requested scope and filters. Semantic queries are always non-exhaustive.
+             * @default null
+             */
+            scan_complete?: boolean | null;
+            /**
+             * Scanned
+             * @description Dated candidates examined for this response. Semantic queries first select relevant sections; this is not a count of every timeline event.
+             * @default null
+             */
+            scanned?: number | null;
             /** @description The scope it applies to. */
             scope: components["schemas"]["KnowledgeScope"];
             /**
@@ -5401,6 +5420,12 @@ export interface components {
              * @default null
              */
             total?: number | null;
+            /**
+             * Truncated
+             * @description Reported by compact/full source-sidecar Knowledge reads when their response budget omits text; true means text was truncated. Other reads may omit this field.
+             * @default null
+             */
+            truncated?: boolean | null;
         };
         /**
          * KnowledgeFailedFile
@@ -7695,7 +7720,7 @@ export interface components {
             answer: string;
             /**
              * Checked
-             * @description What the research covered: the sources and scopes it read.
+             * @description The research agent's report of what it examined.
              * @default null
              */
             checked?: string | null;
@@ -7737,7 +7762,7 @@ export interface components {
             duration_s?: number | null;
             /**
              * Engine
-             * @description Which research engine answered.
+             * @description The research engine that produced this response.
              * @default null
              */
             engine?: string | null;
@@ -7755,7 +7780,7 @@ export interface components {
             gaps?: string | null;
             /**
              * Lead Model
-             * @description The model that led the research and wrote the answer.
+             * @description The model alias used by the lead research agent.
              * @default null
              */
             lead_model?: string | null;
@@ -7767,7 +7792,7 @@ export interface components {
             next?: string[] | null;
             /**
              * Not Checked
-             * @description What it did not cover and a reader would still have to open; treat the answer as incomplete for those.
+             * @description The research agent's report of remaining evidence it did not examine.
              * @default null
              */
             not_checked?: string | null;
@@ -7780,19 +7805,19 @@ export interface components {
             };
             /**
              * Sources Consulted
-             * @description How many distinct sources the research read, cited or not.
+             * @description How many source records were registered during research, including records not cited in the answer.
              * @default null
              */
             sources_consulted?: number | null;
             /**
              * Stopped Early
-             * @description True when the research reached its time or step limit and answered from what it had; `not_checked` says what is missing.
+             * @description True when the run was asked to wrap up because its time or step budget was reached.
              * @default null
              */
             stopped_early?: boolean | null;
             /**
              * Subtasks
-             * @description How many parallel research subtasks the lead started.
+             * @description How many research subtasks the lead started.
              * @default null
              */
             subtasks?: number | null;
@@ -13070,6 +13095,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    /** @description rows: continue a capped card scan after this card. */
+                    after_card?: string;
                     /** @description Keyset cursor for provenance: return only the sections that follow this section id in page order. Pass the last section id of the previous window to walk the whole page. */
                     after_section?: string;
                     /** @description sources: the second half of the keyset cursor, paired with after_title. Sources are ordered by (title, source_id), so a window boundary can fall inside a run of records that share a title -- Invoice.pdf on a matter page -- and a title-only cursor would skip the whole run. Copy the value the previous window's trailer printed. */
@@ -13089,6 +13116,8 @@ export interface operations {
                     context_lines?: number;
                     /** @description rows, facts: the latest When per entity and Attribute. */
                     current_only?: boolean;
+                    /** @description timeline without timeline_query: next_cursor from the previous result; keep the same filters. */
+                    cursor?: string;
                     /** @description rows: reverse the order. */
                     descending?: boolean;
                     /**
@@ -13096,11 +13125,20 @@ export interface operations {
                      * @enum {string}
                      */
                     detail?: "full";
+                    /**
+                     * @description links: in (default) or out.
+                     * @enum {string}
+                     */
+                    direction?: "in" | "out";
                     /** @description End date YYYY-MM-DD (for timeline). */
                     end_date?: string;
                     /** @description rows: card titles containing this. */
                     entity?: string;
-                    /** @description Timeline only. Events with approximate/estimated dates (date_precision=approx) are included by default. Set false to restrict the chronology to confident (day/month/year) dated events only. */
+                    /** @description rows: one field from view=fields, instead of attribute. */
+                    field_id?: string;
+                    /** @description rows: counts and totals per entity, entity_type, year or column. */
+                    group_by?: string;
+                    /** @description timeline: include estimated dates (default true). False keeps only day/month/year precision. */
                     include_approx?: boolean;
                     /** @description If true, timeline returns each section's full markdown content. Automatically enabled when timeline_query is set. */
                     include_content?: boolean;
@@ -13127,15 +13165,17 @@ export interface operations {
                     outline?: boolean;
                     /** @description Page reference: slug, title, UUID, or a wiki citation key emitted by ls (wiki:8f3a0c21, {{wiki:8f3a0c21}}, or its bare 8-character hex key). */
                     page?: string;
-                    /** @description Filter results by page type, e.g. 'person', 'initiative', 'organization', 'decision' (for sections, grep, ls, timeline; for links, the type of the linking pages). For suggest_parent it is not a filter but the type of the page being placed, which orders equally-evidenced candidates by affinity; it is read from the page itself when one is named. Use `ontology` to see the active types. */
+                    /** @description Page type filter for sections, grep, ls, timeline; linking-page type for links. For suggest_parent: the new page's type (read from an existing page), ranking equally-evidenced parents by affinity. Use ontology for active types. */
                     page_type?: string;
                     /** @description For ls: list only the direct children of this page (slug, title, UUID, or wiki citation key from ls). Use it to walk the tree one level at a time instead of relying on the truncated index in the prompt. */
                     parent?: string;
                     /** @description Title prefix (for completions). */
                     prefix?: string;
-                    /** @description For grep: the pattern. text mode matches a literal case-insensitive SUBSTRING, so a distinctive term or exact phrase hits and a natural-language question does not; regex mode is POSIX and matches per line, so `^` and `$` anchor to line starts and ends. For sections: the semantic query. */
+                    /** @description For grep: the pattern. text mode matches a literal case-insensitive SUBSTRING, so a distinctive term or exact phrase hits and a natural-language question does not; regex mode is POSIX and matches per line, so `^` and `$` anchor to line starts and ends. For sections: the semantic query. For rows: words across cells, not meaning. */
                     query?: string;
-                    /** @description For links: keep only linking cards whose Connections row to this page states a relation containing this text (case-insensitive), e.g. 'annex of', 'measured'. */
+                    /** @description rows: attribute, to and query are regexes. */
+                    regex?: boolean;
+                    /** @description links: stated relation contains this, e.g. 'lender'. */
                     relation?: string;
                     /** @description Revision number (for cat --rev, show, diff start). */
                     rev?: number;
@@ -13170,8 +13210,15 @@ export interface operations {
                     timeline_query?: string;
                     /** @description For suggest_parent: the title of a page that does not exist yet. Use this instead of `page` when asking where a page you are about to create should be filed. */
                     title?: string;
+                    /** @description rows, table connections: rows involving this page. */
+                    to?: string;
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
+                    /**
+                     * @description rows: values (default), fields (field names, counts, examples) or groups (one page_type's likely synonym names).
+                     * @enum {string}
+                     */
+                    view?: "values" | "fields" | "groups";
                 } & {
                     [key: string]: unknown;
                 };
