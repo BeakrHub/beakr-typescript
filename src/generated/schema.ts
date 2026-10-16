@@ -10059,6 +10059,11 @@ export interface components {
              */
             project_id?: string | null;
             /**
+             * Protected Sections
+             * @description On a project-map card, the section ids of its Facts, Connections and Findings, whose rows change only through row operations (add_fact, add_connection, add_finding, edit_rows). Empty on any other page.
+             */
+            protected_sections?: string[];
+            /**
              * Revision
              * @description Revision number.
              */
@@ -10386,6 +10391,17 @@ export interface components {
             section?: string | null;
         };
         /**
+         * WikiProposalAccept
+         * @description Optional accept body: bind the accept to the content that was reviewed.
+         */
+        WikiProposalAccept: {
+            /**
+             * Reviewed Hash
+             * @description The proposal's content_hash exactly as the proposal read returned it (echo it; do not compute it). When the stored proposal no longer hashes to it, nothing is applied (409 proposal_changed).
+             */
+            reviewed_hash?: string | null;
+        };
+        /**
          * WikiProposalBatchCopyItem
          * @description One page to copy as part of a proposal batch.
          */
@@ -10528,6 +10544,12 @@ export interface components {
         /** WikiProposalOut */
         WikiProposalOut: {
             /**
+             * Content Hash
+             * @description SHA-256 of this proposal as stored (its id, type and whole payload). Echo it back as reviewed_hash when accepting, so a proposal that changed after it was read is not applied.
+             * @default null
+             */
+            content_hash?: string | null;
+            /**
              * Created At
              * Format: date-time
              * @description When it was created (ISO 8601, UTC).
@@ -10591,6 +10613,19 @@ export interface components {
              * @default null
              */
             summary?: string | null;
+            /**
+             * Table Changes
+             * @description How this proposal changes map cards' Facts, Connections and Findings, read as rows: per table its added, removed and changed rows (changed_cells names what changed), each with its citations, and the reasons given for the edit.
+             */
+            table_changes?: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Table Changes Complete
+             * @description False when part of this proposal's change to a map card's Facts, Connections or Findings is not expressed by table_changes (text that is not a row, or a section not in canonical form): review the markdown diff then.
+             * @default true
+             */
+            table_changes_complete?: boolean;
         } & {
             [key: string]: unknown;
         };
@@ -13976,7 +14011,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["WikiProposalAccept"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -14223,7 +14262,7 @@ export interface operations {
                     }[];
                     /** @description THE ENTIRE NEW BODY of the section (for edit_section). A section runs from its <!-- sec:ID --> marker to the NEXT marker, so it includes every ## and ### heading under it. Whatever you send REPLACES ALL OF IT: subsections you do not retype are DELETED, not merged, and their citations and dates go with them. Read the section first and send back everything you are keeping. To split an over-long section, create the new sections FIRST (a new section_id plus section_title, and after=<this section id>) and move the prose into them, THEN shrink this one. Include all inline citation tokens; the <!-- sec:ID --> marker is prepended automatically if omitted. The section's OWN heading is not part of the body -- it is kept as it is, or set with section_title -- so you do not need to retype it. A leading heading that restates the title or is no deeper than the section's own heading is read as its title; a deeper heading remains a subsection in the body. */
                     new_section_body?: string;
-                    /** @description edit_rows: the rows to change, as the card shows them now: {attribute, value} or {relation, to}, or the row copied from cat. */
+                    /** @description edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. */
                     old_rows?: (Record<string, never> | string)[];
                     /** @description sort_table: columns first to last, e.g. 'attribute, when desc'. */
                     order_by?: string;
@@ -14348,10 +14387,10 @@ export interface operations {
                     /** @description add_finding: date or opening words of the finding it replaces. */
                     supersedes?: string;
                     /**
-                     * @description sort_table / edit_rows: which table.
+                     * @description sort_table (facts | connections) / edit_rows: which table.
                      * @enum {string}
                      */
-                    table?: "facts" | "connections";
+                    table?: "facts" | "connections" | "findings";
                     /** @description add_finding: the finding in one or two sentences. */
                     text?: string;
                     /** @description Page title (for new) or new title (for edit rename, mv). */
