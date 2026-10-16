@@ -49,7 +49,7 @@ export interface RowsOptions {
   to?: string;
   /** Only cards linked to this page, in either direction. */
   connectedTo?: string;
-  /** Facts only: each card's value on this date (YYYY, YYYY-MM or a day). */
+  /** Facts only: each card's value on this day (YYYY-MM-DD). */
   asOf?: string;
   /** When window start. */
   startDate?: string;
@@ -65,7 +65,10 @@ export interface RowsOptions {
   view?: "values" | "fields" | "groups";
   /** Exactly one field, as the field inventory names it. */
   fieldId?: string;
-  /** How `attribute` finds a field: `exact`, `similar` or `meaning` (the default). */
+  /**
+   * How `attribute` finds a field and `query` matches values: `meaning` (the default),
+   * `similar` (words only) or `exact`.
+   */
   match?: "exact" | "similar" | "meaning";
   /** Continue a card scan that stopped at its cap, after this card id. */
   afterCard?: string;
