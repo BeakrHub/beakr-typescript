@@ -139,3 +139,26 @@ export {
 } from "./service-account.js";
 export { OPERATIONS, BeakrApi, type OperationName } from "./generated/operations.js";
 export type { CallOptions, OperationResponse } from "./operation-types.js";
+export type {
+  QueryAggregate,
+  QueryAggregateFn,
+  QueryAsOfCondition,
+  QueryCondition,
+  QueryConnectedToCondition,
+  QueryEntityCondition,
+  QueryEntityTypeCondition,
+  QueryFieldCondition,
+  QueryFieldMatch,
+  QueryFromTable,
+  QueryJoin,
+  QueryLinkOp,
+  QueryOrderBy,
+  QuerySemantic,
+  QuerySpec,
+  QueryTable,
+  QueryTextOp,
+  QueryToCondition,
+  QueryValueCondition,
+  QueryValueOp,
+  QueryWhenCondition,
+} from "./resources/query-spec.js";

@@ -1,3 +1,4 @@
+import type { QuerySpec } from "./query-spec.js";
 import { KnowledgeCommandError } from "../errors.js";
 import { publicSource, type SourceRecord } from "../sources.js";
 import type { JsonObject, ResponseOf } from "../types.js";
@@ -228,6 +229,20 @@ export class Knowledge extends Resource {
       body,
     });
     return checked(result, options.check ?? true);
+  }
+
+  /**
+   * Ask a question of every map card's rows as one structured spec (the `query`
+   * command): `from` a table, `where` an and/or/not tree of conditions, up to two
+   * `join`s, `group_by` with `aggregate`, `order_by`, `limit` and `cursor`, and
+   * `semantic` to rank or keep fields by meaning. Only cards you can read are
+   * queried; `scope` narrows them to one project (name or id). Where enabled for
+   * the organization. The answer is text: the total and what ran in words, a
+   * cursor line when more follow, and a table. A spec the engine cannot run throws
+   * a `KnowledgeCommandError` (`invalid_arguments`).
+   */
+  query(spec: QuerySpec, options: { scope?: string } = {}): Promise<KnowledgeResult> {
+    return this.command("query", { spec: spec as unknown as JsonObject }, options.scope ? { scope: options.scope } : {});
   }
 
   /**
