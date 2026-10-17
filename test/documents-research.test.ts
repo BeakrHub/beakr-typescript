@@ -89,6 +89,21 @@ it("rows reads facts as of a date and by field id", async () => {
   expect(calls[0]!.body).toEqual({ command: "rows", table: "facts", as_of: "2026-01-31", field_id: "facts:abc" });
 });
 
+it("query sends one SELECT as sql, with a cursor", async () => {
+  const { fetch, calls } = mockFetch([json({ content: "rows", sources: {}, is_error: false })]);
+  const { beakr } = client(fetch);
+  await beakr.knowledge.query(
+    { sql: "SELECT value, COUNT(*) AS n FROM facts WHERE field = 'Status' GROUP BY value" },
+    { scope: "Contracts", cursor: "abc" },
+  );
+  expect(calls[0]!.body).toEqual({
+    command: "query",
+    sql: "SELECT value, COUNT(*) AS n FROM facts WHERE field = 'Status' GROUP BY value",
+    cursor: "abc",
+    scope: "Contracts",
+  });
+});
+
 it("query sends a structured spec as the query command", async () => {
   const { fetch, calls } = mockFetch([json({ content: "rows", sources: {}, is_error: false })]);
   const { beakr } = client(fetch);
