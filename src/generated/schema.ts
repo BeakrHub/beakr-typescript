@@ -13423,7 +13423,7 @@ export interface operations {
                      * @description The command to run. `help` returns the guidance for every command or action, or for one with `topic`.
                      * @enum {string}
                      */
-                    command: "ls" | "cat" | "grep" | "sections" | "log" | "blame" | "diff" | "show" | "sources" | "provenance" | "links" | "timeline" | "rows" | "ontology" | "hover" | "references" | "diagnostics" | "completions" | "proposals" | "suggest_parent" | "help";
+                    command: "ls" | "cat" | "grep" | "sections" | "log" | "blame" | "diff" | "show" | "sources" | "provenance" | "links" | "timeline" | "rows" | "ontology" | "hover" | "references" | "diagnostics" | "completions" | "proposals" | "suggest_parent" | "help" | "query";
                     /** @description rows: cards linked to this page. */
                     connected_to?: string;
                     /** @description For suggest_parent: the draft body of the page you are about to create. Any [[Page Title]] links in it are the strongest evidence of where the page belongs, so pass the draft whenever you have one. */
@@ -13515,6 +13515,10 @@ export interface operations {
                     source_offset?: number;
                     /** @description provenance: how many citing sources to show per section (default 5, max 50). Contradicting and qualifying sources are listed first, so a dispute is never the entry that falls off the end. */
                     sources_per_section?: number;
+                    /** @description query (where enabled for the organization): a JSON spec of filters, up to two joins along card relationships, groups and aggregates over every card's rows; see the command's guide for the keys. */
+                    spec?: {
+                        [key: string]: unknown;
+                    };
                     /** @description Start date YYYY-MM-DD (for timeline). */
                     start_date?: string;
                     /**

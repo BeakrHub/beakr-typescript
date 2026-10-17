@@ -88,3 +88,33 @@ it("rows reads facts as of a date and by field id", async () => {
   await beakr.knowledge.rows("facts", { asOf: "2026-01-31", fieldId: "facts:abc" });
   expect(calls[0]!.body).toEqual({ command: "rows", table: "facts", as_of: "2026-01-31", field_id: "facts:abc" });
 });
+
+it("query sends a structured spec as the query command", async () => {
+  const { fetch, calls } = mockFetch([json({ content: "rows", sources: {}, is_error: false })]);
+  const { beakr } = client(fetch);
+  await beakr.knowledge.query(
+    {
+      from: { table: "facts", as: "f" },
+      where: { and: [{ entity_type: "agreement" }, { not: { value: "Delaware", op: "contains" } }] },
+      join: [{ table: "connections", as: "c", on: "same_card", with: "f" }],
+      group_by: ["value"],
+      aggregate: [{ fn: "count" }, { fn: "count_distinct", of: "entity" }],
+      order_by: [{ by: "count", dir: "desc" }],
+      limit: 20,
+    },
+    { scope: "Contracts" },
+  );
+  expect(calls[0]!.body).toEqual({
+    command: "query",
+    spec: {
+      from: { table: "facts", as: "f" },
+      where: { and: [{ entity_type: "agreement" }, { not: { value: "Delaware", op: "contains" } }] },
+      join: [{ table: "connections", as: "c", on: "same_card", with: "f" }],
+      group_by: ["value"],
+      aggregate: [{ fn: "count" }, { fn: "count_distinct", of: "entity" }],
+      order_by: [{ by: "count", dir: "desc" }],
+      limit: 20,
+    },
+    scope: "Contracts",
+  });
+});
