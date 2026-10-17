@@ -232,17 +232,30 @@ export class Knowledge extends Resource {
   }
 
   /**
-   * Ask a question of every map card's rows as one structured spec (the `query`
-   * command): `from` a table, `where` an and/or/not tree of conditions, up to two
-   * `join`s, `group_by` with `aggregate`, `order_by`, `limit` and `cursor`, and
-   * `semantic` to rank or keep fields by meaning. Only cards you can read are
-   * queried; `scope` narrows them to one project (name or id). Where enabled for
-   * the organization. The answer is text: the total and what ran in words, a
-   * cursor line when more follow, and a table. A spec the engine cannot run throws
-   * a `KnowledgeCommandError` (`invalid_arguments`).
+   * Ask a question of every map card's rows (the `query` command), as SQL or a
+   * spec. `{ sql }` is one SELECT, such as `SELECT value, COUNT(DISTINCT entity) AS
+   * cards FROM facts AS OF CURRENT_DATE WHERE entity_type = 'matter' AND field =
+   * 'Current status' GROUP BY value ORDER BY cards DESC`; the engine parses it into
+   * a spec and never runs it as SQL (`FROM` facts, connections or findings, up to
+   * two `JOIN`s on `SAME_CARD(a)` or `TARGET_CARD(a)`, `WHERE` with AND/OR/NOT,
+   * `AS OF` a day, `GROUP BY`, `COUNT`/`MIN`/`MAX`/`SUM`/`AVG`, `ORDER BY`, `LIMIT`).
+   * A {@link QuerySpec} is the same query as JSON. Only cards you can read are
+   * queried; `scope` narrows them to one project (name or id); `cursor` continues
+   * a previous answer. Where enabled for the organization. The answer's text opens
+   * with what the query was understood as (for SQL the spec it was translated to,
+   * how each name resolved, what was defaulted or applied), then the total and a
+   * table; its `query` holds the same as data (`spec`, `columns`, `rows`, `total`,
+   * `next_cursor`). A query the engine cannot run throws a `KnowledgeCommandError`
+   * (`invalid_arguments`).
    */
-  query(spec: QuerySpec, options: { scope?: string } = {}): Promise<KnowledgeResult> {
-    return this.command("query", { spec: spec as unknown as JsonObject }, options.scope ? { scope: options.scope } : {});
+  query(
+    query: QuerySpec | { sql: string },
+    options: { scope?: string; cursor?: string } = {},
+  ): Promise<KnowledgeResult> {
+    const args: JsonObject =
+      "sql" in query ? { sql: query.sql } : { spec: query as unknown as JsonObject };
+    if (options.cursor) args["cursor"] = options.cursor;
+    return this.command("query", args, options.scope ? { scope: options.scope } : {});
   }
 
   /**

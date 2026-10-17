@@ -5707,6 +5707,95 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * KnowledgeQueryResult
+         * @description ``query`` only: the spec that ran and the window as data, beside the text.
+         */
+        KnowledgeQueryResult: {
+            /**
+             * Applied
+             * @description What the query defaulted, capped or applied that was not written: a default LIMIT or ORDER BY, a capped LIMIT, AS OF per card, an added COUNT, a sum split by unit.
+             * @default []
+             */
+            applied?: string[];
+            /**
+             * Columns
+             * @description The window's column names, in order.
+             * @default []
+             */
+            columns?: string[];
+            /**
+             * Elapsed Ms
+             * @description Milliseconds the query took to run.
+             * @default null
+             */
+            elapsed_ms?: number | null;
+            /**
+             * Form
+             * @description How the query was sent: `sql` (compiled to the spec) or `spec`.
+             * @default null
+             */
+            form?: string | null;
+            /**
+             * Next Cursor
+             * @description Send with the same sql or spec as `cursor` for the next window.
+             * @default null
+             * @example null
+             */
+            next_cursor?: string | null;
+            /**
+             * Notices
+             * @description Warnings that lead the text, e.g. a field asked by a name few cards hold while a near name is on many more.
+             * @default []
+             */
+            notices?: string[];
+            /**
+             * Offset
+             * @description Rows before this window.
+             * @default null
+             */
+            offset?: number | null;
+            /**
+             * Ran
+             * @description What ran, in words (the text's `Ran:`).
+             * @default null
+             */
+            ran?: string | null;
+            /**
+             * Resolved
+             * @description How each field, card-type and title condition resolved: the stored name, how it was found (exact, alias, words, meaning) and the exact name's card count.
+             * @default []
+             */
+            resolved?: string[];
+            /**
+             * Rows
+             * @description The window's rows: dates as YYYY-MM-DD, long text cut at 2,000 characters.
+             * @default []
+             */
+            rows?: unknown[][];
+            /**
+             * Spec
+             * @description The JSON spec that ran (for `sql`, what the SELECT compiled to; `AS OF CURRENT_DATE` appears as `"as_of": "today"`). Present on a refusal too once the query compiled.
+             * @default null
+             */
+            spec?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Total
+             * @description Rows (or groups) matching in all.
+             * @default null
+             */
+            total?: number | null;
+            /**
+             * Unit
+             * @description What one result row is: `row`, `group` or `field` (a ranking).
+             * @default null
+             */
+            unit?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * KnowledgeRetryFileResult
          * @description What a retry did with one file.
          */
@@ -9950,6 +10039,11 @@ export interface components {
             /** @description How it turned out. */
             outcome: components["schemas"]["WikiToolOutcome"];
             /**
+             * @description `query` only: the spec that ran and the window as columns and rows.
+             * @default null
+             */
+            query?: components["schemas"]["KnowledgeQueryResult"] | null;
+            /**
              * Sources
              * @description The sources it cites or draws on.
              * @default []
@@ -13432,7 +13526,7 @@ export interface operations {
                     context_lines?: number;
                     /** @description rows, facts: the latest When per entity and Attribute. */
                     current_only?: boolean;
-                    /** @description timeline without timeline_query: next_cursor from the previous result; keep the same filters. */
+                    /** @description timeline without timeline_query: next_cursor from the previous result; keep the same filters. query: the cursor a reply gives, sent with the same sql or spec. */
                     cursor?: string;
                     /** @description rows: reverse the order. */
                     descending?: boolean;
@@ -13515,10 +13609,12 @@ export interface operations {
                     source_offset?: number;
                     /** @description provenance: how many citing sources to show per section (default 5, max 50). Contradicting and qualifying sources are listed first, so a dispute is never the entry that falls off the end. */
                     sources_per_section?: number;
-                    /** @description query (where enabled for the organization): a JSON spec of filters, up to two joins along card relationships, groups and aggregates over every card's rows; see the command's guide for the keys. */
+                    /** @description query (where enabled for the organization): the same query as a JSON spec of filters, up to two joins along card relationships, groups and aggregates over every card's rows; see the command's guide for the keys. */
                     spec?: {
                         [key: string]: unknown;
                     };
+                    /** @description query (where enabled for the organization): one SELECT over every card's rows, parsed and compiled into a spec; the text is never run as SQL. The reply's `query` object holds the spec it compiled to. Send sql or spec, not both; `topic: query` on `help` gives the grammar. one SELECT over every card's rows, parsed into a query (never run as SQL). FROM facts|connections|findings [AS OF 'YYYY-MM-DD'|CURRENT_DATE]; JOIN <table> b ON SAME_CARD(a)|TARGET_CARD(a) (up to 2); WHERE with AND/OR/NOT on entity, entity_type, field (= exact name, LIKE words, ~ meaning), value (=, <>, IN, CONTAINS, >, >=, <, <=, BETWEEN on numbers and dates), when, to, connected_to; GROUP BY field|value|entity|entity_type; COUNT(*), COUNT(DISTINCT entity), MIN|MAX|SUM|AVG(value_number|value_amount|value_date); ORDER BY; LIMIT (50, max 200). Example: SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER BY cards DESC. help: query has the grammar. */
+                    sql?: string;
                     /** @description Start date YYYY-MM-DD (for timeline). */
                     start_date?: string;
                     /**
