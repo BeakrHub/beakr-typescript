@@ -86,8 +86,12 @@ export interface QueryJoin {
 
 export interface QueryAggregate {
   fn: QueryAggregateFn;
-  /** A group key for `count_distinct`; `value_number`, `value_amount` or `value_date` for the others. */
-  of: string;
+  /**
+   * Left out for `count`, which counts rows and refuses `of`. A group key or typed column for
+   * `count_distinct`; `value_number`, `value_amount` or `value_date` for the others (not
+   * `value_date` for `sum`/`avg`).
+   */
+  of?: string;
 }
 
 export interface QueryOrderBy {
