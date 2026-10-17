@@ -13636,10 +13636,10 @@ export interface operations {
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
                     /**
-                     * @description rows: values (default), fields (field names, counts, examples), groups (one page_type's likely synonym names) or conflicts (facts: one card's different values for one field at one time, both sides cited).
+                     * @description rows: values (default), census (entity and value only, 300 rows), fields (field names, counts, examples), groups (one page_type's likely synonym names) or conflicts (facts: one card's different values for one field at one time, both sides cited).
                      * @enum {string}
                      */
-                    view?: "values" | "fields" | "groups" | "conflicts";
+                    view?: "values" | "census" | "fields" | "groups" | "conflicts";
                 } & {
                     [key: string]: unknown;
                 };
