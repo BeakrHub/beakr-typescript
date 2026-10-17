@@ -4044,6 +4044,56 @@ export interface components {
              */
             token?: string | null;
         };
+        /** DocumentsCoverage */
+        DocumentsCoverage: {
+            /**
+             * Complete
+             * @description Whether this answer covers every match in scope; when false, see `reason`.
+             */
+            complete: boolean;
+            /**
+             * Continue With
+             * @description The `arguments` to change in the same call to continue it: `offset` while pages remain, then `after_document` with `offset` 0 to resume a stopped scan.
+             * @default null
+             */
+            continue_with?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Documents Checked
+             * @description Of those, the documents this call checked (fewer when it stopped early).
+             */
+            documents_checked: number;
+            /**
+             * Documents Considered
+             * @description Documents in scope after the filters.
+             */
+            documents_considered: number;
+            /**
+             * Next Offset
+             * @description The offset of the next page, if any.
+             * @default null
+             */
+            next_offset?: number | null;
+            /**
+             * Reason
+             * @description Why it is not complete: `page` (more entries than this page), `time_budget` or `scan_budget` (the scan stopped early; counts cover what it checked), or `catalog_cap` (the scope held more documents than one call considers).
+             * @default null
+             */
+            reason?: string | null;
+            /**
+             * Resume After Document
+             * @description `grep`: the last document checked, when the scan stopped early.
+             * @default null
+             */
+            resume_after_document?: string | null;
+            /**
+             * Total
+             * @description Entries found: matching lines (content) or documents.
+             * @default null
+             */
+            total?: number | null;
+        };
         /** DocumentsResult */
         DocumentsResult: {
             /**
@@ -4051,6 +4101,17 @@ export interface components {
              * @description Document text and citations, with scan and continuation notices.
              */
             content: string;
+            /**
+             * @description `grep` and `search`: whether the answer is complete, and the next call.
+             * @default null
+             */
+            coverage?: components["schemas"]["DocumentsCoverage"] | null;
+            /**
+             * Error Code
+             * @description When `is_error`: `invalid_arguments`, `invalid_pattern`, `document_not_found`, `timeout` or `scope_unavailable`.
+             * @default null
+             */
+            error_code?: string | null;
             /**
              * Is Error
              * @description Whether it is error.
@@ -13373,7 +13434,7 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    /** @description Options for the selected documents command. grep: pattern, output_mode, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further. */
+                    /** @description Options for the selected documents command. grep: pattern, output_mode, group_by ("folder") and folder_depth, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, glob, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further. */
                     arguments?: {
                         [key: string]: unknown;
                     };
