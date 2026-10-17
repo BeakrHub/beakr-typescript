@@ -7,6 +7,22 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command` `rows` takes `as_of` (Facts: each card's
+  value on that date, the row with the latest When on or before it),
+  `connected_to` (only cards linked to that page, in either direction) and
+  `order_by` `amount` or `date` (Facts: money values with their scale, and
+  date values, in order). Where the rows index is enabled, a `rows` read
+  covers every card in scope with no card scan cap, `view` `fields` with a
+  `query` ranks the field names by meaning, an `attribute` that no field is
+  named resolves to the closest field by words or meaning (the reply's first
+  line names the field it used, and a field meaning the opposite is never
+  used), a `query` that no row matches in full matches the rows holding most
+  of its words, and an empty reply lists the closest fields with their card
+  counts and an example value. `rows` also takes `match`: `exact` (the field
+  name or a recorded alias, and no retry of a `query` by words), `similar`
+  (also a field holding its words) or `meaning` (the default: also the closest
+  field by meaning); without the rows index, `similar` and `meaning` match the
+  phrase or every word, as before.
 - **Search documents by meaning.** `POST /v1/knowledge/documents` (behind the
   documents feature) adds the `search` command: passages of the original
   documents ranked by meaning and wording, grouped by document, best first.

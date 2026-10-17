@@ -13415,13 +13415,17 @@ export interface operations {
                     after_source_id?: string;
                     /** @description Keyset cursor for ls, grep and sources: return only rows whose title sorts after this value. Pass the last title of the previous window to walk a full population. Required for any complete enumeration -- one window is never proof that nothing else matches. For sources, pass after_source_id alongside it: titles repeat, and a title-only cursor cannot reach past a run of files sharing one. */
                     after_title?: string;
-                    /** @description rows: Attribute, Relation or kind containing this. */
+                    /** @description rows, facts: each card's value on this date. */
+                    as_of?: string;
+                    /** @description rows: the field by name, alias or meaning; replies say which field. */
                     attribute?: string;
                     /**
                      * @description The command to run. `help` returns the guidance for every command or action, or for one with `topic`.
                      * @enum {string}
                      */
                     command: "ls" | "cat" | "grep" | "sections" | "log" | "blame" | "diff" | "show" | "sources" | "provenance" | "links" | "timeline" | "rows" | "ontology" | "hover" | "references" | "diagnostics" | "completions" | "proposals" | "suggest_parent" | "help";
+                    /** @description rows: cards linked to this page. */
+                    connected_to?: string;
                     /** @description For suggest_parent: the draft body of the page you are about to create. Any [[Page Title]] links in it are the strongest evidence of where the page belongs, so pass the draft whenever you have one. */
                     content?: string;
                     /** @description grep only. Lines of context either side of each hit (default 1, max 10). Raise it for table rows, where the header naming the columns sits above the matching line. */
@@ -13462,6 +13466,11 @@ export interface operations {
                     limit?: number;
                     /** @description cat only. Read an exact line range, `start-end` or a single line, 1-indexed and inclusive -- what grep's `section:line` addresses point at. Prefer `section_id` when the hit sits inside a marked section; use this for a long section, or a page with no section markers, instead of opening the whole page. */
                     lines?: string;
+                    /**
+                     * @description rows: exact = the name or an alias; similar adds words; meaning (default) adds closest meaning.
+                     * @enum {string}
+                     */
+                    match?: "meaning" | "similar" | "exact";
                     /** @description grep only. Snippets kept per page (default 10, max 200). Every match is addressed in the result regardless; this controls how many also carry their text. Raise it to enumerate a term ACROSS pages in one call -- every version of a component, every date a decision moved -- where the alternative is opening each page in turn. For everything on ONE page, reading that page is usually simpler. */
                     matches_per_page?: number;
                     /**
@@ -13469,9 +13478,9 @@ export interface operations {
                      * @enum {string}
                      */
                     mode?: "semantic" | "text" | "regex" | "history";
-                    /** @description rows: rows to skip; continue a NOT ALL ROWS reply with the offset it names. */
+                    /** @description rows: rows to skip (continue a NOT ALL ROWS reply). */
                     offset?: number;
-                    /** @description rows: entity (default), when, or a column name; a column sorts by the number in it, so descending=true puts the largest first. */
+                    /** @description rows: entity (default), when, amount, date, or a column (sorted by the number in it); descending=true puts the largest first. */
                     order_by?: string;
                     /** @description cat only. Return the page's section list (ids, titles, sizes, citation counts) without any prose. Use this to find which section to read or edit. */
                     outline?: boolean;

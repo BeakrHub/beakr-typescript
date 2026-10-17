@@ -35,6 +35,78 @@ export interface DocumentsSearchOptions {
   projectId?: string;
 }
 
+/** The `rows` command's filters (every map card's Facts, Connections or Findings rows). */
+export interface RowsOptions {
+  /** Card type to read. */
+  pageType?: string;
+  /** Card titles containing this. */
+  entity?: string;
+  /** Field name: Facts attribute, Connections relation, Findings kind. */
+  attribute?: string;
+  /** Rows whose text contains this. */
+  query?: string;
+  /** Connections only: rows pointing at this page. */
+  to?: string;
+  /** Only cards linked to this page, in either direction. */
+  connectedTo?: string;
+  /** Facts only: each card's value on this day (YYYY-MM-DD). */
+  asOf?: string;
+  /** When window start. */
+  startDate?: string;
+  /** When window end. */
+  endDate?: string;
+  /** Facts: the current value per attribute. */
+  currentOnly?: boolean;
+  /** Counts and totals per group (entity, entity_type, year or a column) instead of rows. */
+  groupBy?: string;
+  /** Read attribute, to and query as case-insensitive regular expressions. */
+  regex?: boolean;
+  /** `values` (default), `fields` (field names, counts, examples) or `groups`. */
+  view?: "values" | "fields" | "groups";
+  /** Exactly one field, as the field inventory names it. */
+  fieldId?: string;
+  /**
+   * How `attribute` finds a field and `query` matches values: `meaning` (the default),
+   * `similar` (words only) or `exact`.
+   */
+  match?: "exact" | "similar" | "meaning";
+  /** Continue a card scan that stopped at its cap, after this card id. */
+  afterCard?: string;
+  /** Column to sort by (Facts also `amount` or `date`). */
+  orderBy?: string;
+  descending?: boolean;
+  limit?: number;
+  offset?: number;
+  includeEvidence?: boolean;
+  /** A project name or id. */
+  scope?: string;
+}
+
+/** `RowsOptions` keys as the `rows` command names them. */
+const ROWS_ARGUMENTS: Record<Exclude<keyof RowsOptions, "scope">, string> = {
+  pageType: "page_type",
+  entity: "entity",
+  attribute: "attribute",
+  query: "query",
+  to: "to",
+  connectedTo: "connected_to",
+  asOf: "as_of",
+  startDate: "start_date",
+  endDate: "end_date",
+  currentOnly: "current_only",
+  groupBy: "group_by",
+  regex: "regex",
+  view: "view",
+  fieldId: "field_id",
+  match: "match",
+  afterCard: "after_card",
+  orderBy: "order_by",
+  descending: "descending",
+  limit: "limit",
+  offset: "offset",
+  includeEvidence: "include_evidence",
+};
+
 export interface ResearchOptions {
   /** A short cited answer within 15 seconds from one search. */
   quick?: boolean;
@@ -152,6 +224,20 @@ export class Knowledge extends Resource {
       body,
     });
     return checked(result, options.check ?? true);
+  }
+
+  /**
+   * Every map card's `facts`, `connections` or `findings` rows as one table (the
+   * `rows` command), filtered and walked by {@link RowsOptions}.
+   */
+  rows(table: "facts" | "connections" | "findings" = "facts", options: RowsOptions = {}): Promise<KnowledgeResult> {
+    const { scope, ...rest } = options;
+    const args: JsonObject = { table };
+    for (const [key, name] of Object.entries(ROWS_ARGUMENTS)) {
+      const value = rest[key as keyof typeof rest];
+      if (value !== undefined) args[name] = value as JsonObject[string];
+    }
+    return this.command("rows", args, scope ? { scope } : {});
   }
 
   /**

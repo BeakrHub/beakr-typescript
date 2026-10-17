@@ -15,6 +15,7 @@ export {
   type ResearchOptions,
   type DocumentsResult,
   type DocumentsSearchOptions,
+  type RowsOptions,
 } from "./resources/knowledge.js";
 export type {
   ConversationClient,
