@@ -61,8 +61,12 @@ export interface RowsOptions {
   groupBy?: string;
   /** Read attribute, to and query as case-insensitive regular expressions. */
   regex?: boolean;
-  /** `values` (default), `fields` (field names, counts, examples) or `groups`. */
-  view?: "values" | "fields" | "groups";
+  /**
+   * `values` (default), `fields` (field names, counts, examples), `groups`, or
+   * `conflicts` (Facts: pairs of rows on one card giving one field different values
+   * with overlapping or missing When).
+   */
+  view?: "values" | "fields" | "groups" | "conflicts";
   /** Exactly one field, as the field inventory names it. */
   fieldId?: string;
   /**
