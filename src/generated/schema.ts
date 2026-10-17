@@ -10007,12 +10007,26 @@ export interface components {
              */
             content?: string | null;
             /**
+             * Contradicting Citations
+             * @description On a project-map card, per protected section, the citation keys its sources cite as contradicting what the card states. A card's text does not carry a citation's stance. Empty on any other page.
+             */
+            contradicting_citations?: {
+                [key: string]: string[];
+            };
+            /**
              * Created At
              * Format: date-time
              * @description When it was created (ISO 8601, UTC).
              * @example 2026-10-01T14:32:08Z
              */
             created_at: string;
+            /**
+             * Disputed Rows
+             * @description On a project-map card, per protected section, the row_ids of the rows the contradicting citations mark as disputing (the ids the table and proposal reads use). Empty on any other page.
+             */
+            disputed_rows?: {
+                [key: string]: string[];
+            };
             /**
              * Group Id
              * @description Id of the group.
