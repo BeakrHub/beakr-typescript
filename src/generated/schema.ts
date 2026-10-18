@@ -13642,7 +13642,7 @@ export interface operations {
                     direction?: "in" | "out";
                     /** @description End date YYYY-MM-DD (for timeline). */
                     end_date?: string;
-                    /** @description rows: card titles containing this. */
+                    /** @description rows: card title(s), as a|b|c. */
                     entity?: string;
                     /** @description rows: one field from view=fields, instead of attribute. */
                     field_id?: string;
