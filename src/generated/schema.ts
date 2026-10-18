@@ -5768,6 +5768,39 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * KnowledgeQueryMissingField
+         * @description Cards of the queried types with no value for a field the query filters on.
+         */
+        KnowledgeQueryMissingField: {
+            /**
+             * Cards
+             * @description Cards of those types you can read in the query's scope.
+             */
+            cards: number;
+            /**
+             * Field
+             * @description The field as the query named it.
+             */
+            field: string;
+            /**
+             * Missing
+             * @description Cards of those types with no value for the field.
+             */
+            missing: number;
+            /**
+             * Page Types
+             * @description The card types the query was held to.
+             */
+            page_types: string[];
+            /**
+             * Titles
+             * @description Up to 10 of the missing cards' titles, sorted; open them to check.
+             */
+            titles: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * KnowledgeQueryResult
          * @description ``query`` only: the spec that ran and the window as data, beside the text.
          */
@@ -5796,6 +5829,12 @@ export interface components {
              * @default null
              */
             form?: string | null;
+            /**
+             * Missing
+             * @description For a field condition held to card types (`entity_type`): the cards of those types that hold no value for the field, which no condition on it can list. The text says the same in a line `K of N <type> cards have no <field>: ...`.
+             * @default []
+             */
+            missing?: components["schemas"]["KnowledgeQueryMissingField"][];
             /**
              * Next Cursor
              * @description Send with the same sql or spec as `cursor` for the next window.
