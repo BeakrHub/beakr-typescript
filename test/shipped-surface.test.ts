@@ -33,8 +33,6 @@ const NAMED_BY_CONTRACT_PROSE = [
   "/v1/artifacts/list",
   "/v1/assistant/threads/mine/{id}",
   "/v1/conversations/settings",
-  // ProposalFiledBy.run: "... which `POST /v1/knowledge/runs/{run}/undo` takes back."
-  "/v1/knowledge/runs/{run}/undo",
 ];
 
 /**
