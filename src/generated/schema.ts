@@ -8394,7 +8394,7 @@ export interface components {
             credential?: string | null;
             /**
              * Run
-             * @description The run label the agent declared, which `POST /v1/knowledge/runs/{run}/undo` takes back.
+             * @description The run label the agent declared; writes that share it can be undone together.
              * @default null
              */
             run?: string | null;
