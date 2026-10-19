@@ -22,6 +22,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/artifacts/download-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get a download link by reference
+         * @description A short-lived signed URL for a file's original bytes, by any reference a read hands out.
+         *
+         *     The reference resolves exactly as ``POST /v1/artifacts/read`` resolves it, so a
+         *     source record's ``source_ref`` from a Knowledge read, research or a documents
+         *     search downloads its file in one call. A reference that reaches no readable
+         *     file (none, another organization's, outside a project-restricted credential's
+         *     projects) is the same ``404``.
+         *
+         *     The URL signs the version row the caller's lookup returned; its storage key
+         *     was checked against the file's organization where it was written, as
+         *     ``GET /v1/artifacts/versions/{version_id}/download-url`` relies on.
+         */
+        post: operations["download_url_route_v1_artifacts_download_url_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/artifacts/read": {
         parameters: {
             query?: never;
@@ -829,16 +859,20 @@ export interface paths {
         put?: never;
         /**
          * Search and read original documents
-         * @description Search and read the original documents' text: the `documents` tool for API callers. Search and read the original documents' text: the ``documents`` tool for API callers.
+         * @description Search and read the original documents: the `documents` tool for API callers. Search and read the original documents: the ``documents`` tool for API callers.
          *
          *     Behind the ``documents_api`` flag. Same commands and arguments as Beakr's own
          *     agents use (``beakr/engines/tools/documents``): ``grep`` (ripgrep options across
-         *     every document in scope), ``read`` (line-numbered text of one document) and ``ls``.
+         *     every document in scope), ``read`` (line-numbered text of one document), ``ls``,
+         *     and ``search`` (passages ranked by meaning, grouped by document; the response
+         *     adds ``results``, one public source record per document with its passages).
          *
          *     Body:
-         *         command: grep | read | ls (required).
+         *         command: grep | read | ls | search (required).
          *         arguments: that command's options, e.g. {"pattern": "comfort letter", "output_mode": "files_with_matches"}.
-         *         project_id: Optional project scope (UUID).
+         *         project_id: Optional scope: a project id or name (``project`` is accepted too).
+         *             Without one, a command covers everything the caller can read; a
+         *             project-restricted credential, all of its projects.
          */
         post: operations["documents_v1_knowledge_documents_post"];
         delete?: never;
@@ -1691,6 +1725,48 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/knowledge-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a project's Knowledge profile
+         * @description The project's Knowledge profile: what Knowledge should understand about the project.
+         *
+         *     A 404 with `knowledge_profile_not_found` when the project has none yet; a
+         *     project you cannot read is the shared project 404. The project's members
+         *     and owners read it; a viewer is refused.
+         */
+        get: operations["get_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_get"];
+        /**
+         * Set a project's Knowledge profile
+         * @description Set the project's whole Knowledge profile, creating it if it has none.
+         *
+         *     Fields left out are set to their empty value, so a repeat of the same body
+         *     leaves the same profile (201 when it was created, 200 when it replaced
+         *     one). Knowledge reads the profile when it next compiles files: it steers
+         *     which pages are built and what they record. Only the project's owners may
+         *     set it.
+         */
+        put: operations["put_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a project's Knowledge profile
+         * @description Change some fields of the project's Knowledge profile; fields left out are kept.
+         *
+         *     A list sent replaces that list. A 404 with `knowledge_profile_not_found`
+         *     when the project has no profile yet (create it with PUT). Only the
+         *     project's owners may change it.
+         */
+        patch: operations["patch_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_patch"];
         trace?: never;
     };
     "/v1/projects/{project_id}/knowledge-summary": {
@@ -4010,6 +4086,56 @@ export interface components {
              */
             token?: string | null;
         };
+        /** DocumentsCoverage */
+        DocumentsCoverage: {
+            /**
+             * Complete
+             * @description Whether this answer covers every match in scope; when false, see `reason`.
+             */
+            complete: boolean;
+            /**
+             * Continue With
+             * @description The `arguments` to change in the same call to continue it: `offset` while pages remain, then `after_document` with `offset` 0 to resume a stopped scan.
+             * @default null
+             */
+            continue_with?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Documents Checked
+             * @description Of those, the documents this call checked (fewer when it stopped early).
+             */
+            documents_checked: number;
+            /**
+             * Documents Considered
+             * @description Documents in scope after the filters.
+             */
+            documents_considered: number;
+            /**
+             * Next Offset
+             * @description The offset of the next page, if any.
+             * @default null
+             */
+            next_offset?: number | null;
+            /**
+             * Reason
+             * @description Why it is not complete: `page` (more entries than this page), `time_budget` or `scan_budget` (the scan stopped early; counts cover what it checked), or `catalog_cap` (the scope held more documents than one call considers).
+             * @default null
+             */
+            reason?: string | null;
+            /**
+             * Resume After Document
+             * @description `grep`: the last document checked, when the scan stopped early.
+             * @default null
+             */
+            resume_after_document?: string | null;
+            /**
+             * Total
+             * @description Entries found: matching lines (content) or documents.
+             * @default null
+             */
+            total?: number | null;
+        };
         /** DocumentsResult */
         DocumentsResult: {
             /**
@@ -4018,11 +4144,34 @@ export interface components {
              */
             content: string;
             /**
+             * @description `grep` and `search`: whether the answer is complete, and the next call.
+             * @default null
+             */
+            coverage?: components["schemas"]["DocumentsCoverage"] | null;
+            /**
+             * Error Code
+             * @description When `is_error`: `invalid_arguments`, `invalid_pattern`, `document_not_found`, `timeout` or `scope_unavailable`.
+             * @default null
+             */
+            error_code?: string | null;
+            /**
              * Is Error
              * @description Whether it is error.
              * @default false
              */
             is_error?: boolean;
+            /**
+             * Next
+             * @description `search` only: what the response budget left out, and how to get it.
+             * @default null
+             */
+            next?: string[] | null;
+            /**
+             * Results
+             * @description `search` only: one public source record per matching document, best first, with `location.file_id` and `location.version_id`, its `match` and `score`, and its best `passages`. Pass a record's or passage's `source_ref` to `POST /v1/artifacts/download-url` for the original file.
+             * @default null
+             */
+            results?: components["schemas"]["DocumentsSearchResult"][] | null;
             /**
              * Sources
              * @description The sources it cites or draws on.
@@ -4030,6 +4179,128 @@ export interface components {
             sources?: {
                 [key: string]: components["schemas"]["ResearchSource"];
             };
+        };
+        /**
+         * DocumentsSearchPassage
+         * @description One matching passage of a document a ``search`` found.
+         */
+        DocumentsSearchPassage: {
+            /**
+             * Citation Key
+             * @description Key to cite it with.
+             * @default null
+             */
+            citation_key?: string | null;
+            /**
+             * Excerpt
+             * @description A brief excerpt of the passage, centred on the query's words.
+             * @default null
+             */
+            excerpt?: string | null;
+            /**
+             * Line End
+             * @description Last indexed line of the passage.
+             * @default null
+             */
+            line_end?: number | null;
+            /**
+             * Line Start
+             * @description First indexed line of the passage, as `documents read` numbers lines (`start_line`).
+             * @default null
+             */
+            line_start?: number | null;
+            /**
+             * Match
+             * @description `strong`, `moderate` or `weak`: how close the passage's meaning is to the query, on the embedding model's calibrated scale.
+             * @default null
+             */
+            match?: string | null;
+            /**
+             * Score
+             * @description The ranking score (meaning and word overlap); higher is better.
+             * @default null
+             */
+            score?: number | null;
+            /**
+             * Section
+             * @description The heading path the passage sits under.
+             * @default null
+             */
+            section?: string | null;
+            /**
+             * Source Ref
+             * @description Reusable reference to this passage: a later Knowledge write cites it, `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.
+             * @default null
+             */
+            source_ref?: string | null;
+            /**
+             * Unit Locator
+             * @description Where the passage sits: `p. 7`, ...
+             * @default null
+             */
+            unit_locator?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * DocumentsSearchResult
+         * @description One document a ``search`` found: its public source record and its best passages.
+         */
+        DocumentsSearchResult: {
+            /**
+             * Filename
+             * @description The document's file name.
+             * @default null
+             */
+            filename?: string | null;
+            /**
+             * @description Where the document lives: `display_path`, `file_id` and `version_id`.
+             * @default null
+             */
+            location?: components["schemas"]["SourceLocation"] | null;
+            /**
+             * Match
+             * @description Its best passage's match label.
+             * @default null
+             */
+            match?: string | null;
+            /**
+             * Name
+             * @description The document's title in Beakr.
+             * @default null
+             */
+            name?: string | null;
+            /**
+             * Passages
+             * @description Its best matching passages, best first.
+             */
+            passages?: components["schemas"]["DocumentsSearchPassage"][];
+            /**
+             * Provider
+             * @description `upload` for a file Beakr holds, else the connected service.
+             * @default null
+             */
+            provider?: string | null;
+            /**
+             * Score
+             * @description Its best passage's score.
+             * @default null
+             */
+            score?: number | null;
+            /**
+             * Source Kind
+             * @description What kind of source the document is.
+             * @default null
+             */
+            source_kind?: string | null;
+            /**
+             * Source Ref
+             * @description Reusable reference to the document: a later Knowledge write cites it, `POST /v1/artifacts/read` opens it, `POST /v1/artifacts/download-url` downloads it.
+             * @default null
+             */
+            source_ref?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * DownloadUrl
@@ -4534,6 +4805,51 @@ export interface components {
              * @description Path where it lives.
              */
             path: string;
+        };
+        /**
+         * FileDownloadOut
+         * @description A short-lived signed URL for one file version's original bytes.
+         */
+        FileDownloadOut: {
+            /**
+             * Expires In
+             * @description Seconds the URL stays valid
+             */
+            expires_in: number;
+            /** @description The file and the version the URL downloads */
+            file: components["schemas"]["FileReadFileOut"];
+            /**
+             * Filename
+             * @description The file name the download is saved as
+             */
+            filename: string;
+            /**
+             * Mime Type
+             * @description The stored file's content type
+             */
+            mime_type?: string | null;
+            /**
+             * Url
+             * @description Signed URL; fetch it without Beakr credentials before it expires
+             */
+            url: string;
+        };
+        /**
+         * FileDownloadRequest
+         * @description Sign a download of one file's original bytes, named by any reference a read hands out.
+         */
+        FileDownloadRequest: {
+            /**
+             * Inline
+             * @description Ask a browser to display the file instead of saving it.
+             * @default false
+             */
+            inline?: boolean;
+            /**
+             * Reference
+             * @description The file to download, in any form POST /v1/artifacts/read takes: a source record's source_ref (beakr-source:v1:...), its id or a version id, a citation token, or its path. A ` › <unit>` suffix is accepted and ignored. A reference that names a version downloads that version; any other, the current version. Knowledge pages, connected items and canvases have no stored file and are refused (knowledge_page, not_a_file, no_original_file).
+             */
+            reference: string;
         };
         /**
          * FileReadFileOut
@@ -5492,6 +5808,197 @@ export interface components {
              * @example null
              */
             next_cursor?: string | null;
+        };
+        /**
+         * KnowledgeProfileOrganization
+         * @description An organization Knowledge should recognize and follow in this project.
+         */
+        KnowledgeProfileOrganization: {
+            /**
+             * Name
+             * @description The organization's name.
+             */
+            name: string;
+            /**
+             * Relevance
+             * @description Why it matters to this project, in a sentence.
+             * @default
+             */
+            relevance?: string;
+            /**
+             * Type
+             * @description What kind of organization it is, such as `supplier` or `regulator`.
+             * @default
+             */
+            type?: string;
+        };
+        /**
+         * KnowledgeProfilePerson
+         * @description A person Knowledge should recognize and follow in this project.
+         */
+        KnowledgeProfilePerson: {
+            /**
+             * Name
+             * @description The person's name.
+             */
+            name: string;
+            /**
+             * Relevance
+             * @description Why they matter to this project, in a sentence.
+             * @default
+             */
+            relevance?: string;
+            /**
+             * Role
+             * @description Their role, such as `QA lead`.
+             * @default
+             */
+            role?: string;
+        };
+        /**
+         * KnowledgeProfileTopic
+         * @description A topic or concept Knowledge should recognize and follow in this project.
+         */
+        KnowledgeProfileTopic: {
+            /**
+             * Name
+             * @description The topic's name.
+             */
+            name: string;
+            /**
+             * Relevance
+             * @description Why it matters to this project, in a sentence.
+             * @default
+             */
+            relevance?: string;
+        };
+        /**
+         * KnowledgeQueryMissingField
+         * @description Cards of the queried types with no value for a field the query filters on.
+         */
+        KnowledgeQueryMissingField: {
+            /**
+             * Cards
+             * @description Cards of those types you can read in the query's scope.
+             */
+            cards: number;
+            /**
+             * Field
+             * @description The field as the query named it.
+             */
+            field: string;
+            /**
+             * Missing
+             * @description Cards of those types with no value for the field.
+             */
+            missing: number;
+            /**
+             * Page Types
+             * @description The card types the query was held to.
+             */
+            page_types: string[];
+            /**
+             * Titles
+             * @description Up to 10 of the missing cards' titles, sorted; open them to check.
+             */
+            titles: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * KnowledgeQueryResult
+         * @description ``query`` only: the spec that ran and the window as data, beside the text.
+         */
+        KnowledgeQueryResult: {
+            /**
+             * Applied
+             * @description What the query defaulted, capped or applied that was not written: a default LIMIT or ORDER BY, a capped LIMIT, AS OF per card, an added COUNT, a sum split by unit.
+             * @default []
+             */
+            applied?: string[];
+            /**
+             * Columns
+             * @description The window's column names, in order.
+             * @default []
+             */
+            columns?: string[];
+            /**
+             * Elapsed Ms
+             * @description Milliseconds the query took to run.
+             * @default null
+             */
+            elapsed_ms?: number | null;
+            /**
+             * Form
+             * @description How the query was sent: `sql` (compiled to the spec) or `spec`.
+             * @default null
+             */
+            form?: string | null;
+            /**
+             * Missing
+             * @description For a field condition held to card types (`entity_type`): the cards of those types that hold no value for the field, which no condition on it can list. The text says the same in a line `K of N <type> cards have no <field>: ...`.
+             * @default []
+             */
+            missing?: components["schemas"]["KnowledgeQueryMissingField"][];
+            /**
+             * Next Cursor
+             * @description Send with the same sql or spec as `cursor` for the next window.
+             * @default null
+             * @example null
+             */
+            next_cursor?: string | null;
+            /**
+             * Notices
+             * @description Warnings that lead the text, e.g. a field asked by a name few cards hold while a near name is on many more.
+             * @default []
+             */
+            notices?: string[];
+            /**
+             * Offset
+             * @description Rows before this window.
+             * @default null
+             */
+            offset?: number | null;
+            /**
+             * Ran
+             * @description What ran, in words (the text's `Ran:`).
+             * @default null
+             */
+            ran?: string | null;
+            /**
+             * Resolved
+             * @description How each field, card-type and title condition resolved: the stored name, how it was found (exact, alias, words, meaning) and the exact name's card count.
+             * @default []
+             */
+            resolved?: string[];
+            /**
+             * Rows
+             * @description The window's rows: dates as YYYY-MM-DD, long text cut at 2,000 characters.
+             * @default []
+             */
+            rows?: unknown[][];
+            /**
+             * Spec
+             * @description The JSON spec that ran (for `sql`, what the SELECT compiled to; `AS OF CURRENT_DATE` appears as `"as_of": "today"`). Present on a refusal too once the query compiled.
+             * @default null
+             */
+            spec?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Total
+             * @description Rows (or groups) matching in all.
+             * @default null
+             */
+            total?: number | null;
+            /**
+             * Unit
+             * @description What one result row is: `row`, `group` or `field` (a ranking).
+             * @default null
+             */
+            unit?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * KnowledgeRetryFileResult
@@ -7177,6 +7684,199 @@ export interface components {
             running?: number;
         };
         /**
+         * ProjectKnowledgeProfile
+         * @description A project's Knowledge profile.
+         */
+        ProjectKnowledgeProfile: {
+            /**
+             * Core Organizations
+             * @description Organizations Knowledge follows.
+             */
+            core_organizations: components["schemas"]["KnowledgeProfileOrganization"][];
+            /**
+             * Core People
+             * @description People Knowledge follows.
+             */
+            core_people: components["schemas"]["KnowledgeProfilePerson"][];
+            /**
+             * Core Topics
+             * @description Topics Knowledge follows.
+             */
+            core_topics: components["schemas"]["KnowledgeProfileTopic"][];
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the profile was created.
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at: string;
+            /**
+             * Description
+             * @description What the project is about and what it is for.
+             */
+            description: string;
+            /**
+             * Entity Types
+             * @description The kinds of things Knowledge builds a page for.
+             */
+            entity_types: string[];
+            /**
+             * Extraction Guidance
+             * @description How to read this project's documents.
+             */
+            extraction_guidance: string;
+            /**
+             * Focus Areas
+             * @description Areas Knowledge pays most attention to.
+             */
+            focus_areas: string[];
+            /**
+             * Goals
+             * @description What the project wants Knowledge to help answer or track.
+             */
+            goals: string[];
+            /**
+             * Industry
+             * @description The field the project works in.
+             */
+            industry: string;
+            /**
+             * Name
+             * @description A short title for the profile.
+             */
+            name: string;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description Id of the project the profile belongs to.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             * @description When the profile last changed.
+             * @example 2026-10-03T09:15:42Z
+             */
+            updated_at: string;
+        };
+        /**
+         * ProjectKnowledgeProfileIn
+         * @description A whole Knowledge profile. A field left out is set to its empty value.
+         */
+        ProjectKnowledgeProfileIn: {
+            /**
+             * Core Organizations
+             * @description Organizations to recognize and follow.
+             */
+            core_organizations?: components["schemas"]["KnowledgeProfileOrganization"][];
+            /**
+             * Core People
+             * @description People to recognize and follow.
+             */
+            core_people?: components["schemas"]["KnowledgeProfilePerson"][];
+            /**
+             * Core Topics
+             * @description Topics to recognize and follow.
+             */
+            core_topics?: components["schemas"]["KnowledgeProfileTopic"][];
+            /**
+             * Description
+             * @description What the project is about and what it is for, in a few sentences.
+             * @default
+             */
+            description?: string;
+            /**
+             * Entity Types
+             * @description The kinds of things Knowledge should build a page for, such as `batch`, `deviation` or `supplier`.
+             */
+            entity_types?: string[];
+            /**
+             * Extraction Guidance
+             * @description How to read this project's documents: what to look for and what to skip.
+             * @default
+             */
+            extraction_guidance?: string;
+            /**
+             * Focus Areas
+             * @description Areas Knowledge should pay most attention to.
+             */
+            focus_areas?: string[];
+            /**
+             * Goals
+             * @description What the project wants Knowledge to help answer or track.
+             */
+            goals?: string[];
+            /**
+             * Industry
+             * @description The field the project works in.
+             * @default
+             */
+            industry?: string;
+            /**
+             * Name
+             * @description A short title for the profile.
+             * @default
+             */
+            name?: string;
+        };
+        /**
+         * ProjectKnowledgeProfilePatch
+         * @description Fields to change on the Knowledge profile. A field left out is kept as it is.
+         */
+        ProjectKnowledgeProfilePatch: {
+            /**
+             * Core Organizations
+             * @description Organizations to recognize and follow. Replaces the list.
+             */
+            core_organizations?: components["schemas"]["KnowledgeProfileOrganization"][] | null;
+            /**
+             * Core People
+             * @description People to recognize and follow. Replaces the list.
+             */
+            core_people?: components["schemas"]["KnowledgeProfilePerson"][] | null;
+            /**
+             * Core Topics
+             * @description Topics to recognize and follow. Replaces the list.
+             */
+            core_topics?: components["schemas"]["KnowledgeProfileTopic"][] | null;
+            /**
+             * Description
+             * @description What the project is about and what it is for, in a few sentences.
+             */
+            description?: string | null;
+            /**
+             * Entity Types
+             * @description The kinds of things Knowledge should build a page for. Replaces the list.
+             */
+            entity_types?: string[] | null;
+            /**
+             * Extraction Guidance
+             * @description How to read this project's documents: what to look for and what to skip.
+             */
+            extraction_guidance?: string | null;
+            /**
+             * Focus Areas
+             * @description Areas Knowledge should pay most attention to. Replaces the list.
+             */
+            focus_areas?: string[] | null;
+            /**
+             * Goals
+             * @description What the project wants Knowledge to help answer or track. Replaces the list.
+             */
+            goals?: string[] | null;
+            /**
+             * Industry
+             * @description The field the project works in.
+             */
+            industry?: string | null;
+            /**
+             * Name
+             * @description A short title for the profile.
+             */
+            name?: string | null;
+        };
+        /**
          * ProjectKnowledgeStatusResponse
          * @description A project's Knowledge status: coverage counts, readiness and the files that failed.
          *
@@ -8637,6 +9337,13 @@ export interface components {
              * @default null
              */
             url?: string | null;
+            /**
+             * Version Id
+             * @description On a documents `search` result: the version of the file the passage was read from, in the Files API; `GET /v1/artifacts/versions/{version_id}/download-url` signs a download of exactly that version. From any file record, pass its `source_ref` to `POST /v1/artifacts/download-url` to download in one step. Knowledge pages and connected items have no version and no download.
+             * @default null
+             * @example c1a7e5d2-4b9f-4f38-a612-7d0e9b3c5f81
+             */
+            version_id?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -9740,6 +10447,11 @@ export interface components {
             /** @description How it turned out. */
             outcome: components["schemas"]["WikiToolOutcome"];
             /**
+             * @description `query` only: the spec that ran and the window as columns and rows.
+             * @default null
+             */
+            query?: components["schemas"]["KnowledgeQueryResult"] | null;
+            /**
              * Sources
              * @description The sources it cites or draws on.
              * @default []
@@ -9797,12 +10509,26 @@ export interface components {
              */
             content?: string | null;
             /**
+             * Contradicting Citations
+             * @description On a project-map card, per protected section, the citation keys its sources cite as contradicting what the card states. A card's text does not carry a citation's stance. Empty on any other page.
+             */
+            contradicting_citations?: {
+                [key: string]: string[];
+            };
+            /**
              * Created At
              * Format: date-time
              * @description When it was created (ISO 8601, UTC).
              * @example 2026-10-01T14:32:08Z
              */
             created_at: string;
+            /**
+             * Disputed Rows
+             * @description On a project-map card, per protected section, the row_ids of the rows the contradicting citations mark as disputing (the ids the table and proposal reads use). Empty on any other page.
+             */
+            disputed_rows?: {
+                [key: string]: string[];
+            };
             /**
              * Group Id
              * @description Id of the group.
@@ -9848,6 +10574,11 @@ export interface components {
              * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
              */
             project_id?: string | null;
+            /**
+             * Protected Sections
+             * @description On a project-map card, the section ids of its Facts, Connections and Findings, whose rows change only through row operations (add_fact, add_connection, add_finding, edit_rows). Empty on any other page.
+             */
+            protected_sections?: string[];
             /**
              * Revision
              * @description Revision number.
@@ -10176,6 +10907,17 @@ export interface components {
             section?: string | null;
         };
         /**
+         * WikiProposalAccept
+         * @description Optional accept body: bind the accept to the content that was reviewed.
+         */
+        WikiProposalAccept: {
+            /**
+             * Reviewed Hash
+             * @description The proposal's content_hash exactly as the proposal read returned it (echo it; do not compute it). When the stored proposal no longer hashes to it, nothing is applied (409 proposal_changed).
+             */
+            reviewed_hash?: string | null;
+        };
+        /**
          * WikiProposalBatchCopyItem
          * @description One page to copy as part of a proposal batch.
          */
@@ -10318,6 +11060,12 @@ export interface components {
         /** WikiProposalOut */
         WikiProposalOut: {
             /**
+             * Content Hash
+             * @description SHA-256 of this proposal as stored (its id, type and whole payload). Echo it back as reviewed_hash when accepting, so a proposal that changed after it was read is not applied.
+             * @default null
+             */
+            content_hash?: string | null;
+            /**
              * Created At
              * Format: date-time
              * @description When it was created (ISO 8601, UTC).
@@ -10381,6 +11129,19 @@ export interface components {
              * @default null
              */
             summary?: string | null;
+            /**
+             * Table Changes
+             * @description How this proposal changes map cards' Facts, Connections and Findings, read as rows: per table its added, removed and changed rows (changed_cells names what changed), each with its citations, and the reasons given for the edit.
+             */
+            table_changes?: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Table Changes Complete
+             * @description False when part of this proposal's change to a map card's Facts, Connections or Findings is not expressed by table_changes (text that is not a row, or a section not in canonical form): review the markdown diff then.
+             * @default true
+             */
+            table_changes_complete?: boolean;
         } & {
             [key: string]: unknown;
         };
@@ -10806,6 +11567,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArtifactListResponse"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    download_url_route_v1_artifacts_download_url_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FileDownloadRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileDownloadOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
@@ -12969,19 +13781,16 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    /** @description Options for the selected documents command: pattern, document, start_line/end_line, project, path, glob, head_limit, offset, after_document. */
+                    /** @description Options for the selected documents command. grep: pattern, output_mode, group_by ("folder") and folder_depth, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, glob, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further. */
                     arguments?: {
                         [key: string]: unknown;
                     };
                     /**
-                     * @description Search indexed text, read a document window, or list files.
+                     * @description grep: literal/regex matches across indexed text; read: a document's lines; ls: the file tree; search: passages ranked by meaning, grouped by document (adds `results`).
                      * @enum {string}
                      */
-                    command: "grep" | "read" | "ls";
-                    /**
-                     * Format: uuid
-                     * @description Limit to this project. Required for project-restricted credentials.
-                     */
+                    command: "grep" | "read" | "ls" | "search";
+                    /** @description Limit to this project: its id or name (a name may match several projects you can read). Without it a command covers everything you can read; a project-restricted credential, all of its projects. */
                     project_id?: string;
                 } & {
                     [key: string]: unknown;
@@ -13108,20 +13917,24 @@ export interface operations {
                     after_source_id?: string;
                     /** @description Keyset cursor for ls, grep and sources: return only rows whose title sorts after this value. Pass the last title of the previous window to walk a full population. Required for any complete enumeration -- one window is never proof that nothing else matches. For sources, pass after_source_id alongside it: titles repeat, and a title-only cursor cannot reach past a run of files sharing one. */
                     after_title?: string;
-                    /** @description rows: Attribute, Relation or kind containing this. */
+                    /** @description rows, facts: each card's value on this date. */
+                    as_of?: string;
+                    /** @description rows: the field by name, alias or meaning; replies say which field. */
                     attribute?: string;
                     /**
                      * @description The command to run. `help` returns the guidance for every command or action, or for one with `topic`.
                      * @enum {string}
                      */
-                    command: "ls" | "cat" | "grep" | "sections" | "log" | "blame" | "diff" | "show" | "sources" | "provenance" | "links" | "timeline" | "rows" | "ontology" | "hover" | "references" | "diagnostics" | "completions" | "proposals" | "suggest_parent" | "help";
+                    command: "ls" | "cat" | "grep" | "sections" | "log" | "blame" | "diff" | "show" | "sources" | "provenance" | "links" | "timeline" | "rows" | "ontology" | "hover" | "references" | "diagnostics" | "completions" | "proposals" | "suggest_parent" | "help" | "query";
+                    /** @description rows: cards linked to this page. */
+                    connected_to?: string;
                     /** @description For suggest_parent: the draft body of the page you are about to create. Any [[Page Title]] links in it are the strongest evidence of where the page belongs, so pass the draft whenever you have one. */
                     content?: string;
                     /** @description grep only. Lines of context either side of each hit (default 1, max 10). Raise it for table rows, where the header naming the columns sits above the matching line. */
                     context_lines?: number;
                     /** @description rows, facts: the latest When per entity and Attribute. */
                     current_only?: boolean;
-                    /** @description timeline without timeline_query: next_cursor from the previous result; keep the same filters. */
+                    /** @description timeline without timeline_query: next_cursor from the previous result; keep the same filters. query: the cursor a reply gives, sent with the same sql or spec. */
                     cursor?: string;
                     /** @description rows: reverse the order. */
                     descending?: boolean;
@@ -13137,7 +13950,7 @@ export interface operations {
                     direction?: "in" | "out";
                     /** @description End date YYYY-MM-DD (for timeline). */
                     end_date?: string;
-                    /** @description rows: card titles containing this. */
+                    /** @description rows: card title(s), as a|b|c. */
                     entity?: string;
                     /** @description rows: one field from view=fields, instead of attribute. */
                     field_id?: string;
@@ -13155,6 +13968,11 @@ export interface operations {
                     limit?: number;
                     /** @description cat only. Read an exact line range, `start-end` or a single line, 1-indexed and inclusive -- what grep's `section:line` addresses point at. Prefer `section_id` when the hit sits inside a marked section; use this for a long section, or a page with no section markers, instead of opening the whole page. */
                     lines?: string;
+                    /**
+                     * @description rows: exact = the name or an alias; similar adds words; meaning (default) adds closest meaning.
+                     * @enum {string}
+                     */
+                    match?: "meaning" | "similar" | "exact";
                     /** @description grep only. Snippets kept per page (default 10, max 200). Every match is addressed in the result regardless; this controls how many also carry their text. Raise it to enumerate a term ACROSS pages in one call -- every version of a component, every date a decision moved -- where the alternative is opening each page in turn. For everything on ONE page, reading that page is usually simpler. */
                     matches_per_page?: number;
                     /**
@@ -13162,9 +13980,9 @@ export interface operations {
                      * @enum {string}
                      */
                     mode?: "semantic" | "text" | "regex" | "history";
-                    /** @description rows: rows to skip; continue a NOT ALL ROWS reply with the offset it names. */
+                    /** @description rows: rows to skip (continue a NOT ALL ROWS reply). */
                     offset?: number;
-                    /** @description rows: entity (default), when, or a column name; a column sorts by the number in it, so descending=true puts the largest first. */
+                    /** @description rows: entity (default), when, amount, date, or a column (sorted by the number in it); descending=true puts the largest first. */
                     order_by?: string;
                     /** @description cat only. Return the page's section list (ids, titles, sizes, citation counts) without any prose. Use this to find which section to read or edit. */
                     outline?: boolean;
@@ -13199,6 +14017,12 @@ export interface operations {
                     source_offset?: number;
                     /** @description provenance: how many citing sources to show per section (default 5, max 50). Contradicting and qualifying sources are listed first, so a dispute is never the entry that falls off the end. */
                     sources_per_section?: number;
+                    /** @description query (where enabled for the organization): the same query as a JSON spec of filters, up to two joins along card relationships, groups and aggregates over every card's rows; see the command's guide for the keys. */
+                    spec?: {
+                        [key: string]: unknown;
+                    };
+                    /** @description query (where enabled for the organization): one SELECT over every card's rows, parsed and compiled into a spec; the text is never run as SQL. The reply's `query` object holds the spec it compiled to. Send sql or spec, not both; `topic: query` on `help` gives the grammar. one SELECT over every card's rows, parsed into a query (never run as SQL). FROM facts|connections|findings [AS OF 'YYYY-MM-DD'|CURRENT_DATE]; JOIN <table> b ON SAME_CARD(a)|TARGET_CARD(a) (up to 2); WHERE with AND/OR/NOT on entity, entity_type, field (= exact name, LIKE words, ~ meaning), value (=, <>, IN, CONTAINS, >, >=, <, <=, BETWEEN on numbers and dates), when, to, connected_to; GROUP BY field|value|entity|entity_type; COUNT(*), COUNT(DISTINCT entity), MIN|MAX|SUM|AVG(value_number|value_amount|value_date); ORDER BY; LIMIT (50, max 200). Example: SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER BY cards DESC. help: query has the grammar. */
+                    sql?: string;
                     /** @description Start date YYYY-MM-DD (for timeline). */
                     start_date?: string;
                     /**
@@ -13220,10 +14044,10 @@ export interface operations {
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
                     /**
-                     * @description rows: values (default), fields (field names, counts, examples) or groups (one page_type's likely synonym names).
+                     * @description rows: values (default), census (entity and value only, 300 rows), fields (field names, counts, examples), groups (one page_type's likely synonym names) or conflicts (facts: one card's different values for one field at one time, both sides cited).
                      * @enum {string}
                      */
-                    view?: "values" | "fields" | "groups";
+                    view?: "values" | "census" | "fields" | "groups" | "conflicts";
                 } & {
                     [key: string]: unknown;
                 };
@@ -13718,7 +14542,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["WikiProposalAccept"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -13965,7 +14793,7 @@ export interface operations {
                     }[];
                     /** @description THE ENTIRE NEW BODY of the section (for edit_section). A section runs from its <!-- sec:ID --> marker to the NEXT marker, so it includes every ## and ### heading under it. Whatever you send REPLACES ALL OF IT: subsections you do not retype are DELETED, not merged, and their citations and dates go with them. Read the section first and send back everything you are keeping. To split an over-long section, create the new sections FIRST (a new section_id plus section_title, and after=<this section id>) and move the prose into them, THEN shrink this one. Include all inline citation tokens; the <!-- sec:ID --> marker is prepended automatically if omitted. The section's OWN heading is not part of the body -- it is kept as it is, or set with section_title -- so you do not need to retype it. A leading heading that restates the title or is no deeper than the section's own heading is read as its title; a deeper heading remains a subsection in the body. */
                     new_section_body?: string;
-                    /** @description edit_rows: the rows to change, as the card shows them now: {attribute, value} or {relation, to}, or the row copied from cat. */
+                    /** @description edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so. */
                     old_rows?: (Record<string, never> | string)[];
                     /** @description sort_table: columns first to last, e.g. 'attribute, when desc'. */
                     order_by?: string;
@@ -14090,10 +14918,10 @@ export interface operations {
                     /** @description add_finding: date or opening words of the finding it replaces. */
                     supersedes?: string;
                     /**
-                     * @description sort_table / edit_rows: which table.
+                     * @description sort_table (facts | connections) / edit_rows: which table.
                      * @enum {string}
                      */
-                    table?: "facts" | "connections";
+                    table?: "facts" | "connections" | "findings";
                     /** @description add_finding: the finding in one or two sentences. */
                     text?: string;
                     /** @description Page title (for new) or new title (for edit rename, mv). */
@@ -16191,6 +17019,170 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PendingMemberInvitationOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectKnowledgeProfile"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    put_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectKnowledgeProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectKnowledgeProfile"];
+                };
+            };
+            /** @description The project had no profile; this one was created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectKnowledgeProfile"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    patch_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectKnowledgeProfilePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectKnowledgeProfile"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

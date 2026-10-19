@@ -13,6 +13,9 @@ export {
   resultText,
   type KnowledgeResult,
   type ResearchOptions,
+  type DocumentsResult,
+  type DocumentsSearchOptions,
+  type RowsOptions,
 } from "./resources/knowledge.js";
 export type {
   ConversationClient,
@@ -78,6 +81,9 @@ export type {
   KnowledgeFailedFile,
   KnowledgeRetryResult,
   ProjectKnowledgeStatus,
+  ProjectKnowledgeProfile,
+  ProjectKnowledgeProfileInput,
+  ProjectKnowledgeProfilePatch,
 } from "./resources/projects.js";
 export {
   JobFailedError,
@@ -109,7 +115,14 @@ export {
   type UploadManyOptions,
 } from "./resources/batch-upload.js";
 export { detectArtifactType, guessMimeType } from "./resources/file-types.js";
-export type { DownloadLocation, DownloadedFile, FileRead, ReadFileOptions } from "./resources/files.js";
+export type {
+  DownloadLink,
+  DownloadLocation,
+  DownloadedFile,
+  DownloadedReference,
+  FileRead,
+  ReadFileOptions,
+} from "./resources/files.js";
 export type {
   BodyOf,
   JsonObject,
@@ -129,3 +142,26 @@ export {
 } from "./service-account.js";
 export { OPERATIONS, BeakrApi, type OperationName } from "./generated/operations.js";
 export type { CallOptions, OperationResponse } from "./operation-types.js";
+export type {
+  QueryAggregate,
+  QueryAggregateFn,
+  QueryAsOfCondition,
+  QueryCondition,
+  QueryConnectedToCondition,
+  QueryEntityCondition,
+  QueryEntityTypeCondition,
+  QueryFieldCondition,
+  QueryFieldMatch,
+  QueryFromTable,
+  QueryJoin,
+  QueryLinkOp,
+  QueryOrderBy,
+  QuerySemantic,
+  QuerySpec,
+  QueryTable,
+  QueryTextOp,
+  QueryToCondition,
+  QueryValueCondition,
+  QueryValueOp,
+  QueryWhenCondition,
+} from "./resources/query-spec.js";

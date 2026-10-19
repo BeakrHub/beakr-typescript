@@ -141,3 +141,25 @@ describe("run streaming", () => {
     expect(path(calls[0]!.url)).toBe("/v1/runs/r1/events?last_event_id=0");
   });
 });
+
+describe("proposal accept", () => {
+  // ROOT CAUSE (security review, 2026-10-16): an accept that reads the proposal and
+  // echoes that read's content_hash binds to whatever the proposal is at accept
+  // time, so a proposal changed after review is accepted anyway. The helper sends
+  // only the hash it is given, and none when it is given none, with no read first.
+  it("sends the reviewed hash as given and never reads the proposal first", async () => {
+    const { fetch, calls } = mockFetch([
+      json({ status: "accepted", proposal_id: "x1" }),
+      json({ status: "accepted", proposal_id: "x1" }),
+    ]);
+    const { beakr } = client(fetch);
+    await beakr.knowledge.proposals.accept("x1", { reviewedHash: "ab".repeat(32) });
+    await beakr.knowledge.proposals.accept("x1");
+    expect(calls.map((call) => [call.method, path(call.url)])).toEqual([
+      ["POST", "/v1/knowledge/wiki/proposals/x1/accept"],
+      ["POST", "/v1/knowledge/wiki/proposals/x1/accept"],
+    ]);
+    expect(calls[0]!.body).toEqual({ reviewed_hash: "ab".repeat(32) });
+    expect(calls[1]!.body).toBeUndefined();
+  });
+});

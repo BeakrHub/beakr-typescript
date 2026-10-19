@@ -97,11 +97,35 @@ await beakr.uploads.uploadEntries(
 
 const { data, filename } = await beakr.files.download(artifactId); // any runtime
 await beakr.files.downloadTo(artifactId, "./downloads"); // Node
+
+// Search the original documents by meaning, then download a result in one step.
+const found = await beakr.knowledge.documentsSearch("who covers losses from defects");
+const link = await beakr.files.downloadLink(found.results![0]!.source_ref!);
 ```
 
 Many files or whole directories go up as one batch with one indexing job:
 `const batch = await beakr.uploads.uploadMany(["results", "summary.pdf"], { projectId })`,
 then `await beakr.jobs.wait(batch)` (or pass `wait: true`).
+
+### Tell Knowledge what a project is about
+
+A project's Knowledge profile steers how Beakr compiles its files: what the
+project is for, the people, organizations and topics that matter, and the kinds
+of things to build pages for. Only the project's owners may set it.
+
+```ts
+await beakr.projects.setKnowledgeProfile(projectId, {
+  description: "Batch records, deviations and CAPAs for the Basel site",
+  goals: ["Track deviations to closure"],
+  entity_types: ["batch", "deviation", "capa", "supplier"],
+  core_people: [{ name: "Priya Natarajan", role: "Batch owner" }],
+});
+await beakr.projects.updateKnowledgeProfile(projectId, { focus_areas: ["pH excursions"] });
+const profile = await beakr.projects.knowledgeProfile(projectId);
+```
+
+`knowledgeProfile` throws `NotFoundError` (`code === "knowledge_profile_not_found"`)
+while the project has none.
 
 ### Know when Knowledge is ready
 

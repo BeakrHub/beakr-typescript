@@ -15,6 +15,7 @@ export const OPERATIONS = {
   "files.getArtifactContent": { method: "GET", path: "/v1/artifacts/{artifact_id}/content" },
   "files.createKnowledgeFromArtifact": { method: "POST", path: "/v1/artifacts/{artifact_id}/knowledge" },
   "files.moveArtifact": { method: "POST", path: "/v1/artifacts/{artifact_id}/move" },
+  "files.downloadUrl": { method: "POST", path: "/v1/artifacts/download-url" },
   "files.readFile": { method: "POST", path: "/v1/artifacts/read" },
   "uploads.getDownloadUrl": { method: "GET", path: "/v1/artifacts/versions/{version_id}/download-url" },
   "endUserTokens.listEndUserTokens": { method: "GET", path: "/v1/auth/end-user-tokens" },
@@ -105,6 +106,9 @@ export const OPERATIONS = {
   "projects.updateProject": { method: "PATCH", path: "/v1/projects/{project_id}" },
   "projects.deleteProject": { method: "DELETE", path: "/v1/projects/{project_id}" },
   "projects.createProjectMembershipInvitation": { method: "POST", path: "/v1/projects/{project_id}/invite" },
+  "projects.getProjectKnowledgeProfile": { method: "GET", path: "/v1/projects/{project_id}/knowledge-profile" },
+  "projects.putProjectKnowledgeProfile": { method: "PUT", path: "/v1/projects/{project_id}/knowledge-profile" },
+  "projects.patchProjectKnowledgeProfile": { method: "PATCH", path: "/v1/projects/{project_id}/knowledge-profile" },
   "projects.getProjectKnowledgeStatus": { method: "GET", path: "/v1/projects/{project_id}/knowledge-summary" },
   "projects.listKnowledgeFailedFiles": { method: "GET", path: "/v1/projects/{project_id}/knowledge/failed-files" },
   "projects.retryFailedKnowledge": { method: "POST", path: "/v1/projects/{project_id}/knowledge/retry-failed" },
@@ -353,6 +357,12 @@ export class FilesApi {
   /** POST /v1/artifacts/{artifact_id}/move (Move a file to another project) */
   moveArtifact(args: { path: operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]["parameters"]["path"]; body: NonNullable<operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/artifacts/${enc(String(args.path.artifact_id))}/move`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/artifacts/download-url (Get a download link by reference) */
+  downloadUrl(args: { body: NonNullable<operations["download_url_route_v1_artifacts_download_url_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["download_url_route_v1_artifacts_download_url_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/artifacts/download-url", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
@@ -628,8 +638,8 @@ export class KnowledgeApi {
   }
 
   /** POST /v1/knowledge/wiki/proposals/{proposal_id}/accept (Accept a Knowledge proposal) */
-  acceptProposal(args: { path: operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"]>> {
-    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/accept`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+  acceptProposal(args: { path: operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"]["parameters"]["path"]; body?: NonNullable<operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/accept`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
@@ -866,6 +876,24 @@ export class ProjectsApi {
   /** POST /v1/projects/{project_id}/invite (Invite someone by email) */
   createProjectMembershipInvitation(args: { path: operations["create_project_membership_invitation_route_v1_projects__project_id__invite_post"]["parameters"]["path"]; body: NonNullable<operations["create_project_membership_invitation_route_v1_projects__project_id__invite_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["create_project_membership_invitation_route_v1_projects__project_id__invite_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/invite`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/projects/{project_id}/knowledge-profile (Get a project's Knowledge profile) */
+  getProjectKnowledgeProfile(args: { path: operations["get_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge-profile`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PUT /v1/projects/{project_id}/knowledge-profile (Set a project's Knowledge profile) */
+  putProjectKnowledgeProfile(args: { path: operations["put_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_put"]["parameters"]["path"]; body: NonNullable<operations["put_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["put_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_put"]>> {
+    const request: RequestOptions = { method: "PUT", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge-profile`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PATCH /v1/projects/{project_id}/knowledge-profile (Update a project's Knowledge profile) */
+  patchProjectKnowledgeProfile(args: { path: operations["patch_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_patch"]["parameters"]["path"]; body: NonNullable<operations["patch_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_patch"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["patch_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_patch"]>> {
+    const request: RequestOptions = { method: "PATCH", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge-profile`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
