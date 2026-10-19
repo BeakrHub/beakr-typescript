@@ -13,8 +13,13 @@
  * - hidden files and anything under a hidden folder (a segment starting with
  *   `.`) are skipped unless `includeHidden`;
  * - with `mirrorFolders` (the default) each sub-directory becomes a folder
- *   (`POST /v1/folders`), created once, parents first, under `folderId`;
- *   without it every file goes straight into `folderId`;
+ *   under `folderId`, parents first; a folder of the same name already in the
+ *   same place is reused (also after the API refuses a duplicate created
+ *   meanwhile), so two trees sharing sub-folder names, or the same tree again,
+ *   fill the existing folders; without it every file goes straight into
+ *   `folderId`;
+ * - {@link Uploads.uploadFolder} starts the tree with a folder named after the
+ *   directory (`rootFolder`, default true), matching each file's recorded path;
  * - each file is uploaded by {@link Uploads.upload} (the resumable upload, one
  *   part for a small file); `ingest: false` keeps the files out of Knowledge;
  * - each file records where it sat (`relativePath`, sent on completion): the
@@ -27,6 +32,7 @@
  */
 
 import { cleanBody, type Transport } from "../core.js";
+import { ValidationError } from "../errors.js";
 import type { JsonObject } from "../types.js";
 import { detectArtifactType, guessMimeType } from "./file-types.js";
 import type { FileBody, UploadFileOptions } from "./uploads.js";
@@ -70,7 +76,18 @@ export interface UploadFolderOptions {
   includeHidden?: boolean;
   /** Compile the files into Knowledge (default true). */
   ingest?: boolean;
+  /**
+   * {@link Uploads.uploadFolder} only: start the folders with one named after the
+   * directory (`docs/`), matching each file's recorded path (default true);
+   * false puts the directory's contents straight into `folderId`.
+   */
+  rootFolder?: boolean;
   signal?: AbortSignal;
+}
+
+/** Internal: a folder name to place the whole tree under (set by `uploadFolder`). */
+export interface UploadEntriesInternal {
+  rootName?: string;
 }
 
 export interface UploadedFolderFile extends JsonObject {
@@ -116,6 +133,7 @@ export async function uploadEntries(
   entries: Iterable<FolderEntry> | AsyncIterable<FolderEntry>,
   options: UploadFolderOptions,
   displayPath: (entry: FolderEntry) => string = (entry) => entry.path,
+  internal: UploadEntriesInternal = {},
 ): Promise<UploadedFolderFile[]> {
   const collected: { entry: FolderEntry; segments: string[] }[] = [];
   for await (const entry of entries as AsyncIterable<FolderEntry>) {
@@ -126,29 +144,63 @@ export async function uploadEntries(
   collected.sort((a, b) => compareSegments(a.segments, b.segments));
 
   const mirror = options.mirrorFolders ?? true;
+  const leading = internal.rootName ? [internal.rootName] : [];
   const folderIds = new Map<string, string | undefined>([["", options.folderId]]);
+  const children = new Map<string, Map<string, string>>();
+
+  // The folders directly under `parentId` (the project's top level when undefined).
+  const childFolders = async (parentId: string | undefined, refresh = false): Promise<Map<string, string>> => {
+    const key = parentId ?? "";
+    if (refresh) children.delete(key);
+    let known = children.get(key);
+    if (!known) {
+      known = new Map();
+      const listed = transport.paginate<{ id: string; name: string }>({
+        method: "GET",
+        path: "/v1/folders",
+        query: parentId
+          ? { project_id: options.projectId, parent_folder_id: parentId }
+          : { project_id: options.projectId, root_only: true },
+      });
+      for await (const folder of listed) known.set(String(folder.name), String(folder.id));
+      children.set(key, known);
+    }
+    return known;
+  };
+
   const ensureFolder = async (dirs: string[]): Promise<string | undefined> => {
     const key = dirs.join("/");
     if (folderIds.has(key)) return folderIds.get(key);
     const parentId = await ensureFolder(dirs.slice(0, -1));
-    const created = await transport.request<{ id: string }>({
-      method: "POST",
-      path: "/v1/folders",
-      body: cleanBody({
-        name: dirs[dirs.length - 1],
-        project_id: options.projectId,
-        parent_folder_id: parentId,
-      }),
-      idempotent: true,
-    });
-    folderIds.set(key, String(created.id));
-    return String(created.id);
+    const name = dirs[dirs.length - 1]!;
+    let existing = await childFolders(parentId);
+    let id = existing.get(name);
+    if (id === undefined) {
+      try {
+        const created = await transport.request<{ id: string }>({
+          method: "POST",
+          path: "/v1/folders",
+          body: cleanBody({ name, project_id: options.projectId, parent_folder_id: parentId }),
+          idempotent: true,
+        });
+        id = String(created.id);
+      } catch (error) {
+        // Created by someone else since the listing: use theirs.
+        if (!(error instanceof ValidationError)) throw error;
+        existing = await childFolders(parentId, true);
+        id = existing.get(name);
+        if (id === undefined) throw error;
+      }
+      existing.set(name, id);
+    }
+    folderIds.set(key, id);
+    return id;
   };
 
   const results: UploadedFolderFile[] = [];
   for (const { entry, segments } of collected) {
     const name = segments[segments.length - 1]!;
-    const target = mirror ? await ensureFolder(segments.slice(0, -1)) : options.folderId;
+    const target = mirror ? await ensureFolder([...leading, ...segments.slice(0, -1)]) : options.folderId;
     const body = await asFileBody(entry.data);
     const fileType = body instanceof Blob && body.type ? body.type : undefined;
     const contentType = entry.contentType ?? fileType ?? guessMimeType(name);
