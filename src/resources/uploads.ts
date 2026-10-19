@@ -235,16 +235,24 @@ export class Uploads extends Resource {
    * `mirrorFolders: false`; dotfiles are skipped unless `includeHidden`.
    * Either way each file records its path from the directory's parent
    * (`docs/guides/a.md` for `guides/a.md` under `docs/`) as its `relativePath`.
-   * Resolves to `[{ path, ...completion }]` in upload order, like
-   * Python's `files.upload_folder()`.
+   * The folders start with one named after the directory (`docs/`) unless
+   * `rootFolder: false`, and existing folders of the same name are reused, so
+   * uploading two trees with shared sub-folder names, or the same tree again,
+   * does not fail. Resolves to `[{ path, ...completion }]` in upload order,
+   * like Python's `files.upload_folder()`.
    */
   async uploadFolder(directory: string, options: UploadFolderOptions): Promise<UploadedFolderFile[]> {
     const entries = await readDirectoryEntries(directory, { includeHidden: options.includeHidden });
     const nodePath = await nodeBuiltin<typeof import("node:path")>("node:path");
     const rootName = nodePath.basename(nodePath.resolve(directory));
     for (const entry of entries) entry.relativePath = `${rootName}/${entry.path}`;
-    return uploadEntries(this, this.transport, entries, options, (entry) =>
-      nodePath.join(directory, ...entry.path.split("/")),
+    return uploadEntries(
+      this,
+      this.transport,
+      entries,
+      options,
+      (entry) => nodePath.join(directory, ...entry.path.split("/")),
+      { rootName: options.rootFolder === false ? undefined : rootName },
     );
   }
 
