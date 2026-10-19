@@ -13,6 +13,22 @@ export type KnowledgeRetryResult = ResponseOf<
   "post"
 >;
 
+/** A project's Knowledge profile (`GET /v1/projects/{project_id}/knowledge-profile`). */
+export type ProjectKnowledgeProfile = ResponseOf<
+  "/v1/projects/{project_id}/knowledge-profile",
+  "get"
+>;
+/** The whole profile a {@link Projects.setKnowledgeProfile} call sends. */
+export type ProjectKnowledgeProfileInput = BodyOf<
+  "/v1/projects/{project_id}/knowledge-profile",
+  "put"
+>;
+/** The fields a {@link Projects.updateKnowledgeProfile} call changes. */
+export type ProjectKnowledgeProfilePatch = BodyOf<
+  "/v1/projects/{project_id}/knowledge-profile",
+  "patch"
+>;
+
 export class Projects extends Resource {
   list(
     options: { memberOnly?: boolean } = {},
@@ -137,6 +153,51 @@ export class Projects extends Resource {
       method: "POST",
       path: `/v1/projects/${enc(projectId)}/knowledge/retry-failed`,
       body: artifactIds === undefined ? {} : { artifact_ids: [...artifactIds] },
+    });
+  }
+
+  /**
+   * The project's Knowledge profile. Throws `NotFoundError` with
+   * `code === "knowledge_profile_not_found"` while the project has none (set
+   * one with {@link setKnowledgeProfile}). Project members read it; a viewer is
+   * refused.
+   */
+  knowledgeProfile(projectId: string): Promise<ProjectKnowledgeProfile> {
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/projects/${enc(projectId)}/knowledge-profile`,
+    });
+  }
+
+  /**
+   * Set the whole Knowledge profile, creating it when the project has none.
+   * Fields left out are set to their empty value. Only the project's owners
+   * may set it; Knowledge reads it when it next compiles files.
+   */
+  setKnowledgeProfile(
+    projectId: string,
+    profile: ProjectKnowledgeProfileInput,
+  ): Promise<ProjectKnowledgeProfile> {
+    return this.transport.request({
+      method: "PUT",
+      path: `/v1/projects/${enc(projectId)}/knowledge-profile`,
+      body: cleanBody({ ...profile }),
+    });
+  }
+
+  /**
+   * Change the fields given; the rest are kept. A list given replaces that
+   * list. Throws `NotFoundError` (`knowledge_profile_not_found`) when the
+   * project has no profile yet.
+   */
+  updateKnowledgeProfile(
+    projectId: string,
+    fields: ProjectKnowledgeProfilePatch,
+  ): Promise<ProjectKnowledgeProfile> {
+    return this.transport.request({
+      method: "PATCH",
+      path: `/v1/projects/${enc(projectId)}/knowledge-profile`,
+      body: cleanBody({ ...fields }),
     });
   }
 }
