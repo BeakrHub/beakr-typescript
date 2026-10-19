@@ -1,7 +1,7 @@
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { MULTIPART_THRESHOLD, detectArtifactType, guessMimeType } from "../src/index.js";
 import { uploadRelativePath } from "../src/resources/folder-upload.js";
@@ -10,10 +10,23 @@ import { client, type Recorded } from "./helpers.js";
 const API = "https://api.example.test";
 const S3 = "https://s3.example.test/bucket";
 
-/** A fetch that answers each Beakr route the folder upload uses, recording calls. */
-function router() {
+interface MockFolder {
+  id: string;
+  name: string;
+  parent_folder_id: string | null;
+}
+
+/**
+ * A fetch that answers each Beakr route the folder upload uses, recording calls.
+ * Folders behave like the API: `GET /v1/folders` lists one level, and creating a
+ * folder whose name is taken under the same parent answers 400. `seed` adds
+ * existing folders; `onList` can change the store before a listing answers.
+ */
+function router(seed: MockFolder[] = [], onList?: (store: MockFolder[], n: number) => MockFolder[] | void) {
   const calls: Recorded[] = [];
   let folders = 0;
+  let lists = 0;
+  const store: MockFolder[] = seed.map((f) => ({ ...f }));
   const sessions: { content_length: number }[] = [];
   const fetch = async (url: string, init: RequestInit): Promise<Response> => {
     const headers: Record<string, string> = {};
@@ -38,7 +51,30 @@ function router() {
       uploaded_parts: [],
     });
     if (url.startsWith(S3)) return new Response(null, { status: 200, headers: { etag: '"e1"' } });
-    if (method === "POST" && path === "/v1/folders") return reply({ id: `f${++folders}` });
+    if (method === "GET" && path === "/v1/folders") {
+      const params = new URL(url).searchParams;
+      const parent = params.get("parent_folder_id");
+      lists += 1;
+      const override = onList?.(store, lists);
+      const source = override ?? store;
+      const data = source.filter((f) => f.parent_folder_id === (parent ?? null));
+      return reply({ data, next_cursor: null, has_more: false });
+    }
+    if (method === "POST" && path === "/v1/folders") {
+      const wanted = body as { name: string; parent_folder_id?: string };
+      const parent = wanted.parent_folder_id ?? null;
+      if (store.some((f) => f.name === wanted.name && f.parent_folder_id === parent)) {
+        return new Response(
+          JSON.stringify({
+            detail: { code: "bad_request", message: `A folder named '${wanted.name}' already exists at this location` },
+          }),
+          { status: 400, headers: { "content-type": "application/json" } },
+        );
+      }
+      const id = `f${++folders}`;
+      store.push({ id, name: wanted.name, parent_folder_id: parent });
+      return reply({ id });
+    }
     if (method === "POST" && path === "/v1/uploads") {
       sessions.push({ content_length: (body as { content_length: number }).content_length });
       return reply(state(sessions.length));
@@ -56,13 +92,16 @@ function router() {
     }
     throw new Error(`unexpected ${method} ${url}`);
   };
-  return { fetch, calls };
+  return { fetch, calls, store };
 }
 
 const bodiesOf = (calls: Recorded[], pattern: RegExp) =>
   calls.filter((c) => c.url.startsWith(API) && pattern.test(new URL(c.url).pathname)).map((c) => c.body as Record<string, unknown>);
 const created = (calls: Recorded[]) => bodiesOf(calls, /^\/v1\/uploads$/);
 const completed = (calls: Recorded[]) => bodiesOf(calls, /^\/v1\/uploads\/[^/]+\/complete$/);
+
+const folderPosts = (calls: Recorded[]) =>
+  calls.filter((c) => c.method === "POST" && new URL(c.url).pathname === "/v1/folders");
 
 const beakrPaths = (calls: Recorded[]) =>
   calls.filter((c) => c.url.startsWith(API)).map((c) => `${c.method} ${new URL(c.url).pathname}`);
@@ -84,7 +123,7 @@ describe("uploads.uploadEntries", () => {
       { projectId: "p1", folderId: "root" },
     );
     expect(result.map((r) => r.path)).toEqual(["a/sub/y.csv", "a/x.md", "b.txt"]);
-    const folderBodies = calls.filter((c) => new URL(c.url).pathname === "/v1/folders").map((c) => c.body);
+    const folderBodies = folderPosts(calls).map((c) => c.body);
     expect(folderBodies).toEqual([
       { name: "a", project_id: "p1", parent_folder_id: "root" },
       { name: "sub", project_id: "p1", parent_folder_id: "f1" },
@@ -189,10 +228,10 @@ describe("uploads.uploadFolder (Node)", () => {
       join(root, "readme.txt"),
       join(root, "reports", "q3", "summary.md"),
     ]);
-    const names = calls
-      .filter((c) => new URL(c.url).pathname === "/v1/folders")
-      .map((c) => (c.body as { name: string }).name);
-    expect(names).toEqual(["reports", "q3"]);
+    const names = folderPosts(calls).map((c) => (c.body as { name: string }).name);
+    // The tree starts with a folder named after the directory, as each file's
+    // recorded path does.
+    expect(names).toEqual([basename(root), "reports", "q3"]);
   });
 
   // Regression: a folder upload dropped the folder's own name, and
@@ -216,6 +255,68 @@ describe("uploads.uploadFolder (Node)", () => {
       ]);
     },
   );
+
+  it("puts the directory's contents straight into the target with rootFolder: false", async () => {
+    root = await mkdtemp(join(tmpdir(), "beakr-folder-"));
+    await mkdir(join(root, "docs", "deep"), { recursive: true });
+    await writeFile(join(root, "docs", "a.md"), "a");
+    await writeFile(join(root, "docs", "deep", "b.md"), "b");
+    const { fetch, calls } = router();
+    const { beakr } = client(fetch);
+    await beakr.uploads.uploadFolder(join(root, "docs"), { projectId: "p1", rootFolder: false });
+    expect(folderPosts(calls).map((c) => (c.body as { name: string }).name)).toEqual(["deep"]);
+    expect(created(calls).map((b) => b.parent_folder_id)).toEqual([undefined, "f1"]);
+  });
+
+  // Regression: each tree's sub-folders were created at the target directly and
+  // an existing folder of the same name was never reused, so a second deal
+  // matter that also has "Closing/" answered 400 halfway, leaving a partial upload.
+  it("uploads two trees with the same sub-folder names side by side", async () => {
+    root = await mkdtemp(join(tmpdir(), "beakr-folder-"));
+    for (const matter of ["1005-00001", "1001-00004"]) {
+      await mkdir(join(root, matter, "Closing"), { recursive: true });
+      await writeFile(join(root, matter, "Closing", `${matter}.md`), matter);
+    }
+    const { fetch, calls, store } = router();
+    const { beakr } = client(fetch);
+    await beakr.uploads.uploadFolder(join(root, "1005-00001"), { projectId: "p1" });
+    await beakr.uploads.uploadFolder(join(root, "1001-00004"), { projectId: "p1" });
+    const tree = store.map((f) => `${f.parent_folder_id ?? "-"}/${f.name}`).sort();
+    expect(tree).toEqual(["-/1001-00004", "-/1005-00001", "f1/Closing", "f3/Closing"]);
+    expect(created(calls).map((b) => b.parent_folder_id)).toEqual(["f2", "f4"]);
+  });
+
+  it("reuses folders that already exist, including on a second upload of the same tree", async () => {
+    root = await mkdtemp(join(tmpdir(), "beakr-folder-"));
+    await mkdir(join(root, "docs", "deep"), { recursive: true });
+    await writeFile(join(root, "docs", "deep", "b.md"), "b");
+    const { fetch, calls } = router([
+      { id: "have-docs", name: "docs", parent_folder_id: null },
+      { id: "have-deep", name: "deep", parent_folder_id: "have-docs" },
+    ]);
+    const { beakr } = client(fetch);
+    await beakr.uploads.uploadFolder(join(root, "docs"), { projectId: "p1" });
+    await beakr.uploads.uploadFolder(join(root, "docs"), { projectId: "p1" });
+    expect(folderPosts(calls)).toEqual([]);
+    expect(created(calls).map((b) => b.parent_folder_id)).toEqual(["have-deep", "have-deep"]);
+  });
+
+  it("uses a folder created meanwhile after the API refuses the duplicate", async () => {
+    root = await mkdtemp(join(tmpdir(), "beakr-folder-"));
+    await mkdir(join(root, "docs"), { recursive: true });
+    await writeFile(join(root, "docs", "a.md"), "a");
+    // The first listing misses "docs"; someone creates it before our create.
+    const { fetch, calls } = router([], (store, n) => {
+      if (n === 1) {
+        store.push({ id: "theirs", name: "docs", parent_folder_id: null });
+        return [];
+      }
+    });
+    const { beakr } = client(fetch);
+    await beakr.uploads.uploadFolder(join(root, "docs"), { projectId: "p1" });
+    expect(folderPosts(calls)).toHaveLength(1);
+    expect(created(calls).map((b) => b.parent_folder_id)).toEqual(["theirs"]);
+  });
 
   it("rejects a path that is not a directory", async () => {
     const { fetch } = router();
