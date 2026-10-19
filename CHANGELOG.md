@@ -7,6 +7,16 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
+  and set a project's Knowledge profile, the description, goals, focus areas,
+  people, organizations, topics, entity types and extraction guidance that
+  steer how Knowledge compiles the project's files. `GET` needs `kb:read`;
+  `PUT` (the whole profile; answers 201 when it created the profile, 200 when it
+  replaced one) and
+  `PATCH` (the fields sent) need `kb:write` and the project's owners. A project
+  with no profile answers 404 `knowledge_profile_not_found`. A
+  project-restricted credential reaches its own projects' profiles.
+- `projects.knowledgeProfile`, `projects.setKnowledgeProfile` and `projects.updateKnowledgeProfile` read and set a project's Knowledge profile over these routes.
 - `POST /v1/knowledge/wiki/command` `query`: `GROUP BY value` on `facts`
   counts each value of a cell listing several (`A; B`) in each value's group,
   as `rows` `group_by=value` does; a value repeated in one cell counts once.

@@ -81,6 +81,9 @@ export type {
   KnowledgeFailedFile,
   KnowledgeRetryResult,
   ProjectKnowledgeStatus,
+  ProjectKnowledgeProfile,
+  ProjectKnowledgeProfileInput,
+  ProjectKnowledgeProfilePatch,
 } from "./resources/projects.js";
 export {
   JobFailedError,

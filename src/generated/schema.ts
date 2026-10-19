@@ -1727,6 +1727,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/knowledge-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a project's Knowledge profile
+         * @description The project's Knowledge profile: what Knowledge should understand about the project.
+         *
+         *     A 404 with `knowledge_profile_not_found` when the project has none yet; a
+         *     project you cannot read is the shared project 404. The project's members
+         *     and owners read it; a viewer is refused.
+         */
+        get: operations["get_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_get"];
+        /**
+         * Set a project's Knowledge profile
+         * @description Set the project's whole Knowledge profile, creating it if it has none.
+         *
+         *     Fields left out are set to their empty value, so a repeat of the same body
+         *     leaves the same profile (201 when it was created, 200 when it replaced
+         *     one). Knowledge reads the profile when it next compiles files: it steers
+         *     which pages are built and what they record. Only the project's owners may
+         *     set it.
+         */
+        put: operations["put_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a project's Knowledge profile
+         * @description Change some fields of the project's Knowledge profile; fields left out are kept.
+         *
+         *     A list sent replaces that list. A 404 with `knowledge_profile_not_found`
+         *     when the project has no profile yet (create it with PUT). Only the
+         *     project's owners may change it.
+         */
+        patch: operations["patch_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_patch"];
+        trace?: never;
+    };
     "/v1/projects/{project_id}/knowledge-summary": {
         parameters: {
             query?: never;
@@ -5768,6 +5810,69 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * KnowledgeProfileOrganization
+         * @description An organization Knowledge should recognize and follow in this project.
+         */
+        KnowledgeProfileOrganization: {
+            /**
+             * Name
+             * @description The organization's name.
+             */
+            name: string;
+            /**
+             * Relevance
+             * @description Why it matters to this project, in a sentence.
+             * @default
+             */
+            relevance?: string;
+            /**
+             * Type
+             * @description What kind of organization it is, such as `supplier` or `regulator`.
+             * @default
+             */
+            type?: string;
+        };
+        /**
+         * KnowledgeProfilePerson
+         * @description A person Knowledge should recognize and follow in this project.
+         */
+        KnowledgeProfilePerson: {
+            /**
+             * Name
+             * @description The person's name.
+             */
+            name: string;
+            /**
+             * Relevance
+             * @description Why they matter to this project, in a sentence.
+             * @default
+             */
+            relevance?: string;
+            /**
+             * Role
+             * @description Their role, such as `QA lead`.
+             * @default
+             */
+            role?: string;
+        };
+        /**
+         * KnowledgeProfileTopic
+         * @description A topic or concept Knowledge should recognize and follow in this project.
+         */
+        KnowledgeProfileTopic: {
+            /**
+             * Name
+             * @description The topic's name.
+             */
+            name: string;
+            /**
+             * Relevance
+             * @description Why it matters to this project, in a sentence.
+             * @default
+             */
+            relevance?: string;
+        };
+        /**
          * KnowledgeQueryMissingField
          * @description Cards of the queried types with no value for a field the query filters on.
          */
@@ -7577,6 +7682,199 @@ export interface components {
              * @default 0
              */
             running?: number;
+        };
+        /**
+         * ProjectKnowledgeProfile
+         * @description A project's Knowledge profile.
+         */
+        ProjectKnowledgeProfile: {
+            /**
+             * Core Organizations
+             * @description Organizations Knowledge follows.
+             */
+            core_organizations: components["schemas"]["KnowledgeProfileOrganization"][];
+            /**
+             * Core People
+             * @description People Knowledge follows.
+             */
+            core_people: components["schemas"]["KnowledgeProfilePerson"][];
+            /**
+             * Core Topics
+             * @description Topics Knowledge follows.
+             */
+            core_topics: components["schemas"]["KnowledgeProfileTopic"][];
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the profile was created.
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at: string;
+            /**
+             * Description
+             * @description What the project is about and what it is for.
+             */
+            description: string;
+            /**
+             * Entity Types
+             * @description The kinds of things Knowledge builds a page for.
+             */
+            entity_types: string[];
+            /**
+             * Extraction Guidance
+             * @description How to read this project's documents.
+             */
+            extraction_guidance: string;
+            /**
+             * Focus Areas
+             * @description Areas Knowledge pays most attention to.
+             */
+            focus_areas: string[];
+            /**
+             * Goals
+             * @description What the project wants Knowledge to help answer or track.
+             */
+            goals: string[];
+            /**
+             * Industry
+             * @description The field the project works in.
+             */
+            industry: string;
+            /**
+             * Name
+             * @description A short title for the profile.
+             */
+            name: string;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description Id of the project the profile belongs to.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /**
+             * Updated At
+             * Format: date-time
+             * @description When the profile last changed.
+             * @example 2026-10-03T09:15:42Z
+             */
+            updated_at: string;
+        };
+        /**
+         * ProjectKnowledgeProfileIn
+         * @description A whole Knowledge profile. A field left out is set to its empty value.
+         */
+        ProjectKnowledgeProfileIn: {
+            /**
+             * Core Organizations
+             * @description Organizations to recognize and follow.
+             */
+            core_organizations?: components["schemas"]["KnowledgeProfileOrganization"][];
+            /**
+             * Core People
+             * @description People to recognize and follow.
+             */
+            core_people?: components["schemas"]["KnowledgeProfilePerson"][];
+            /**
+             * Core Topics
+             * @description Topics to recognize and follow.
+             */
+            core_topics?: components["schemas"]["KnowledgeProfileTopic"][];
+            /**
+             * Description
+             * @description What the project is about and what it is for, in a few sentences.
+             * @default
+             */
+            description?: string;
+            /**
+             * Entity Types
+             * @description The kinds of things Knowledge should build a page for, such as `batch`, `deviation` or `supplier`.
+             */
+            entity_types?: string[];
+            /**
+             * Extraction Guidance
+             * @description How to read this project's documents: what to look for and what to skip.
+             * @default
+             */
+            extraction_guidance?: string;
+            /**
+             * Focus Areas
+             * @description Areas Knowledge should pay most attention to.
+             */
+            focus_areas?: string[];
+            /**
+             * Goals
+             * @description What the project wants Knowledge to help answer or track.
+             */
+            goals?: string[];
+            /**
+             * Industry
+             * @description The field the project works in.
+             * @default
+             */
+            industry?: string;
+            /**
+             * Name
+             * @description A short title for the profile.
+             * @default
+             */
+            name?: string;
+        };
+        /**
+         * ProjectKnowledgeProfilePatch
+         * @description Fields to change on the Knowledge profile. A field left out is kept as it is.
+         */
+        ProjectKnowledgeProfilePatch: {
+            /**
+             * Core Organizations
+             * @description Organizations to recognize and follow. Replaces the list.
+             */
+            core_organizations?: components["schemas"]["KnowledgeProfileOrganization"][] | null;
+            /**
+             * Core People
+             * @description People to recognize and follow. Replaces the list.
+             */
+            core_people?: components["schemas"]["KnowledgeProfilePerson"][] | null;
+            /**
+             * Core Topics
+             * @description Topics to recognize and follow. Replaces the list.
+             */
+            core_topics?: components["schemas"]["KnowledgeProfileTopic"][] | null;
+            /**
+             * Description
+             * @description What the project is about and what it is for, in a few sentences.
+             */
+            description?: string | null;
+            /**
+             * Entity Types
+             * @description The kinds of things Knowledge should build a page for. Replaces the list.
+             */
+            entity_types?: string[] | null;
+            /**
+             * Extraction Guidance
+             * @description How to read this project's documents: what to look for and what to skip.
+             */
+            extraction_guidance?: string | null;
+            /**
+             * Focus Areas
+             * @description Areas Knowledge should pay most attention to. Replaces the list.
+             */
+            focus_areas?: string[] | null;
+            /**
+             * Goals
+             * @description What the project wants Knowledge to help answer or track. Replaces the list.
+             */
+            goals?: string[] | null;
+            /**
+             * Industry
+             * @description The field the project works in.
+             */
+            industry?: string | null;
+            /**
+             * Name
+             * @description A short title for the profile.
+             */
+            name?: string | null;
         };
         /**
          * ProjectKnowledgeStatusResponse
@@ -16711,6 +17009,170 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PendingMemberInvitationOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectKnowledgeProfile"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    put_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectKnowledgeProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectKnowledgeProfile"];
+                };
+            };
+            /** @description The project had no profile; this one was created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectKnowledgeProfile"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    patch_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectKnowledgeProfilePatch"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectKnowledgeProfile"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
