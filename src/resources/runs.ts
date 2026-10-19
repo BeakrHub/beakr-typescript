@@ -116,6 +116,12 @@ export interface StartRunOptions {
    * Beakr's chat are; the start fails with `not_found` if any is not readable.
    */
   files?: string[];
+  /**
+   * Let the agent read the organization's Knowledge (its wiki) while it
+   * answers. The server treats a run that does not ask for it as one with
+   * Knowledge turned off, so it is on unless `false`.
+   */
+  knowledge?: boolean;
   /** Deduplicates resends of the same start; generated when omitted. */
   idempotencyKey?: string;
 }
@@ -142,9 +148,10 @@ export class Runs extends Resource {
         message,
         thread_id: options.threadId,
         home_project_id: options.projectId,
-        scope: options.projectId
-          ? { projects: [{ id: options.projectId }] }
-          : undefined,
+        scope: {
+          knowledge_graph: options.knowledge ?? true,
+          ...(options.projectId ? { projects: [{ id: options.projectId }] } : {}),
+        },
         mode: options.mode,
         model: options.model,
         timezone: options.timezone,

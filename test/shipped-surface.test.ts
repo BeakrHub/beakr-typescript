@@ -33,6 +33,8 @@ const NAMED_BY_CONTRACT_PROSE = [
   "/v1/artifacts/list",
   "/v1/assistant/threads/mine/{id}",
   "/v1/conversations/settings",
+  // ProposalFiledBy.run: "The run label the agent declared, which `/v1/knowledge/runs` undoes."
+  "/v1/knowledge/runs",
 ];
 
 /**
