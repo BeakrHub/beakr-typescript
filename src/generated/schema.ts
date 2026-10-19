@@ -9764,6 +9764,11 @@ export interface components {
             /** @description Cursor for the next older page of messages; absent when the response was not paged. */
             oldest_message_cursor?: components["schemas"]["MessageCursor"] | null;
             /**
+             * Origin
+             * @description How it came to exist (for example, stated by the person or inferred).
+             */
+            origin?: string | null;
+            /**
              * Profile Builder Meta
              * @description Knowledge-profile setup state, for a setup conversation.
              */
@@ -9900,6 +9905,11 @@ export interface components {
             model_overrides?: {
                 [key: string]: string;
             } | null;
+            /**
+             * Origin
+             * @description How it came to exist (for example, stated by the person or inferred).
+             */
+            origin?: string | null;
             /**
              * Project Ids
              * @description Ids of the projects it covers.
