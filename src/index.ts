@@ -7,11 +7,17 @@ export {
   type TokenPair,
 } from "./core.js";
 export * from "./errors.js";
+export { CAPABILITIES_TTL_MS, Capabilities, forgetCapabilities } from "./capabilities.js";
 export {
   QUICK_RESEARCH_TIMEOUT_MS,
   RESEARCH_TIMEOUT_MS,
   resultText,
   type KnowledgeResult,
+  type KnowledgeWriteResult,
+  type ProposalFiledBy,
+  type StagedProposal,
+  type WikiProposal,
+  type WikiProposalPage,
   type ResearchOptions,
   type DocumentsResult,
   type DocumentsSearchOptions,
