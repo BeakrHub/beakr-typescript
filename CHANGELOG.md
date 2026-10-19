@@ -17,6 +17,8 @@ Each release lists the public API changes it supports, taken from the API change
   operation. A self-hosted installation serves part of the contract and
   answers a bare 404 for the rest; a server without the document is assumed
   to serve everything. `meta.openapi()` returns the document itself.
+- Proposal `filed_by.run`: the description names the operation that takes a
+  run back, `POST /v1/knowledge/runs/{run}/undo`.
 - `POST /v1/knowledge/wiki/write` `new`: a `page_type` the project does not
   declare is written as the closest declared type when one answers to that
   name (its key, an alias or its label; `project` is `initiative`), and the
