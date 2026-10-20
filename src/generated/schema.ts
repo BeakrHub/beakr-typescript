@@ -9176,6 +9176,16 @@ export interface components {
              */
             created_at: string;
             /**
+             * Delivery Channel
+             * @description How the link was delivered: gmail or outlook (from the sender's own account), or links (minted for the sender to share).
+             */
+            delivery_channel?: string | null;
+            /**
+             * Delivery Error
+             * @description Why sending the link failed; the link still works.
+             */
+            delivery_error?: string | null;
+            /**
              * Expires At
              * Format: date-time
              * @description When it expires (ISO 8601, UTC).
@@ -9205,6 +9215,16 @@ export interface components {
              * @example 0f1e2d3c-4b5a-4c6d-9e8f-7a6b5c4d3e2f
              */
             link_id: string;
+            /**
+             * Recipient Email
+             * @description Email address the link was sent to, if it was sent.
+             */
+            recipient_email?: string | null;
+            /**
+             * Sent At
+             * @description When the link was last sent (ISO 8601, UTC).
+             */
+            sent_at?: string | null;
             /**
              * Status
              * @description Current status of the sendable link.
