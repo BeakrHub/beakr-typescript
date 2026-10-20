@@ -7,6 +7,34 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Skills (`skills:read`, `skills:write`) join the documented API.
+  `GET /v1/skills` lists every skill you can use or install: your own, your
+  organization's, the built-in ones and public skills from anywhere, by name.
+  Each skill carries `visibility` (`private`, `org`, `public`), `owner` (`me`,
+  `org`, `system`, `anyone`), `origin` (`created`, `mined`, `imported`,
+  `system`) and `installed`, and the list filters on each (repeat a parameter
+  for more than one value), on `search` and `domain`; `include_content=true`
+  adds each skill's `files`. `GET /v1/skills/{skill_id}` reads one skill by id
+  or slug, with `latest_revision`; a slug resolves to your own skill first, then
+  a built-in, then one you installed, then your organization's, and never to a
+  skill from another organization you have not installed. `POST /v1/skills`
+  creates a skill from a SKILL.md folder (`files`, path to text) and honours
+  `Idempotency-Key`; `GET` and `PUT /v1/skills/{skill_id}/bundle` read and
+  replace its files, `GET /v1/skills/{skill_id}/bundle.zip` downloads them as a
+  zip, and `DELETE /v1/skills/{skill_id}` deletes a skill you wrote. `POST` and
+  `DELETE /v1/me/skills/library/{skill_id}` install and uninstall a skill, and
+  `GET /v1/me/skills/proposals` with `POST .../accept` and `POST .../dismiss`
+  review the skills Beakr drafted from your work. A skill you wrote in another
+  organization cannot be installed here and answers 404 here, by id or slug,
+  unless it was already installed here.
+- `beakr.skills` over these routes: `list` (one page; each filter takes one
+  value or several) and `iter` (every page), `get` (id or slug), `bundle`,
+  `downloadZip`, `download` (the SKILL.md folder, or its zip with `asZip`;
+  Node), `create` and `createFromFolder` (a folder, a `SKILL.md` or a `.zip`;
+  text files only; Node), `uploadBundle` (files, a folder or a zip, with
+  `expectedSha256`), `install`, `uninstall`, `delete`, and `proposals.list`,
+  `iter`, `accept` and `dismiss`. `bundleSha256(files)` computes the digest
+  `expectedSha256` takes. A retried `create` replays its `Idempotency-Key`.
 - `GET /v1/interview/sendables`: each link carries who it was sent to and how:
   `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`
   and `delivery_error`. All are null for a link that was not sent.
