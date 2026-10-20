@@ -7,6 +7,11 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/interview/sendables`: each link carries who it was sent to and how:
+  `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`
+  and `delivery_error`. All are null for a link that was not sent.
+- Proposal `filed_by.run`: the description says what the label is for: writes
+  that share it can be undone together.
 - `runs.start` and `runs.answer` let the agent read Knowledge by default and take
   `knowledge: false` to turn it off. They used to send no Knowledge toggle, which
   the server reads as off, so an answer said Knowledge was turned off for the
