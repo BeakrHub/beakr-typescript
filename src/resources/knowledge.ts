@@ -1,7 +1,7 @@
 import type { QuerySpec } from "./query-spec.js";
 import { KnowledgeCommandError } from "../errors.js";
 import { publicSource, type SourceRecord } from "../sources.js";
-import type { JsonObject, ResponseOf } from "../types.js";
+import type { JsonObject, ResponseOf, components } from "../types.js";
 import { Resource, enc } from "./base.js";
 
 /**
@@ -124,6 +124,28 @@ export interface KnowledgeResult extends JsonObject {
   sources?: unknown[];
 }
 
+/** Who filed a proposal: the person, and the API credential, client, agent and run used. */
+export type ProposalFiledBy = components["schemas"]["ProposalFiledBy"];
+
+/** The proposal a section or row write staged: its `id`, `content_hash` (an accept's `reviewedHash`) and `filed_by`. */
+export type StagedProposal = components["schemas"]["StagedProposalRef"];
+
+/**
+ * A write's reply. A write that stages a proposal for one section or card row
+ * (`edit_section`, `add_fact`, `add_connection`, `add_finding`, `edit_rows`)
+ * names it in `proposal`, so it can be accepted with its `content_hash` as the
+ * reviewed hash.
+ */
+export interface KnowledgeWriteResult extends KnowledgeResult {
+  proposal?: StagedProposal | null;
+}
+
+/** One proposal as the proposals routes return it, with who filed it (`filed_by`). */
+export type WikiProposal = ResponseOf<"/v1/knowledge/wiki/proposals/{proposal_id}", "get">;
+
+/** A page of proposals: `{data, next_cursor, has_more}`. */
+export type WikiProposalPage = ResponseOf<"/v1/knowledge/wiki/proposals", "get">;
+
 export interface DoorOptions {
   /** A project id or name to read or write in. */
   scope?: string;
@@ -139,7 +161,7 @@ export function resultText(result: KnowledgeResult): string {
     .join("\n");
 }
 
-function checked(result: KnowledgeResult, check: boolean): KnowledgeResult {
+function checked<R extends KnowledgeResult>(result: R, check: boolean): R {
   if (check && result.outcome?.status === "error") {
     throw new KnowledgeCommandError(resultText(result) || "The Knowledge command was refused.", result);
   }
@@ -147,7 +169,7 @@ function checked(result: KnowledgeResult, check: boolean): KnowledgeResult {
 }
 
 class Proposals extends Resource {
-  list(query: { status?: string; projectId?: string; limit?: number } = {}): Promise<unknown> {
+  list(query: { status?: string; projectId?: string; limit?: number } = {}): Promise<WikiProposalPage> {
     return this.transport.request({
       method: "GET",
       path: "/v1/knowledge/wiki/proposals",
@@ -155,7 +177,7 @@ class Proposals extends Resource {
     });
   }
 
-  get(proposalId: string): Promise<unknown> {
+  get(proposalId: string): Promise<WikiProposal> {
     return this.transport.request({ method: "GET", path: `/v1/knowledge/wiki/proposals/${enc(proposalId)}` });
   }
 
@@ -219,11 +241,14 @@ export class Knowledge extends Resource {
     return checked(result, options.check ?? true);
   }
 
-  /** Every action except `page_type` needs a `rationale`. */
-  async write(action: string, args: JsonObject = {}, options: DoorOptions = {}): Promise<KnowledgeResult> {
+  /**
+   * Every action except `page_type` needs a `rationale`. A write that stages a
+   * proposal for one section or card row answers with `proposal`.
+   */
+  async write(action: string, args: JsonObject = {}, options: DoorOptions = {}): Promise<KnowledgeWriteResult> {
     const body: JsonObject = { ...args, action };
     if (options.scope) body["scope"] = options.scope;
-    const result = await this.transport.request<KnowledgeResult>({
+    const result = await this.transport.request<KnowledgeWriteResult>({
       method: "POST",
       path: "/v1/knowledge/wiki/write",
       body,
