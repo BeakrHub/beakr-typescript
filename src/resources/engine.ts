@@ -34,4 +34,22 @@ export class Engine extends Resource {
   compound(conversationId: string): Promise<JsonObject> {
     return this.transport.request({ method: "POST", path: "/v1/compound", body: { conversation_id: conversationId } });
   }
+
+  /**
+   * Stop a queued or running compound of an imported conversation. A batch
+   * already being read finishes and its proposals stay; no further batch
+   * starts, and the conversation's `compound_status` reads `cancelled`.
+   * {@link compound} resumes from where it stopped. Returns
+   * `{conversation_id, status, pending_messages}`; `status` is
+   * `nothing_to_cancel` when no compound was queued or running.
+   */
+  cancelCompound(conversationId: string): Promise<JsonObject> {
+    return this.transport.request({
+      method: "POST",
+      path: "/v1/compound/cancel",
+      body: { conversation_id: conversationId },
+      // Cancelling twice is cancelling once, so an ambiguous failure may be resent.
+      idempotent: true,
+    });
+  }
 }

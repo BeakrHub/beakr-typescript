@@ -7,6 +7,70 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
+  `GET /v1/threads/{thread_id}` return `origin`: null for a
+  conversation started in the web app or through the API, or `slack` for one a
+  person started by messaging Beakr in Slack.
+- `GET /v1/interview/sendables`: each link carries who it was sent to and how:
+  `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`
+  and `delivery_error`. All are null for a link that was not sent.
+- Proposal `filed_by.run`: the description says what the label is for: writes
+  that share it can be undone together.
+- `runs.start` and `runs.answer` let the agent read Knowledge by default and take
+  `knowledge: false` to turn it off. They used to send no Knowledge toggle, which
+  the server reads as off, so an answer said Knowledge was turned off for the
+  message.
+- `meta.capabilities()` reads which documented operations this server serves
+  from its own `GET /v1/public/openapi.json`, once per base URL (cached for
+  five minutes), and `Capabilities.serves(method, path)` answers for one
+  operation. A self-hosted installation serves part of the contract and
+  answers a bare 404 for the rest; a server without the document is assumed
+  to serve everything. `meta.openapi()` returns the document itself.
+- `POST /v1/knowledge/wiki/write` `new`: a `page_type` the project does not
+  declare is written as the closest declared type when one answers to that
+  name (its key, an alias or its label; `project` is `initiative`), and the
+  result says which type was used. A type nothing declared is close to answers
+  `invalid_page_type` with the declared types listed. Citations sent in
+  `citations` beside `sections` are kept with the sections that use them.
+- `POST /v1/knowledge/wiki/write` `mv`: the result names the final title when
+  the requested one was taken, and lists the pages whose links still show the
+  old title (`[[Old title]]`). Those links keep resolving to the renamed page;
+  `find_replace` updates their text.
+- `POST /v1/compound/cancel`: stop the queued or running compound of an
+  imported conversation (`conversations:write`). A batch already being read
+  finishes and its proposals stay; no further batch starts, and the
+  conversation's `compound_status` reads `cancelled`. Answers
+  `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound`
+  resumes from where it stopped.
+- `engine.cancelCompound(conversationId)` stops a compound over this route;
+  `engine.compound` resumes it.
+- `POST /v1/knowledge/wiki/write`: a write that stages a proposal for one
+  section or card row (`edit_section`, `add_fact`, `add_connection`,
+  `add_finding`, `edit_rows`) answers with `proposal`: its `id` and
+  `content_hash`, the value an accept takes back as `reviewed_hash`, and
+  `filed_by`. A rejected accept of such a proposal (409) now says why it cannot
+  apply.
+- `GET /v1/knowledge/wiki/proposals` and `GET /v1/knowledge/wiki/proposals/{proposal_id}`:
+  each proposal carries `filed_by`: the person (`user_id`, `user_name`), the
+  API `credential`, `client`, `agent` and `run` that filed it, and a `text`
+  line such as "filed by Dana Reyes via claude-code/2.1". The
+  `POST /v1/knowledge/wiki/command` `proposals` listing prints that line.
+  A pending listing's `cursor` (and the `proposals` command's `offset`) now
+  reaches every pending proposal: behind 500 proposals that could no longer
+  apply, a page used to end the listing early.
+- `knowledge.proposals.list` and `knowledge.proposals.get` are typed from these
+  routes, so a proposal's `filed_by` is in their types, and `KnowledgeResult`
+  carries a write's `proposal` (`id`, `content_hash`, `filed_by`).
+- `POST /v1/knowledge/wiki/command` `proposals`: `status` also takes
+  `accepted`, `superseded` and `resolved`, besides `pending` (the default) and
+  `dismissed`; it is no longer an enum in the schema, and an unknown value
+  answers `invalid_arguments` naming every status. `proposals` pages with
+  `offset` (and `limit`, at most 200): a page that stops short says which
+  `offset` continues it. A superseded proposal is listed with the reason it can no longer
+  apply. A pending proposal to a card's Facts, Connections or Findings no longer
+  stops applying when the table is re-sorted or another row changes; only a
+  change to a row it edits supersedes it, and the first row written to a card
+  section the page does not have yet is placed and accepted as it was shown.
 - `uploads.uploadFolder` starts the mirrored tree with a folder named after the
   uploaded directory (`docs/`), matching the path each file records
   (`docs/guides/a.md`); `rootFolder: false` puts the directory's contents

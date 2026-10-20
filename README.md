@@ -183,6 +183,11 @@ later `beakr.engine.compound(...)` without queuing one now; `storeFullText:
 true` keeps it. A plain import keeps the summary and metadata only, and a later
 compound answers `nothing_to_compound`.
 
+`beakr.engine.cancelCompound(conversationId)` stops a queued or running
+compound: a batch already being read finishes and its proposals stay, no further
+batch starts, and the conversation's `compound_status` reads `cancelled`.
+`engine.compound` resumes from where it stopped.
+
 Without `baseIndex` a batch is read as the whole session from the start. If the
 server has a different count, the import rejects with a `ConflictError` whose
 `expectedBaseIndex` says where to resend from.
@@ -228,6 +233,26 @@ const { token } = await beakr.endUserTokens.mint({
 const asUser = new Beakr({ apiKey: token });
 ```
 
+### What this installation serves: `beakr.meta.capabilities()`
+
+A self-hosted Beakr installation serves only part of the documented contract
+(no organization administration, external users, end-user tokens, service
+accounts or integrations) and answers a bare 404 for the rest. Each server
+lists what it serves in its own `GET /v1/public/openapi.json`;
+`capabilities()` reads it once per base URL (cached for five minutes) so a
+client can hide what is not there instead of failing on it:
+
+```ts
+const caps = await beakr.meta.capabilities();
+if (!caps.serves("GET", "/v1/integrations")) {
+  console.log("This Beakr installation does not provide integrations");
+}
+```
+
+`serves` takes a concrete path or a contract template. A server that publishes
+no document is assumed to serve everything, and a route outside the documented
+contract is always assumed served: the document cannot speak for it.
+
 ## Errors
 
 Every failure is a `BeakrError` with `status`, `code` (from the error
@@ -271,11 +296,11 @@ Codes a program should expect from sensitive actions: `session_required`
 
 The client covers the documented API only:
 
-`me`, `projects`, `members`, `org` (`serviceAccounts`),
+`me`, `meta` (`openapi`, `capabilities`), `projects`, `members`, `org` (`serviceAccounts`),
 `externalUsers`, `endUserTokens`, `labels`, `uploads` (one file, a folder,
 resume), `files` (downloads), `jobs` (`wait`), `knowledge` (with
 `proposals` and `pages.sources()`), `conversations`, `engine` (`context`,
-`compound`), `runs`, `interviews` and `integrations` (with `tools` /
+`compound`, `cancelCompound`), `runs`, `interviews` and `integrations` (with `tools` /
 `callTool`).
 
 ### Ask the agent
@@ -296,6 +321,10 @@ returns the same records. To show the answer as it is written,
 `for await (const chunk of beakr.runs.streamText(runId))` yields the visible
 text with citations numbered; `runs.stream()` yields the raw server-sent
 events.
+
+A run reads the organization's Knowledge unless `knowledge: false` is passed
+to `runs.start` or `runs.answer`; the server treats a run that does not ask for
+Knowledge as one with it turned off, so the SDK always sends the toggle.
 
 Uploads use the resumable flow (`/v1/uploads`) and declare the file's
 SHA-256 (`content_hash`), hashed as a stream so no runtime holds the whole file.
