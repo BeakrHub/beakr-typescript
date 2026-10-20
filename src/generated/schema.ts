@@ -365,6 +365,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/compound/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel compounding a conversation
+         * @description Stop the queued or running compound of an imported conversation. A batch already being read finishes and its proposals stay; no further batch starts. Answers `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound` resumes from where it stopped.
+         */
+        post: operations["cancel_compound_route_v1_compound_cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/context": {
         parameters: {
             query?: never;
@@ -3608,7 +3628,7 @@ export interface components {
         ContextIn: {
             /**
              * Budget Chars
-             * @description Most characters of context to return (2,000 to 100,000).
+             * @description Most characters the rendered context may use, from 2000 to 100000 (default 24000). A value below 2000 is refused with 422.
              * @default 24000
              */
             budget_chars?: number;
@@ -8349,6 +8369,53 @@ export interface components {
              */
             tags?: string[] | null;
         };
+        /**
+         * ProposalFiledBy
+         * @description Who filed a proposal: the person, and the API credential, client and agent used.
+         */
+        ProposalFiledBy: {
+            /**
+             * Agent
+             * @description The agent the client declared, e.g. `claude-code/2.1`.
+             * @default null
+             */
+            agent?: string | null;
+            /**
+             * Client
+             * @description The client that sent it, e.g. `beakr-mcp`.
+             * @default null
+             */
+            client?: string | null;
+            /**
+             * Credential
+             * @description The id of the API credential it came through, when it did.
+             * @default null
+             */
+            credential?: string | null;
+            /**
+             * Run
+             * @description The run label the agent declared; writes that share it can be undone together.
+             * @default null
+             */
+            run?: string | null;
+            /**
+             * Text
+             * @description One line for a reviewer, e.g. "filed by Dana Reyes via claude-code/2.1".
+             */
+            text: string;
+            /**
+             * User Id
+             * @description The person the proposal was filed for.
+             * @default null
+             */
+            user_id?: string | null;
+            /**
+             * User Name
+             * @description That person's display name or email.
+             * @default null
+             */
+            user_name?: string | null;
+        };
         /** ResearchCompleteness */
         ResearchCompleteness: {
             /**
@@ -9109,6 +9176,16 @@ export interface components {
              */
             created_at: string;
             /**
+             * Delivery Channel
+             * @description How the link was delivered: gmail or outlook (from the sender's own account), or links (minted for the sender to share).
+             */
+            delivery_channel?: string | null;
+            /**
+             * Delivery Error
+             * @description Why sending the link failed; the link still works.
+             */
+            delivery_error?: string | null;
+            /**
              * Expires At
              * Format: date-time
              * @description When it expires (ISO 8601, UTC).
@@ -9138,6 +9215,16 @@ export interface components {
              * @example 0f1e2d3c-4b5a-4c6d-9e8f-7a6b5c4d3e2f
              */
             link_id: string;
+            /**
+             * Recipient Email
+             * @description Email address the link was sent to, if it was sent.
+             */
+            recipient_email?: string | null;
+            /**
+             * Sent At
+             * @description When the link was last sent (ISO 8601, UTC).
+             */
+            sent_at?: string | null;
             /**
              * Status
              * @description Current status of the sendable link.
@@ -9489,6 +9576,26 @@ export interface components {
             } | null;
         } & {
             [key: string]: unknown;
+        };
+        /** StagedProposalRef */
+        StagedProposalRef: {
+            /**
+             * Content Hash
+             * @description The proposal's content hash, sent back as `reviewed_hash` on accept.
+             * @default null
+             */
+            content_hash?: string | null;
+            /**
+             * @description Who filed the proposal and through which API client or agent.
+             * @default null
+             */
+            filed_by?: components["schemas"]["ProposalFiledBy"] | null;
+            /**
+             * Id
+             * Format: uuid
+             * @description The staged proposal's id, for the proposals routes.
+             */
+            id: string;
         };
         /**
          * StartRunRequest
@@ -11073,6 +11180,11 @@ export interface components {
              */
             created_at: string;
             /**
+             * @description Who filed this proposal and through which API client or agent.
+             * @default null
+             */
+            filed_by?: components["schemas"]["ProposalFiledBy"] | null;
+            /**
              * Id
              * Format: uuid
              * @description Unique id of this wiki proposal.
@@ -11504,6 +11616,11 @@ export interface components {
             content: components["schemas"]["TextContent"][];
             /** @description How it turned out. */
             outcome: components["schemas"]["WikiToolOutcome"];
+            /**
+             * @description The proposal a section or row write staged (edit_section, add_fact, add_connection, add_finding, edit_rows).
+             * @default null
+             */
+            proposal?: components["schemas"]["StagedProposalRef"] | null;
             /**
              * Sources
              * @description The sources it cites or draws on.
@@ -12371,6 +12488,59 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    cancel_compound_route_v1_compound_cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompoundIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13980,7 +14150,7 @@ export interface operations {
                      * @enum {string}
                      */
                     mode?: "semantic" | "text" | "regex" | "history";
-                    /** @description rows: rows to skip (continue a NOT ALL ROWS reply). */
+                    /** @description rows, proposals: rows to skip (continue a NOT ALL ROWS reply). */
                     offset?: number;
                     /** @description rows: entity (default), when, amount, date, or a column (sorted by the number in it); descending=true puts the largest first. */
                     order_by?: string;
@@ -14025,11 +14195,8 @@ export interface operations {
                     sql?: string;
                     /** @description Start date YYYY-MM-DD (for timeline). */
                     start_date?: string;
-                    /**
-                     * @description For proposals: 'pending' (default, awaiting approval) or 'dismissed' (the user rejected them).
-                     * @enum {string}
-                     */
-                    status?: "pending" | "dismissed";
+                    /** @description For proposals: pending (default), accepted, dismissed, superseded (says why) or resolved. */
+                    status?: string;
                     /**
                      * @description rows: which card table (default facts).
                      * @enum {string}

@@ -50,6 +50,37 @@ describe("resources", () => {
     expect(calls[1]!.body).toEqual({ client: "codex", session_id: "s1", messages: [], compound: true });
   });
 
+  it("types a staged write's proposal and a listed proposal's filed_by", async () => {
+    // The engine now names the proposal a section or row write staged, and who
+    // filed each proposal; both reach callers through the contract's types.
+    const filedBy = { text: "filed by Dana Reyes via claude-code/2.1", user_name: "Dana Reyes", agent: "claude-code/2.1" };
+    const { fetch } = mockFetch([
+      json({
+        content: [{ type: "text", text: "Proposed." }],
+        outcome: { status: "proposed", protocol: "1" },
+        proposal: { id: "pr1", content_hash: "h1", filed_by: filedBy },
+      }),
+      json({ data: [{ id: "pr1", filed_by: filedBy }], next_cursor: null, has_more: false }),
+    ]);
+    const { beakr } = client(fetch);
+    const written = await beakr.knowledge.write("edit_section", { title: "Acme", rationale: "r" });
+    const reviewedHash: string | null | undefined = written.proposal?.content_hash;
+    expect(reviewedHash).toBe("h1");
+    const page = await beakr.knowledge.proposals.list();
+    const filer: string | undefined = page.data[0]?.filed_by?.text;
+    expect(filer).toBe(filedBy.text);
+  });
+
+  it("cancels a compound by conversation id", async () => {
+    const { fetch, calls } = mockFetch([json({ conversation_id: "cv1", status: "cancelled", pending_messages: 3 })]);
+    const { beakr } = client(fetch);
+    const result = await beakr.engine.cancelCompound("cv1");
+    expect(result["status"]).toBe("cancelled");
+    expect(calls[0]!.method).toBe("POST");
+    expect(new URL(calls[0]!.url).pathname).toBe("/v1/compound/cancel");
+    expect(calls[0]!.body).toEqual({ conversation_id: "cv1" });
+  });
+
   it("resolves the org once for org-admin calls when none is configured", async () => {
     const { fetch, calls } = mockFetch([
       json({ id: "org_7" }),
