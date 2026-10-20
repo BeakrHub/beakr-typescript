@@ -25,6 +25,7 @@ export const OPERATIONS = {
   "uploads.completeBulkUpload": { method: "POST", path: "/v1/bulk/complete" },
   "uploads.prepareBulkUpload": { method: "POST", path: "/v1/bulk/prepare" },
   "conversations.compound": { method: "POST", path: "/v1/compound" },
+  "conversations.cancelCompound": { method: "POST", path: "/v1/compound/cancel" },
   "conversations.agentContext": { method: "POST", path: "/v1/context" },
   "conversations.listConversations": { method: "GET", path: "/v1/conversations" },
   "conversations.getConversation": { method: "GET", path: "/v1/conversations/{conversation_id}" },
@@ -186,6 +187,12 @@ export class ConversationsApi {
   /** POST /v1/compound (Compound a conversation into Knowledge) */
   compound(args: { body: NonNullable<operations["compound_v1_compound_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["compound_v1_compound_post"]>> {
     const request: RequestOptions = { method: "POST", path: "/v1/compound", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/compound/cancel (Cancel compounding a conversation) */
+  cancelCompound(args: { body: NonNullable<operations["cancel_compound_route_v1_compound_cancel_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["cancel_compound_route_v1_compound_cancel_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/compound/cancel", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
