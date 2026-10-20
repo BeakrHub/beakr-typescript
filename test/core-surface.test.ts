@@ -29,6 +29,7 @@ const CORE_RESOURCES = [
   "labels",
   "me",
   "members",
+  "meta",
   "org",
   "projects",
   "runs",

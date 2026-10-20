@@ -24,6 +24,7 @@ import { Knowledge } from "./resources/knowledge.js";
 import { Labels } from "./resources/labels.js";
 import { Me } from "./resources/me.js";
 import { Members } from "./resources/members.js";
+import { Meta } from "./resources/meta.js";
 import { OrgAdmin } from "./resources/org-admin.js";
 import { Projects } from "./resources/projects.js";
 import { Runs } from "./resources/runs.js";
@@ -37,6 +38,8 @@ import { Uploads } from "./resources/uploads.js";
  */
 export class Beakr {
   readonly me: Me;
+  /** The API describing itself: its OpenAPI document and what this server serves. */
+  readonly meta: Meta;
   readonly projects: Projects;
   readonly members: Members;
   /** Organization administration: service accounts. */
@@ -67,6 +70,7 @@ export class Beakr {
   constructor(options: ClientOptions = {}) {
     this.transport = new Transport(options);
     this.me = new Me(this.transport);
+    this.meta = new Meta(this.transport);
     this.projects = new Projects(this.transport);
     this.members = new Members(this.transport);
     this.org = new OrgAdmin(this.transport);
