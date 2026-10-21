@@ -286,8 +286,10 @@ export class Uploads extends Resource {
    * already in the same place is not stored twice: it is listed in
    * `duplicates` (`path`, `artifact_id`, and `duplicate_of`, the file that was
    * kept), and when every failed file is such a duplicate `status` is
-   * `"succeeded"` though `job` reports `failed`. With `wait: "knowledge"` each
-   * kept file's Knowledge is waited for too (`kept_knowledge_status`).
+   * `"succeeded"` (the job succeeds too on an engine that counts them in
+   * `summary.duplicates`; an earlier one reports it `failed`). With
+   * `wait: "knowledge"` each kept file's Knowledge is waited for too
+   * (`kept_knowledge_status`).
    */
   async uploadMany(
     files: string | string[] | Iterable<FolderEntry> | AsyncIterable<FolderEntry>,
@@ -334,7 +336,8 @@ export class Uploads extends Resource {
       typeof options.wait === "object" ? options.wait : {},
     );
     let result: UploadManyResult = { ...batch, job, status: String(job.status) };
-    if (job.status === "failed") {
+    const summary = (job.result?.["summary"] as JsonObject | undefined) ?? {};
+    if (job.status === "failed" || Number(summary["duplicates"] ?? 0) > 0) {
       result = { ...result, ...alreadyUploadedOutcome(await this.batchStatus(batch.batch_id)) };
     }
     if (options.wait !== "knowledge") return result;

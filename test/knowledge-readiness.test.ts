@@ -5,7 +5,7 @@
  * `uploads.uploadMany({ wait: "knowledge" })`.
  */
 import { describe, expect, it } from "vitest";
-import { KnowledgeFailedError, KnowledgeTimeoutError } from "../src/index.js";
+import { KnowledgeFailedError, KnowledgeTimeoutError, type JsonObject } from "../src/index.js";
 import { client, json, mockFetch } from "./helpers.js";
 
 const path = (url: string) => new URL(url).pathname;
@@ -246,6 +246,88 @@ describe("uploads.uploadMany with a duplicate file", () => {
 
   it("keeps a real failure beside a duplicate failed", async () => {
     const { fetch } = mockFetch([...upload(), duplicateBatch(1)]);
+    const { beakr } = client(fetch);
+    const result = await beakr.uploads.uploadMany(files, { projectId: "p1", wait: true });
+    expect(result.status).toBe("failed");
+    expect(result.duplicates).toHaveLength(1);
+  });
+});
+
+/**
+ * The same upload on an engine that counts duplicates in `summary.duplicates`:
+ * they are not in `summary.failed`, so the job succeeds, and the upload still
+ * lists the duplicate (and fails beside a real failure).
+ */
+describe("uploads.uploadMany with a duplicate the batch counts as one", () => {
+  const S3 = "https://s3.example.test/bucket";
+  const upload = (job: JsonObject) => [
+    json({
+      batch_id: "b1",
+      expires_at: "2026-10-14T13:00:00Z",
+      folder_paths: [],
+      uploads: [{ path: "a.md", key: "k/a.md", url: `${S3}/a.md?sig=1`, headers: {} }],
+    }),
+    new Response(null, { status: 200 }),
+    json({
+      batch_id: "b1",
+      artifacts: [{ id: "a1" }],
+      folders: [],
+      failed: [],
+      job_id: "j1",
+      status_url: "/v1/jobs/j1",
+    }),
+    json({ job_id: "j1", ...job }),
+  ];
+  const duplicateBatch = (failed = 0) =>
+    json({
+      batch_id: "b1",
+      status: failed ? "partial_failure" : "completed",
+      artifacts: [
+        {
+          id: "a1",
+          path: "a.md",
+          title: "a.md",
+          status: "index_failed",
+          error_code: "duplicate",
+          error: "This file has already been uploaded",
+          duplicate_of: { artifact_id: "kept1", title: "a.md" },
+        },
+      ],
+      summary: { total: 1 + failed, failed, duplicates: 1 },
+      knowledge: { queued: 0, running: 0, failed: 0, ready: true },
+    });
+  const files = [{ path: "a.md", data: new Uint8Array([97]) }];
+
+  it("lists the duplicate of a job that succeeded", async () => {
+    const { fetch, calls } = mockFetch([
+      ...upload({ status: "succeeded", result: { summary: { total: 1, failed: 0, duplicates: 1 } } }),
+      duplicateBatch(),
+    ]);
+    const { beakr } = client(fetch);
+    const result = await beakr.uploads.uploadMany(files, { projectId: "p1", wait: true });
+    expect(result.status).toBe("succeeded");
+    expect(result.duplicates).toEqual([
+      { path: "a.md", artifact_id: "a1", duplicate_of: { artifact_id: "kept1", title: "a.md" } },
+    ]);
+    expect(path(calls.at(-1)!.url)).toBe("/v1/bulk/b1/status");
+  });
+
+  it("does not read the batch for a job without duplicates", async () => {
+    const { fetch, calls } = mockFetch([
+      ...upload({ status: "succeeded", result: { summary: { total: 1, failed: 0, duplicates: 0 } } }),
+    ]);
+    const { beakr } = client(fetch);
+    const result = await beakr.uploads.uploadMany(files, { projectId: "p1", wait: true });
+    expect(result.status).toBe("succeeded");
+    expect(result.duplicates).toBeUndefined();
+    expect(path(calls.at(-1)!.url)).toBe("/v1/jobs/j1");
+  });
+
+  it("keeps a real failure beside a duplicate failed", async () => {
+    const { fetch } = mockFetch([
+      ...upload({ status: "failed", error: { code: "upload_failed", message: "Some files failed." } }),
+      duplicateBatch(1),
+    ]);
     const { beakr } = client(fetch);
     const result = await beakr.uploads.uploadMany(files, { projectId: "p1", wait: true });
     expect(result.status).toBe("failed");
