@@ -480,8 +480,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Delete an imported conversation
-         * @description Delete one of the caller's imported conversations. Knowledge already compounded from it stays.
+         * Delete a conversation
+         * @description Delete one of the caller's imported conversations, or one of their Beakr chats (kind `ask_thread`) with its messages. Knowledge already compounded from it stays.
          */
         delete: operations["delete_conversation_v1_conversations__conversation_id__delete"];
         options?: never;
@@ -8791,7 +8791,7 @@ export interface components {
             user_id?: string | null;
             /**
              * User Name
-             * @description That person's display name or email.
+             * @description That person's display name; absent when they have none.
              * @default null
              */
             user_name?: string | null;
@@ -10097,6 +10097,50 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * SourceFiledBy
+         * @description Who wrote an inline `conversation`, `agent_note` or `user_note` citation.
+         */
+        SourceFiledBy: {
+            /**
+             * Agent
+             * @description The agent the client declared (`X-Beakr-Agent`), e.g. `claude-code/2.1`.
+             * @default null
+             */
+            agent?: string | null;
+            /**
+             * Client
+             * @description The client that sent it (`X-Beakr-Client`), e.g. `beakr-mcp/0.4.0`.
+             * @default null
+             */
+            client?: string | null;
+            /**
+             * Run
+             * @description The run label the agent declared (`X-Beakr-Run`).
+             * @default null
+             */
+            run?: string | null;
+            /**
+             * Session
+             * @description The client's own session id, when it sent one (`X-Beakr-Session`).
+             * @default null
+             */
+            session?: string | null;
+            /**
+             * Text
+             * @description One line for a reader, e.g. "Dana Reyes via claude-code/2.1 (beakr-mcp/0.4.0), run stdio:8d2a".
+             * @default null
+             */
+            text?: string | null;
+            /**
+             * User Name
+             * @description The display name, now, of the person the credential acted as; absent when they have none.
+             * @default null
+             */
+            user_name?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * SourceLocation
          * @description Where a cited source lives, and where in it the cited passage sits.
          */
@@ -10224,6 +10268,11 @@ export interface components {
              * @default null
              */
             excerpts?: components["schemas"]["SourceExcerpt"][] | null;
+            /**
+             * @description On an inline citation of a caller's own conversation: the person, agent, client, run and session that wrote it.
+             * @default null
+             */
+            filed_by?: components["schemas"]["SourceFiledBy"] | null;
             /**
              * Filename
              * @description The file's name, with its extension.
@@ -14909,7 +14958,7 @@ export interface operations {
                     timeline_query?: string;
                     /** @description For suggest_parent: the title of a page that does not exist yet. Use this instead of `page` when asking where a page you are about to create should be filed. */
                     title?: string;
-                    /** @description rows, table connections: rows involving this page. */
+                    /** @description rows, table connections: rows pointing at this page. */
                     to?: string;
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
@@ -15648,7 +15697,7 @@ export interface operations {
                     kind?: "result" | "lesson" | "decision" | "question" | "correction";
                     /** @description Human label for action=page_type, e.g. Disease. */
                     label?: string;
-                    /** @description For merge: the ORDERED section list the surviving page should lead with, drawn from both pages -- e.g. ["canonical:sec_overview", "duplicate:sec_findings"]. Duplicate-sourced sections are moved across whole (prose, citations, dates and embeddings intact) before the duplicate is archived; canonical-sourced ones are only reordered. Sections you do not name are safe: an unnamed canonical section keeps its place after the listed ones, and an unnamed duplicate section is archived with its page. Moving a section preserves its verified citations; rewriting the same text onto the canonical does not. */
+                    /** @description For merge: the ORDERED section list the surviving page should lead with, drawn from both pages -- e.g. ["canonical:sec_overview", "duplicate:sec_findings"]. Duplicate-sourced sections are moved across whole (prose, citations, dates and embeddings intact) before the duplicate is archived; canonical-sourced ones are only reordered. Sections you do not name are safe: an unnamed canonical section keeps its place after the listed ones, and an unnamed duplicate section is archived with its page. Moving a section preserves its verified citations; rewriting the same text onto the canonical does not. Two map cards' rows are always combined. */
                     merge_sections?: string[];
                     /** @description Optional metadata fields implied by the page type. */
                     metadata_schema?: Record<string, never>;

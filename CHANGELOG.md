@@ -3,10 +3,35 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## @beakr/sdk 0.1.0 (2026-10-17)
+## @beakr/sdk 0.1.0 (2026-10-21)
 
 ### Changes
 
+- Source records (`sources` on `POST /v1/knowledge/wiki/command` reads and
+  `POST /v1/knowledge/wiki/write` results): an inline `conversation`,
+  `agent_note` or `user_note` citation written with an API credential carries
+  `filed_by`: the person's `user_name` (their display name when the record is
+  read, absent when they have none), the `agent`, `client` and `run` the
+  request declared, the `session` it sent in the new optional
+  `X-Beakr-Session` header (the client's own session id, attribution only),
+  and a `text` line. It never carries the person's id or email. The
+  citation's `meta.filed_by`, which `GET /v1/knowledge/wiki/pages/{page_id}/sources`
+  returns, holds the same fields and the person's `user_id`. Browser requests
+  may send `X-Beakr-Session`.
+- Proposals: a review flag (`POST /v1/knowledge/wiki/write` `flag`) names the
+  person and agent who filed it in `filed_by`, and stays visible to every
+  project member.
+- `GET /v1/knowledge/wiki/pages/by-title`: a title that names no page still
+  answers `404 not_found`, and `error.details.suggestions` now lists the closest
+  live page titles you can read (empty when none is close).
+- `DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id}` and
+  `DELETE /v1/labels/{label_id}/members/{user_id}`: removing the last owner
+  answers `409 last_owner` instead of `403`. The caller may manage the members;
+  another owner is needed first.
+- `DELETE /v1/conversations/{conversation_id}`: also deletes one of the caller's
+  own Beakr chats (a conversation of kind `ask_thread`) with its messages. It
+  answered `not_found` for them before. Another person's chat still answers
+  `not_found`.
 - Skills (`skills:read`, `skills:write`) join the documented API.
   `GET /v1/skills` lists every skill you can use or install: your own, your
   organization's, the built-in ones and public skills from anywhere, by name.
@@ -34,31 +59,11 @@ Each release lists the public API changes it supports, taken from the API change
   organization answers 404 here, by id or slug, while it is not installed
   here, and can be installed here only if it was installed here before.
   `marketplace` is not given to a new skill as its slug.
-- `beakr.skills` over these routes: `list` (one page; each filter takes one
-  value or several) and `iter` (every page), `get` (id or slug), `bundle`,
-  `downloadZip`, `download` (the SKILL.md folder, or its zip with `asZip`;
-  Node), `create` and `createFromFolder` (a folder, a `SKILL.md` or a `.zip`;
-  text files only; Node), `uploadBundle` (files, a folder or a zip, with
-  `expectedSha256`), `install`, `uninstall`, `delete`, and `proposals.list`,
-  `iter`, `accept` and `dismiss`. `bundleSha256(files)` computes the digest
-  `expectedSha256` takes. `create` resolves to the skill as `get` does, and a
-  retried `create` replays its `Idempotency-Key`. With `includeContent` the
-  server pages 25 skills at a time.
 - `GET /v1/interview/sendables`: each link carries who it was sent to and how:
   `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`
   and `delivery_error`. All are null for a link that was not sent.
 - Proposal `filed_by.run`: the description says what the label is for: writes
   that share it can be undone together.
-- `runs.start` and `runs.answer` let the agent read Knowledge by default and take
-  `knowledge: false` to turn it off. They used to send no Knowledge toggle, which
-  the server reads as off, so an answer said Knowledge was turned off for the
-  message.
-- `meta.capabilities()` reads which documented operations this server serves
-  from its own `GET /v1/public/openapi.json`, once per base URL (cached for
-  five minutes), and `Capabilities.serves(method, path)` answers for one
-  operation. A self-hosted installation serves part of the contract and
-  answers a bare 404 for the rest; a server without the document is assumed
-  to serve everything. `meta.openapi()` returns the document itself.
 - `POST /v1/knowledge/wiki/write` `new`: a `page_type` the project does not
   declare is written as the closest declared type when one answers to that
   name (its key, an alias or its label; `project` is `initiative`), and the
@@ -75,8 +80,6 @@ Each release lists the public API changes it supports, taken from the API change
   conversation's `compound_status` reads `cancelled`. Answers
   `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound`
   resumes from where it stopped.
-- `engine.cancelCompound(conversationId)` stops a compound over this route;
-  `engine.compound` resumes it.
 - `POST /v1/knowledge/wiki/write`: a write that stages a proposal for one
   section or card row (`edit_section`, `add_fact`, `add_connection`,
   `add_finding`, `edit_rows`) answers with `proposal`: its `id` and
@@ -91,9 +94,6 @@ Each release lists the public API changes it supports, taken from the API change
   A pending listing's `cursor` (and the `proposals` command's `offset`) now
   reaches every pending proposal: behind 500 proposals that could no longer
   apply, a page used to end the listing early.
-- `knowledge.proposals.list` and `knowledge.proposals.get` are typed from these
-  routes, so a proposal's `filed_by` is in their types, and `KnowledgeResult`
-  carries a write's `proposal` (`id`, `content_hash`, `filed_by`).
 - `POST /v1/knowledge/wiki/command` `proposals`: `status` also takes
   `accepted`, `superseded` and `resolved`, besides `pending` (the default) and
   `dismissed`; it is no longer an enum in the schema, and an unknown value
@@ -104,14 +104,6 @@ Each release lists the public API changes it supports, taken from the API change
   stops applying when the table is re-sorted or another row changes; only a
   change to a row it edits supersedes it, and the first row written to a card
   section the page does not have yet is placed and accepted as it was shown.
-- `uploads.uploadFolder` starts the mirrored tree with a folder named after the
-  uploaded directory (`docs/`), matching the path each file records
-  (`docs/guides/a.md`); `rootFolder: false` puts the directory's contents
-  straight into `folderId` as before. Existing folders with the same name in the
-  same place are reused instead of failing (in `uploadEntries` too), so two trees
-  that share sub-folder names (two deal matters that both have `Closing/`), or the
-  same tree uploaded again, no longer stop with a 400 halfway through and leave a
-  partial upload.
 - `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
   and set a project's Knowledge profile, the description, goals, focus areas,
   people, organizations, topics, entity types and extraction guidance that
@@ -121,7 +113,6 @@ Each release lists the public API changes it supports, taken from the API change
   `PATCH` (the fields sent) need `kb:write` and the project's owners. A project
   with no profile answers 404 `knowledge_profile_not_found`. A
   project-restricted credential reaches its own projects' profiles.
-- `projects.knowledgeProfile`, `projects.setKnowledgeProfile` and `projects.updateKnowledgeProfile` read and set a project's Knowledge profile over these routes.
 - `POST /v1/knowledge/wiki/command` `query`: `GROUP BY value` on `facts`
   counts each value of a cell listing several (`A; B`) in each value's group,
   as `rows` `group_by=value` does; a value repeated in one cell counts once.
