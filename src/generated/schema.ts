@@ -8377,7 +8377,7 @@ export interface components {
             principal_type?: components["schemas"]["PrincipalType"];
             /**
              * Role
-             * @description The role it grants or holds.
+             * @description Role to give: `owner`, `admin`, `member` or `viewer`. A new member gets `member` when it is omitted; an existing member keeps their role. Moving the project's last owner to another role is refused with 409 `last_owner`.
              * @default member
              */
             role?: string;
@@ -11734,6 +11734,11 @@ export interface components {
          */
         WikiPatchIn: {
             /**
+             * After
+             * @description For `move_section`: id of the section to place it after. Omit to move it to the top of the page.
+             */
+            after?: string | null;
+            /**
              * Content
              * @description The wiki patch's content.
              */
@@ -11745,7 +11750,7 @@ export interface components {
             find?: string | null;
             /**
              * Op
-             * @description Edit to make: `replace_text`, `replace_section`, `append_section`, `delete_section` or `insert_after`.
+             * @description Edit to make: `replace_text`, `replace_section`, `append_section`, `delete_section`, `insert_after` or `move_section`.
              */
             op: string;
             /**
@@ -15712,7 +15717,7 @@ export interface operations {
                     }[];
                     /** @description THE ENTIRE NEW BODY of the section (for edit_section). A section runs from its <!-- sec:ID --> marker to the NEXT marker, so it includes every ## and ### heading under it. Whatever you send REPLACES ALL OF IT: subsections you do not retype are DELETED, not merged, and their citations and dates go with them. Read the section first and send back everything you are keeping. To split an over-long section, create the new sections FIRST (a new section_id plus section_title, and after=<this section id>) and move the prose into them, THEN shrink this one. Include all inline citation tokens; the <!-- sec:ID --> marker is prepended automatically if omitted. The section's OWN heading is not part of the body -- it is kept as it is, or set with section_title -- so you do not need to retype it. A leading heading that restates the title or is no deeper than the section's own heading is read as its title; a deeper heading remains a subsection in the body. */
                     new_section_body?: string;
-                    /** @description edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so. */
+                    /** @description edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. Add when to name one of a value's rows at several dates. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so. */
                     old_rows?: (Record<string, never> | string)[];
                     /** @description sort_table: columns first to last, e.g. 'attribute, when desc'. */
                     order_by?: string;
