@@ -75,6 +75,25 @@ export type {
 } from "./resources/interviews.js";
 export type { Label, LabelPage } from "./resources/labels.js";
 export {
+  SKILL_MD,
+  SkillProposals,
+  Skills,
+  bundleSha256,
+  readSkillFolder,
+  type CreateSkillOptions,
+  type CreatedSkill,
+  type ListSkillsQuery,
+  type Skill,
+  type SkillBundle,
+  type SkillDetail,
+  type SkillFiles,
+  type SkillOrigin,
+  type SkillOwner,
+  type SkillPage,
+  type SkillVisibility,
+  type UploadBundleOptions,
+} from "./resources/skills.js";
+export {
   KnowledgeFailedError,
   KnowledgeTimeoutError,
   alreadyUploadedOutcome,

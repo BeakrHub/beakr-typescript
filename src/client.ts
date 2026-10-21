@@ -28,6 +28,7 @@ import { Meta } from "./resources/meta.js";
 import { OrgAdmin } from "./resources/org-admin.js";
 import { Projects } from "./resources/projects.js";
 import { Runs } from "./resources/runs.js";
+import { Skills } from "./resources/skills.js";
 import { Uploads } from "./resources/uploads.js";
 
 /**
@@ -57,6 +58,8 @@ export class Beakr {
   readonly runs: Runs;
   /** Send an interview link and read what came back. */
   readonly interviews: Interviews;
+  /** Skills: SKILL.md folders the agent loads, and your library of them. */
+  readonly skills: Skills;
   /** Connected integrations, and the read-only tools to query them. */
   readonly integrations: Integrations;
   /** Upload files: one presigned PUT, or resumable parts above 64 MB. */
@@ -83,6 +86,7 @@ export class Beakr {
     this.jobs = new Jobs(this.transport);
     this.runs = new Runs(this.transport);
     this.interviews = new Interviews(this.transport);
+    this.skills = new Skills(this.transport);
     this.integrations = new Integrations(this.transport);
     this.uploads = new Uploads(this.transport);
     this.files = new Files(this.transport);
