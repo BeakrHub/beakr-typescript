@@ -232,7 +232,7 @@ export class ConversationsApi {
     return this.transport.request(request);
   }
 
-  /** DELETE /v1/conversations/{conversation_id} (Delete an imported conversation) */
+  /** DELETE /v1/conversations/{conversation_id} (Delete a conversation) */
   deleteConversation(args: { path: operations["delete_conversation_v1_conversations__conversation_id__delete"]["parameters"]["path"] }, options?: CallOptions): Promise<void> {
     const request: RequestOptions = { method: "DELETE", path: `/v1/conversations/${enc(String(args.path.conversation_id))}`, responseType: "none", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
