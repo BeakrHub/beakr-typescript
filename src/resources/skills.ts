@@ -32,7 +32,7 @@ export type Skill = SkillPage["data"][number];
 export type SkillDetail = ResponseOf<"/v1/skills/{skill_id}", "get">;
 /** A skill's SKILL.md folder (`GET /v1/skills/{skill_id}/bundle`). */
 export type SkillBundle = ResponseOf<"/v1/skills/{skill_id}/bundle", "get">;
-/** A created skill (`POST /v1/skills`). */
+/** A created skill (`POST /v1/skills`): the same shape `get` answers. */
 export type CreatedSkill = ResponseOf<"/v1/skills", "post">;
 /** A skill's files: each path in its folder mapped to its text. */
 export type SkillFiles = Record<string, string>;
@@ -258,7 +258,11 @@ export class Skills extends Resource {
     };
   }
 
-  /** One page of the skills you can use or install, by name. Each filter takes one value or several. */
+  /**
+   * One page of the skills you can use or install, by name. Each filter takes
+   * one value or several. With `includeContent` a page holds at most 25 skills.
+   * Retired skills are not listed.
+   */
   list(query: ListSkillsQuery = {}): Promise<SkillPage> {
     return this.transport.request({
       method: "GET",
@@ -333,7 +337,8 @@ export class Skills extends Resource {
 
   /**
    * Create a skill of yours from its files (with `SKILL.md`). It is installed
-   * in your library and private unless `visibility` says otherwise; a retry
+   * in your library and private unless `visibility` says otherwise; `"public"`
+   * publishes it, every file included, to every Beakr organization. A retry
    * replays its `Idempotency-Key`.
    */
   create(files: SkillFiles, options: CreateSkillOptions = {}): Promise<CreatedSkill> {

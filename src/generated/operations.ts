@@ -130,7 +130,7 @@ export const OPERATIONS = {
   "runs.cancelRun": { method: "POST", path: "/v1/runs/{run_id}/cancel" },
   "runs.streamRunEvents": { method: "GET", path: "/v1/runs/{run_id}/events" },
   "skills.listSkills": { method: "GET", path: "/v1/skills" },
-  "skills.importSkillBundle": { method: "POST", path: "/v1/skills" },
+  "skills.createSkill": { method: "POST", path: "/v1/skills" },
   "skills.getSkill": { method: "GET", path: "/v1/skills/{skill_id}" },
   "skills.deleteSkill": { method: "DELETE", path: "/v1/skills/{skill_id}" },
   "skills.getSkillBundle": { method: "GET", path: "/v1/skills/{skill_id}/bundle" },
@@ -1100,7 +1100,7 @@ export class SkillsApi {
   }
 
   /** POST /v1/skills (Create a skill) */
-  importSkillBundle(args: { body: NonNullable<operations["import_skill_bundle_v1_skills_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["import_skill_bundle_v1_skills_post"]>> {
+  createSkill(args: { body: NonNullable<operations["create_skill_route_v1_skills_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["create_skill_route_v1_skills_post"]>> {
     const request: RequestOptions = { method: "POST", path: "/v1/skills", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
