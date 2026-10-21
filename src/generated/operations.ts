@@ -85,6 +85,11 @@ export const OPERATIONS = {
   "apiKeys.revokeApiKey": { method: "DELETE", path: "/v1/me/api-keys/{key_id}" },
   "apiKeys.listScopes": { method: "GET", path: "/v1/me/api-keys/scopes" },
   "organizations.getActiveOrg": { method: "GET", path: "/v1/me/organization" },
+  "skills.installSkill": { method: "POST", path: "/v1/me/skills/library/{skill_id}" },
+  "skills.uninstallSkill": { method: "DELETE", path: "/v1/me/skills/library/{skill_id}" },
+  "skills.listMinedSkillProposals": { method: "GET", path: "/v1/me/skills/proposals" },
+  "skills.acceptMinedSkillProposal": { method: "POST", path: "/v1/me/skills/proposals/{proposal_id}/accept" },
+  "skills.dismissMinedSkillProposal": { method: "POST", path: "/v1/me/skills/proposals/{proposal_id}/dismiss" },
   "threads.listMyThreads": { method: "GET", path: "/v1/me/threads" },
   "organizations.listOrgs": { method: "GET", path: "/v1/organizations" },
   "organizations.getOrg": { method: "GET", path: "/v1/organizations/{org_id}" },
@@ -124,6 +129,13 @@ export const OPERATIONS = {
   "runs.getRunStatus": { method: "GET", path: "/v1/runs/{run_id}" },
   "runs.cancelRun": { method: "POST", path: "/v1/runs/{run_id}/cancel" },
   "runs.streamRunEvents": { method: "GET", path: "/v1/runs/{run_id}/events" },
+  "skills.listSkills": { method: "GET", path: "/v1/skills" },
+  "skills.createSkill": { method: "POST", path: "/v1/skills" },
+  "skills.getSkill": { method: "GET", path: "/v1/skills/{skill_id}" },
+  "skills.deleteSkill": { method: "DELETE", path: "/v1/skills/{skill_id}" },
+  "skills.getSkillBundle": { method: "GET", path: "/v1/skills/{skill_id}/bundle" },
+  "skills.replaceSkillBundle": { method: "PUT", path: "/v1/skills/{skill_id}/bundle" },
+  "skills.downloadSkillBundleZip": { method: "GET", path: "/v1/skills/{skill_id}/bundle.zip" },
   "threads.getThreadDetail": { method: "GET", path: "/v1/threads/{thread_id}" },
   "uploads.createUpload": { method: "POST", path: "/v1/uploads" },
   "uploads.getUpload": { method: "GET", path: "/v1/uploads/{upload_id}" },
@@ -220,7 +232,7 @@ export class ConversationsApi {
     return this.transport.request(request);
   }
 
-  /** DELETE /v1/conversations/{conversation_id} (Delete an imported conversation) */
+  /** DELETE /v1/conversations/{conversation_id} (Delete a conversation) */
   deleteConversation(args: { path: operations["delete_conversation_v1_conversations__conversation_id__delete"]["parameters"]["path"] }, options?: CallOptions): Promise<void> {
     const request: RequestOptions = { method: "DELETE", path: `/v1/conversations/${enc(String(args.path.conversation_id))}`, responseType: "none", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
@@ -1035,6 +1047,95 @@ export class ServiceAccountsApi {
   }
 }
 
+/** Public operations tagged skills. */
+export class SkillsApi {
+  constructor(private readonly transport: Transport) {}
+
+  /** POST /v1/me/skills/library/{skill_id} (Install a skill) */
+  installSkill(args: { path: operations["install_skill_v1_me_skills_library__skill_id__post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["install_skill_v1_me_skills_library__skill_id__post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/me/skills/library/${enc(String(args.path.skill_id))}`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** DELETE /v1/me/skills/library/{skill_id} (Uninstall a skill) */
+  uninstallSkill(args: { path: operations["uninstall_skill_v1_me_skills_library__skill_id__delete"]["parameters"]["path"] }, options?: CallOptions): Promise<void> {
+    const request: RequestOptions = { method: "DELETE", path: `/v1/me/skills/library/${enc(String(args.path.skill_id))}`, responseType: "none", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/me/skills/proposals (List proposed skills) */
+  listMinedSkillProposals(args?: { query?: NonNullable<operations["list_mined_skill_proposals_v1_me_skills_proposals_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_mined_skill_proposals_v1_me_skills_proposals_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/me/skills/proposals", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/me/skills/proposals, following its cursor. */
+  listMinedSkillProposalsAll(args?: { query?: NonNullable<operations["list_mined_skill_proposals_v1_me_skills_proposals_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_mined_skill_proposals_v1_me_skills_proposals_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/me/skills/proposals", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** POST /v1/me/skills/proposals/{proposal_id}/accept (Accept a proposed skill) */
+  acceptMinedSkillProposal(args: { path: operations["accept_mined_skill_proposal_v1_me_skills_proposals__proposal_id__accept_post"]["parameters"]["path"]; query?: NonNullable<operations["accept_mined_skill_proposal_v1_me_skills_proposals__proposal_id__accept_post"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["accept_mined_skill_proposal_v1_me_skills_proposals__proposal_id__accept_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/me/skills/proposals/${enc(String(args.path.proposal_id))}/accept`, query: args?.query as Record<string, QueryValue> | undefined, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/me/skills/proposals/{proposal_id}/dismiss (Dismiss a proposed skill) */
+  dismissMinedSkillProposal(args: { path: operations["dismiss_mined_skill_proposal_v1_me_skills_proposals__proposal_id__dismiss_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["dismiss_mined_skill_proposal_v1_me_skills_proposals__proposal_id__dismiss_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/me/skills/proposals/${enc(String(args.path.proposal_id))}/dismiss`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/skills (List skills) */
+  listSkills(args?: { query?: NonNullable<operations["list_skills_route_v1_skills_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_skills_route_v1_skills_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/skills", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/skills, following its cursor. */
+  listSkillsAll(args?: { query?: NonNullable<operations["list_skills_route_v1_skills_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_skills_route_v1_skills_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/skills", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** POST /v1/skills (Create a skill) */
+  createSkill(args: { body: NonNullable<operations["create_skill_route_v1_skills_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["create_skill_route_v1_skills_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/skills", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/skills/{skill_id} (Get a skill) */
+  getSkill(args: { path: operations["get_skill_route_v1_skills__skill_id__get"]["parameters"]["path"]; query?: NonNullable<operations["get_skill_route_v1_skills__skill_id__get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["get_skill_route_v1_skills__skill_id__get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/skills/${enc(String(args.path.skill_id))}`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** DELETE /v1/skills/{skill_id} (Delete a skill) */
+  deleteSkill(args: { path: operations["delete_skill_v1_skills__skill_id__delete"]["parameters"]["path"] }, options?: CallOptions): Promise<void> {
+    const request: RequestOptions = { method: "DELETE", path: `/v1/skills/${enc(String(args.path.skill_id))}`, responseType: "none", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/skills/{skill_id}/bundle (Download a skill's files) */
+  getSkillBundle(args: { path: operations["get_skill_bundle_v1_skills__skill_id__bundle_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_skill_bundle_v1_skills__skill_id__bundle_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/skills/${enc(String(args.path.skill_id))}/bundle`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PUT /v1/skills/{skill_id}/bundle (Replace a skill's files) */
+  replaceSkillBundle(args: { path: operations["replace_skill_bundle_v1_skills__skill_id__bundle_put"]["parameters"]["path"]; body: NonNullable<operations["replace_skill_bundle_v1_skills__skill_id__bundle_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["replace_skill_bundle_v1_skills__skill_id__bundle_put"]>> {
+    const request: RequestOptions = { method: "PUT", path: `/v1/skills/${enc(String(args.path.skill_id))}/bundle`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/skills/{skill_id}/bundle.zip (Download a skill as a zip) */
+  downloadSkillBundleZip(args: { path: operations["download_skill_bundle_zip_v1_skills__skill_id__bundle_zip_get"]["parameters"]["path"] }, options?: CallOptions): Promise<Uint8Array> {
+    const request: RequestOptions = { method: "GET", path: `/v1/skills/${enc(String(args.path.skill_id))}/bundle.zip`, responseType: "bytes", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+}
+
 /** Public operations tagged threads. */
 export class ThreadsApi {
   constructor(private readonly transport: Transport) {}
@@ -1148,6 +1249,7 @@ export class BeakrApi {
   readonly projects: ProjectsApi;
   readonly runs: RunsApi;
   readonly serviceAccounts: ServiceAccountsApi;
+  readonly skills: SkillsApi;
   readonly threads: ThreadsApi;
   readonly uploads: UploadsApi;
 
@@ -1169,6 +1271,7 @@ export class BeakrApi {
     this.projects = new ProjectsApi(transport);
     this.runs = new RunsApi(transport);
     this.serviceAccounts = new ServiceAccountsApi(transport);
+    this.skills = new SkillsApi(transport);
     this.threads = new ThreadsApi(transport);
     this.uploads = new UploadsApi(transport);
   }
