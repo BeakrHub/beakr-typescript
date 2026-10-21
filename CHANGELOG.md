@@ -7,6 +7,43 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Skills (`skills:read`, `skills:write`) join the documented API.
+  `GET /v1/skills` lists every skill you can use or install: your own, your
+  organization's, the built-in ones and public skills from anywhere, by name.
+  Each skill carries `visibility` (`private`, `org`, `public`), `owner` (`me`,
+  `org`, `system`, `anyone`), `origin` (`created`, `mined`, `imported`,
+  `system`) and `installed`, and the list filters on each (repeat a parameter
+  for more than one value), on `search` and `domain`; `include_content=true`
+  adds each skill's `files` and caps a page at 25 skills. Retired skills are
+  not listed. `GET /v1/skills/{skill_id}` reads one skill by id or slug, with
+  `latest_revision`; a slug resolves to your own skill first, then a built-in,
+  then one you installed, then your organization's, and never to a skill from
+  another organization you have not installed. Only this read takes a slug.
+  `POST /v1/skills` creates a skill from a SKILL.md folder (`files`, path to
+  text), answers it as the read does, honours `Idempotency-Key` and answers
+  409 when a create running at the same time took the same slug.
+  `visibility=public` publishes a skill, every file included, to every Beakr
+  organization. `GET` and `PUT /v1/skills/{skill_id}/bundle` read and replace
+  its files (`files_sha256` is always present; send it back as
+  `expected_sha256`), `GET /v1/skills/{skill_id}/bundle.zip` downloads them as
+  a zip, and `DELETE /v1/skills/{skill_id}` deletes a skill you wrote. `POST`
+  and `DELETE /v1/me/skills/library/{skill_id}` install and uninstall a skill
+  (an uninstalled skill can be installed again), and
+  `GET /v1/me/skills/proposals` with `POST .../accept` and `POST .../dismiss`
+  review the skills Beakr drafted from your work. A skill you wrote in another
+  organization answers 404 here, by id or slug, while it is not installed
+  here, and can be installed here only if it was installed here before.
+  `marketplace` is not given to a new skill as its slug.
+- `beakr.skills` over these routes: `list` (one page; each filter takes one
+  value or several) and `iter` (every page), `get` (id or slug), `bundle`,
+  `downloadZip`, `download` (the SKILL.md folder, or its zip with `asZip`;
+  Node), `create` and `createFromFolder` (a folder, a `SKILL.md` or a `.zip`;
+  text files only; Node), `uploadBundle` (files, a folder or a zip, with
+  `expectedSha256`), `install`, `uninstall`, `delete`, and `proposals.list`,
+  `iter`, `accept` and `dismiss`. `bundleSha256(files)` computes the digest
+  `expectedSha256` takes. `create` resolves to the skill as `get` does, and a
+  retried `create` replays its `Idempotency-Key`. With `includeContent` the
+  server pages 25 skills at a time.
 - `GET /v1/interview/sendables`: each link carries who it was sent to and how:
   `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`
   and `delivery_error`. All are null for a link that was not sent.

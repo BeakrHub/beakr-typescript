@@ -33,6 +33,7 @@ const CORE_RESOURCES = [
   "org",
   "projects",
   "runs",
+  "skills",
   "uploads",
 ];
 
