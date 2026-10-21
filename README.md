@@ -127,6 +127,32 @@ const profile = await beakr.projects.knowledgeProfile(projectId);
 `knowledgeProfile` throws `NotFoundError` (`code === "knowledge_profile_not_found"`)
 while the project has none.
 
+### Skills
+
+A skill is a SKILL.md folder your agent loads on demand. `skills.list` covers
+your own skills, your organization's, the built-in ones and public skills from
+anywhere; each carries `visibility`, `owner` (`me`, `org`, `system`, `anyone`),
+`origin` (`created`, `mined`, `imported`, `system`) and `installed`, and each
+is also a filter.
+
+```ts
+const mine = await beakr.skills.list({ owner: "me" });
+const toInstall = await beakr.skills.list({ visibility: "public", installed: false });
+for await (const skill of beakr.skills.iter({ owner: ["org", "system"] })) console.log(skill.slug);
+
+const skill = await beakr.skills.createFromFolder("skills/plate-reader"); // or a .zip (Node)
+await beakr.skills.download(skill.id, "exported/");                       // exported/plate-reader/
+await beakr.skills.install(toInstall.data[0]!.id);
+for (const proposal of (await beakr.skills.proposals.list()).data) {
+  await beakr.skills.proposals.accept(proposal.id);
+}
+```
+
+`skills.get` takes an id or a slug; a slug resolves to your own skill first,
+then a built-in, then one you installed, then your organization's.
+`uploadBundle(skillId, files, { expectedSha256 })` throws `ConflictError`
+(`code === "skill_conflict"`) when the skill changed since you read it.
+
 ### Know when Knowledge is ready
 
 Uploaded files reach a project's Knowledge in the background after indexing. Wait for it
@@ -300,8 +326,8 @@ The client covers the documented API only:
 `externalUsers`, `endUserTokens`, `labels`, `uploads` (one file, a folder,
 resume), `files` (downloads), `jobs` (`wait`), `knowledge` (with
 `proposals` and `pages.sources()`), `conversations`, `engine` (`context`,
-`compound`, `cancelCompound`), `runs`, `interviews` and `integrations` (with `tools` /
-`callTool`).
+`compound`, `cancelCompound`), `runs`, `interviews`, `skills` (with `proposals`) and
+`integrations` (with `tools` / `callTool`).
 
 ### Ask the agent
 

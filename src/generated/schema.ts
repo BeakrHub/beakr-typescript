@@ -480,8 +480,8 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Delete an imported conversation
-         * @description Delete one of the caller's imported conversations. Knowledge already compounded from it stays.
+         * Delete a conversation
+         * @description Delete one of the caller's imported conversations, or one of their Beakr chats (kind `ask_thread`) with its messages. Knowledge already compounded from it stays.
          */
         delete: operations["delete_conversation_v1_conversations__conversation_id__delete"];
         options?: never;
@@ -1421,6 +1421,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/skills/library/{skill_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Install a skill
+         * @description Add a skill you can see to your library, so your agent is told about it. Installing an installed skill changes nothing, and a skill you uninstalled can be installed again. 404 for a skill you cannot see, and for one you wrote in another organization and never installed in this one.
+         */
+        post: operations["install_skill_v1_me_skills_library__skill_id__post"];
+        /**
+         * Uninstall a skill
+         * @description Remove a skill from your library, so your agent stops being told about it. The skill itself is kept, and installing it again brings it back. 404 when it is not in your library.
+         */
+        delete: operations["uninstall_skill_v1_me_skills_library__skill_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/skills/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List proposed skills
+         * @description Skills Beakr drafted from work you repeated successfully, most recently seen first, with the draft's files and the evidence behind it. `status` is `pending` (the default), `accepted` or `dismissed`.
+         */
+        get: operations["list_mined_skill_proposals_v1_me_skills_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/skills/proposals/{proposal_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept a proposed skill
+         * @description Turn a pending proposal into a private skill of yours, installed in your library. 409 `already_reviewed` when it was already decided, `duplicate_candidate` when it repeats a skill you have (`force=true` creates it anyway) and `import_conflict` when a concurrent change won; retry that one.
+         */
+        post: operations["accept_mined_skill_proposal_v1_me_skills_proposals__proposal_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/skills/proposals/{proposal_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss a proposed skill
+         * @description Decline a pending proposal; it moves to `status=dismissed` and its evidence is kept. If later work shows the same pattern again, Beakr may propose it again. 409 when it was already decided.
+         */
+        post: operations["dismiss_mined_skill_proposal_v1_me_skills_proposals__proposal_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/threads": {
         parameters: {
             query?: never;
@@ -2063,6 +2147,98 @@ export interface paths {
          * @description The run's events as server-sent events, each with an id. Resume after a disconnect with the `Last-Event-ID` header (or `last_event_id`). Heartbeat comments keep the connection open; the stream ends when the run completes, fails or is cancelled.
          */
         get: operations["stream_run_events_v1_runs__run_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List skills
+         * @description The skills you can use or install, by name, one page at a time: your own, your organization's, the ones built into Beakr and public skills from anywhere. Each is labelled with its `visibility`, its `owner` (`me`, `org`, `system` or `anyone`), its `origin` (`created`, `mined`, `imported` or `system`) and whether it is `installed` in your library, and each label is also a filter: `owner=me` lists your own skills, `owner=system` the built-in ones, `visibility=public` the public ones and `installed=false` the ones you could add. Repeat a filter for more than one value. `include_content=true` adds each skill's files, and then a page holds at most 25 skills. Retired skills are not listed.
+         */
+        get: operations["list_skills_route_v1_skills_get"];
+        put?: never;
+        /**
+         * Create a skill
+         * @description Create a skill from a SKILL.md folder: `files` maps each path to its text, and must include `SKILL.md`, which names the skill in its frontmatter (`name`, `description`). Other files go under `scripts/`, `references/`, `templates/` or `assets/`. The skill is yours, installed in your library, and private unless `visibility` says otherwise; `visibility=public` publishes it, every file included, to every Beakr organization. Answers the skill as `GET /v1/skills/{skill_id}` does. Honours `Idempotency-Key`. 422 when the folder is not a valid skill; 409 when a create running at the same time took the same slug (retry it).
+         */
+        post: operations["create_skill_route_v1_skills_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/skills/{skill_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a skill
+         * @description One skill, by id or slug, with its labels and the revision its files are at. A slug is not unique (your own skill and a built-in can share one), so it resolves the way your agent loads skills: your own first, then a built-in, then one you installed, then your organization's. A slug never reaches a skill from another organization that you have not installed; use its id. A skill you uninstalled still resolves by slug, after any skill the agent would load first. Only this read takes a slug: the other skill operations take the id. 404 when no skill you can see matches, and for a retired skill.
+         */
+        get: operations["get_skill_route_v1_skills__skill_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a skill
+         * @description Delete a skill you wrote, for everyone who installed it. 404 for a skill you did not write; to stop using someone else's skill, uninstall it.
+         */
+        delete: operations["delete_skill_v1_skills__skill_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/skills/{skill_id}/bundle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a skill's files
+         * @description The SKILL.md folder of a skill you can see, as `{path: text}`, with `files_sha256`, the digest to send back as `expected_sha256` when replacing the files; it is always present. Takes the skill's id. 404 when the skill is not visible to you.
+         */
+        get: operations["get_skill_bundle_v1_skills__skill_id__bundle_get"];
+        /**
+         * Replace a skill's files
+         * @description Replace the SKILL.md folder of a skill you own (`replace=false` adds and overwrites the files sent and keeps the rest). Send the `files_sha256` you read as `expected_sha256` and a change made since is refused with 409 `skill_conflict` instead of overwritten. 403 for a skill you can see but do not own.
+         */
+        put: operations["replace_skill_bundle_v1_skills__skill_id__bundle_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/skills/{skill_id}/bundle.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download a skill as a zip
+         * @description The SKILL.md folder of a skill you can see, as a zip archive whose folder unpacks straight into Claude Code, Codex or any agent that reads SKILL.md folders. 404 when the skill is not visible to you or has no files.
+         */
+        get: operations["download_skill_bundle_zip_v1_skills__skill_id__bundle_zip_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5065,6 +5241,36 @@ export interface components {
              */
             parent_folder_id?: string | null;
         };
+        /**
+         * ImportBundleIn
+         * @description Import a full SKILL.md folder bundle (Anthropic / Hermes / Codex / OpenAI).
+         */
+        ImportBundleIn: {
+            /**
+             * Files
+             * @description The skill's SKILL.md folder: each path in it, such as `SKILL.md` or a script under `scripts/`, mapped to its text.
+             */
+            files: {
+                [key: string]: string;
+            };
+            /**
+             * Slug Hint
+             * @description The handle to give the skill when its SKILL.md does not name one.
+             */
+            slug_hint?: string | null;
+            /**
+             * Source
+             * @description Where the folder came from, such as `claude-code` or `codex`; kept with the skill.
+             * @default imported
+             */
+            source?: string;
+            /**
+             * Visibility
+             * @description Who may see the skill: `private` (you), `org` (your organization) or `public`. `public` publishes it to every Beakr organization, not only yours: anyone can list it, read it and download every file in it. Setting it back to `private` or `org` (in the Beakr app) stops further reads and takes it from other organizations' agents, but copies already downloaded stay with whoever downloaded them.
+             * @default private
+             */
+            visibility?: string;
+        };
         /** ImportIn */
         ImportIn: {
             /**
@@ -6615,6 +6821,89 @@ export interface components {
             } | null;
         };
         /**
+         * LibrarySkillOut
+         * @description Installed skill with full knowledge.
+         */
+        LibrarySkillOut: {
+            /**
+             * Created At
+             * Format: date-time
+             * @description When it was created (ISO 8601, UTC).
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at: string;
+            /**
+             * Description
+             * @description Description of the library skill, in plain text.
+             */
+            description: string | null;
+            /**
+             * Domain
+             * @description Subject area the skill covers.
+             */
+            domain: string | null;
+            /**
+             * Id
+             * Format: uuid
+             * @description Unique id of this library skill.
+             */
+            id: string;
+            /**
+             * Knowledge
+             * @description The body of the skill's SKILL.md.
+             */
+            knowledge: string;
+            /**
+             * Name
+             * @description Name of the library skill.
+             */
+            name: string;
+            /**
+             * Owner Type
+             * @description What owns the skill: `user` (a person), `org` (an organization) or `system`.
+             * @enum {string}
+             */
+            owner_type: "system" | "org" | "user";
+            /**
+             * Packages
+             * @description Packages the skill's scripts need.
+             */
+            packages?: string[] | null;
+            /**
+             * Scripts
+             * @description Scripts bundled with the skill.
+             */
+            scripts?: components["schemas"]["SkillScriptOut"][] | null;
+            /**
+             * Slug
+             * @description The skill's handle, such as `scanpy`. Not unique: your own skill and a built-in can share one, so address a skill by `id` when it matters which.
+             */
+            slug: string;
+            /**
+             * Source
+             * @description How the skill was made: `user-created`, `curator-mined`, `system`, or the source an import named (`imported` by default).
+             */
+            source: string;
+            /**
+             * Triggers
+             * @description Legacy: when an agent should use the skill. Usually null.
+             */
+            triggers: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             * @description When it last changed (ISO 8601, UTC).
+             * @example 2026-10-03T09:15:42Z
+             */
+            updated_at: string;
+            /**
+             * Visibility
+             * @description Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization).
+             * @enum {string}
+             */
+            visibility: "private" | "org" | "public";
+        };
+        /**
          * LinkKnowledgeOut
          * @description A project the sender sent this interview to, and how its ingest is going.
          */
@@ -7168,6 +7457,97 @@ export interface components {
              * @default false
              */
             session_verified?: boolean;
+        };
+        /** MinedSkillProposalOut */
+        MinedSkillProposalOut: {
+            /**
+             * Description
+             * @description Description of the mined skill proposal, in plain text.
+             */
+            description: string | null;
+            /**
+             * Draft Files
+             * @description The proposed skill's files, keyed by path.
+             */
+            draft_files: {
+                [key: string]: string;
+            };
+            /**
+             * Draft Skill Md
+             * @description The proposed SKILL.md.
+             */
+            draft_skill_md: string;
+            /**
+             * Evidence
+             * @description Why Beakr proposed it: the repeated, successful work the draft was drawn from.
+             */
+            evidence: {
+                [key: string]: unknown;
+            };
+            /**
+             * First Seen At
+             * Format: date-time
+             * @description Time of the first seen (ISO 8601, UTC).
+             */
+            first_seen_at: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description Unique id of this mined skill proposal.
+             */
+            id: string;
+            /**
+             * Last Seen At
+             * Format: date-time
+             * @description When it was last seen.
+             */
+            last_seen_at: string;
+            /**
+             * Occurrence Count
+             * @description How many times the pattern was seen.
+             */
+            occurrence_count: number;
+            /**
+             * Source Page Ids
+             * @description Ids of the source pages.
+             */
+            source_page_ids: string[];
+            /**
+             * Source Thread Ids
+             * @description Ids of the source threads.
+             */
+            source_thread_ids: string[];
+            /**
+             * Status
+             * @description `pending`, `accepted` or `dismissed`.
+             */
+            status: string;
+            /**
+             * Title
+             * @description Title of the mined skill proposal.
+             */
+            title: string;
+        };
+        /** MinedSkillProposalOutPage */
+        MinedSkillProposalOutPage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["MinedSkillProposalOut"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @default false
+             * @example false
+             */
+            has_more?: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
         };
         /** ObjectPage */
         ObjectPage: {
@@ -7997,7 +8377,7 @@ export interface components {
             principal_type?: components["schemas"]["PrincipalType"];
             /**
              * Role
-             * @description The role it grants or holds.
+             * @description Role to give: `owner`, `admin`, `member` or `viewer`. A new member gets `member` when it is omitted; an existing member keeps their role. Moving the project's last owner to another role is refused with 409 `last_owner`.
              * @default member
              */
             role?: string;
@@ -8411,7 +8791,7 @@ export interface components {
             user_id?: string | null;
             /**
              * User Name
-             * @description That person's display name or email.
+             * @description That person's display name; absent when they have none.
              * @default null
              */
             user_name?: string | null;
@@ -9351,6 +9731,339 @@ export interface components {
              */
             scopes: string[];
         };
+        /** SkillBundleOut */
+        SkillBundleOut: {
+            /**
+             * File Count
+             * @description How many files the skill has.
+             */
+            file_count: number;
+            /**
+             * Files
+             * @description The skill's SKILL.md folder, each path mapped to its text.
+             */
+            files: {
+                [key: string]: string;
+            };
+            /**
+             * Files Sha256
+             * @description Digest of the files as stored, always present. Send it back as `expected_sha256` when replacing them, so a change made in between is refused rather than overwritten.
+             */
+            files_sha256: string;
+            /**
+             * Skill Id
+             * Format: uuid
+             * @description Id of the skill.
+             */
+            skill_id: string;
+            /**
+             * Slug
+             * @description The skill's handle, such as `scanpy`. Not unique: your own skill and a built-in can share one, so address a skill by `id` when it matters which.
+             */
+            slug: string;
+        };
+        /** SkillBundleReplaceIn */
+        SkillBundleReplaceIn: {
+            /**
+             * Expected Sha256
+             * @description The bundle's `files_sha256` when you read it. If the skill has changed since, the write is refused with 409 `skill_conflict` (unless `force`), so a newer edit is never silently overwritten. Omitted: the write is unconditional.
+             */
+            expected_sha256?: string | null;
+            /**
+             * Files
+             * @description The SKILL.md folder, each path mapped to its text.
+             */
+            files: {
+                [key: string]: string;
+            };
+            /**
+             * Force
+             * @description Write even when `expected_sha256` no longer matches.
+             * @default false
+             */
+            force?: boolean;
+            /**
+             * Replace
+             * @description Whether to replace every file (true) or only the files sent.
+             * @default true
+             */
+            replace?: boolean;
+        };
+        /**
+         * SkillDetailOut
+         * @description A skill, with the revision its files are at.
+         */
+        SkillDetailOut: {
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the skill was created.
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at: string;
+            /**
+             * Description
+             * @description What the skill does and when to use it, from its SKILL.md.
+             */
+            description?: string | null;
+            /**
+             * Domain
+             * @description Subject area the skill covers.
+             */
+            domain?: string | null;
+            /**
+             * Files
+             * @description The skill's SKILL.md folder, by path. Only with `include_content=true`.
+             */
+            files?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * Id
+             * Format: uuid
+             * @description The skill's id.
+             */
+            id: string;
+            /**
+             * Installed
+             * @description Whether it is in your library, so your agent is told about it.
+             */
+            installed: boolean;
+            /** @description The revision the skill's files are at. Null for a built-in skill (versioned with Beakr itself) and for a skill not changed since revisions were recorded. */
+            latest_revision?: components["schemas"]["SkillRevisionRefOut"] | null;
+            /**
+             * Name
+             * @description The skill's display name, from its SKILL.md.
+             */
+            name: string;
+            /**
+             * Origin
+             * @description How it came to exist: `created` (written in Beakr, by a person or their agent), `mined` (Beakr drafted it from repeated work and it was accepted), `imported` (uploaded as a SKILL.md folder) or `system` (built in).
+             * @enum {string}
+             */
+            origin: "created" | "mined" | "imported" | "system";
+            /**
+             * Owner
+             * @description Whose skill it is: `me` (you wrote it), `org` (someone in your organization, or the organization itself), `system` (built into Beakr) or `anyone` (a public skill from outside your organization).
+             * @enum {string}
+             */
+            owner: "me" | "org" | "system" | "anyone";
+            /**
+             * Slug
+             * @description The skill's handle, such as `scanpy`. Not unique: your own skill and a built-in can share one, so address a skill by `id` when it matters which.
+             */
+            slug: string;
+            /**
+             * Updated At
+             * Format: date-time
+             * @description When the skill last changed.
+             * @example 2026-10-03T09:15:42Z
+             */
+            updated_at: string;
+            /**
+             * Visibility
+             * @description Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).
+             * @enum {string}
+             */
+            visibility: "private" | "org" | "public";
+        };
+        /** SkillInstalled */
+        SkillInstalled: {
+            /**
+             * Skill Id
+             * Format: uuid
+             * @description Id of the skill.
+             */
+            skill_id: string;
+            /**
+             * Status
+             * @description `installed`.
+             */
+            status: string;
+        };
+        /**
+         * SkillOut
+         * @description A skill the caller can use or install.
+         */
+        SkillOut: {
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the skill was created.
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at: string;
+            /**
+             * Description
+             * @description What the skill does and when to use it, from its SKILL.md.
+             */
+            description?: string | null;
+            /**
+             * Domain
+             * @description Subject area the skill covers.
+             */
+            domain?: string | null;
+            /**
+             * Files
+             * @description The skill's SKILL.md folder, by path. Only with `include_content=true`.
+             */
+            files?: {
+                [key: string]: string;
+            } | null;
+            /**
+             * Id
+             * Format: uuid
+             * @description The skill's id.
+             */
+            id: string;
+            /**
+             * Installed
+             * @description Whether it is in your library, so your agent is told about it.
+             */
+            installed: boolean;
+            /**
+             * Name
+             * @description The skill's display name, from its SKILL.md.
+             */
+            name: string;
+            /**
+             * Origin
+             * @description How it came to exist: `created` (written in Beakr, by a person or their agent), `mined` (Beakr drafted it from repeated work and it was accepted), `imported` (uploaded as a SKILL.md folder) or `system` (built in).
+             * @enum {string}
+             */
+            origin: "created" | "mined" | "imported" | "system";
+            /**
+             * Owner
+             * @description Whose skill it is: `me` (you wrote it), `org` (someone in your organization, or the organization itself), `system` (built into Beakr) or `anyone` (a public skill from outside your organization).
+             * @enum {string}
+             */
+            owner: "me" | "org" | "system" | "anyone";
+            /**
+             * Slug
+             * @description The skill's handle, such as `scanpy`. Not unique: your own skill and a built-in can share one, so address a skill by `id` when it matters which.
+             */
+            slug: string;
+            /**
+             * Updated At
+             * Format: date-time
+             * @description When the skill last changed.
+             * @example 2026-10-03T09:15:42Z
+             */
+            updated_at: string;
+            /**
+             * Visibility
+             * @description Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).
+             * @enum {string}
+             */
+            visibility: "private" | "org" | "public";
+        };
+        /** SkillOutPage */
+        SkillOutPage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["SkillOut"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @default false
+             * @example false
+             */
+            has_more?: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
+        };
+        /** SkillProposalDismissed */
+        SkillProposalDismissed: {
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description The proposal that was dismissed.
+             */
+            proposal_id: string;
+            /**
+             * Status
+             * @description `dismissed`.
+             */
+            status: string;
+        };
+        /**
+         * SkillRevisionRefOut
+         * @description The revision a skill's files are at now.
+         */
+        SkillRevisionRefOut: {
+            /**
+             * Applied At
+             * @description When it became the skill's current files.
+             */
+            applied_at?: string | null;
+            /**
+             * Author Kind
+             * @description Who made it, such as `user`, `agent`, `curator` or `system`.
+             */
+            author_kind: string;
+            /**
+             * Change Summary
+             * @description A one-line summary of the change, when recorded.
+             */
+            change_summary?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the revision was recorded.
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at: string;
+            /**
+             * File Count
+             * @description How many files the skill has at this revision.
+             */
+            file_count: number;
+            /**
+             * Files Sha256
+             * @description Digest of the files at this revision. Send it as `expected_sha256` when replacing the files, so a change made in between is not overwritten.
+             */
+            files_sha256: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description The revision's id.
+             */
+            id: string;
+            /**
+             * Kind
+             * @description What made it, such as `initial`, `user_edit`, `auto_revision` or `baseline`.
+             */
+            kind: string;
+            /**
+             * Revision Number
+             * @description Its number in the skill's history, from 1.
+             */
+            revision_number: number;
+        };
+        /** SkillScriptOut */
+        SkillScriptOut: {
+            /**
+             * Content
+             * @description The skill script's content.
+             */
+            content: string;
+            /**
+             * Description
+             * @description Description of the skill script, in plain text.
+             */
+            description?: string | null;
+            /**
+             * Name
+             * @description Name of the skill script.
+             */
+            name: string;
+        };
         /**
          * SourceExcerpt
          * @description One cited passage of a compact record's document.
@@ -9380,6 +10093,50 @@ export interface components {
              * @default null
              */
             unit_locator?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SourceFiledBy
+         * @description Who wrote an inline `conversation`, `agent_note` or `user_note` citation.
+         */
+        SourceFiledBy: {
+            /**
+             * Agent
+             * @description The agent the client declared (`X-Beakr-Agent`), e.g. `claude-code/2.1`.
+             * @default null
+             */
+            agent?: string | null;
+            /**
+             * Client
+             * @description The client that sent it (`X-Beakr-Client`), e.g. `beakr-mcp/0.4.0`.
+             * @default null
+             */
+            client?: string | null;
+            /**
+             * Run
+             * @description The run label the agent declared (`X-Beakr-Run`).
+             * @default null
+             */
+            run?: string | null;
+            /**
+             * Session
+             * @description The client's own session id, when it sent one (`X-Beakr-Session`).
+             * @default null
+             */
+            session?: string | null;
+            /**
+             * Text
+             * @description One line for a reader, e.g. "Dana Reyes via claude-code/2.1 (beakr-mcp/0.4.0), run stdio:8d2a".
+             * @default null
+             */
+            text?: string | null;
+            /**
+             * User Name
+             * @description The display name, now, of the person the credential acted as; absent when they have none.
+             * @default null
+             */
+            user_name?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -9511,6 +10268,11 @@ export interface components {
              * @default null
              */
             excerpts?: components["schemas"]["SourceExcerpt"][] | null;
+            /**
+             * @description On an inline citation of a caller's own conversation: the person, agent, client, run and session that wrote it.
+             * @default null
+             */
+            filed_by?: components["schemas"]["SourceFiledBy"] | null;
             /**
              * Filename
              * @description The file's name, with its extension.
@@ -10982,6 +11744,11 @@ export interface components {
          */
         WikiPatchIn: {
             /**
+             * After
+             * @description For `move_section`: id of the section to place it after. Omit to move it to the top of the page.
+             */
+            after?: string | null;
+            /**
              * Content
              * @description The wiki patch's content.
              */
@@ -10993,7 +11760,7 @@ export interface components {
             find?: string | null;
             /**
              * Op
-             * @description Edit to make: `replace_text`, `replace_section`, `append_section`, `delete_section` or `insert_after`.
+             * @description Edit to make: `replace_text`, `replace_section`, `append_section`, `delete_section`, `insert_after` or `move_section`.
              */
             op: string;
             /**
@@ -14206,7 +14973,7 @@ export interface operations {
                     timeline_query?: string;
                     /** @description For suggest_parent: the title of a page that does not exist yet. Use this instead of `page` when asking where a page you are about to create should be filed. */
                     title?: string;
-                    /** @description rows, table connections: rows involving this page. */
+                    /** @description rows, table connections: rows pointing at this page. */
                     to?: string;
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
@@ -14945,7 +15712,7 @@ export interface operations {
                     kind?: "result" | "lesson" | "decision" | "question" | "correction";
                     /** @description Human label for action=page_type, e.g. Disease. */
                     label?: string;
-                    /** @description For merge: the ORDERED section list the surviving page should lead with, drawn from both pages -- e.g. ["canonical:sec_overview", "duplicate:sec_findings"]. Duplicate-sourced sections are moved across whole (prose, citations, dates and embeddings intact) before the duplicate is archived; canonical-sourced ones are only reordered. Sections you do not name are safe: an unnamed canonical section keeps its place after the listed ones, and an unnamed duplicate section is archived with its page. Moving a section preserves its verified citations; rewriting the same text onto the canonical does not. */
+                    /** @description For merge: the ORDERED section list the surviving page should lead with, drawn from both pages -- e.g. ["canonical:sec_overview", "duplicate:sec_findings"]. Duplicate-sourced sections are moved across whole (prose, citations, dates and embeddings intact) before the duplicate is archived; canonical-sourced ones are only reordered. Sections you do not name are safe: an unnamed canonical section keeps its place after the listed ones, and an unnamed duplicate section is archived with its page. Moving a section preserves its verified citations; rewriting the same text onto the canonical does not. Two map cards' rows are always combined. */
                     merge_sections?: string[];
                     /** @description Optional metadata fields implied by the page type. */
                     metadata_schema?: Record<string, never>;
@@ -14960,7 +15727,7 @@ export interface operations {
                     }[];
                     /** @description THE ENTIRE NEW BODY of the section (for edit_section). A section runs from its <!-- sec:ID --> marker to the NEXT marker, so it includes every ## and ### heading under it. Whatever you send REPLACES ALL OF IT: subsections you do not retype are DELETED, not merged, and their citations and dates go with them. Read the section first and send back everything you are keeping. To split an over-long section, create the new sections FIRST (a new section_id plus section_title, and after=<this section id>) and move the prose into them, THEN shrink this one. Include all inline citation tokens; the <!-- sec:ID --> marker is prepended automatically if omitted. The section's OWN heading is not part of the body -- it is kept as it is, or set with section_title -- so you do not need to retype it. A leading heading that restates the title or is no deeper than the section's own heading is read as its title; a deeper heading remains a subsection in the body. */
                     new_section_body?: string;
-                    /** @description edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so. */
+                    /** @description edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. Add when to name one of a value's rows at several dates. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so. */
                     old_rows?: (Record<string, never> | string)[];
                     /** @description sort_table: columns first to last, e.g. 'attribute, when desc'. */
                     order_by?: string;
@@ -16030,6 +16797,257 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrgOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    install_skill_v1_me_skills_library__skill_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillInstalled"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    uninstall_skill_v1_me_skills_library__skill_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_mined_skill_proposals_v1_me_skills_proposals_get: {
+        parameters: {
+            query?: {
+                /** @description Which proposals: `pending` (waiting for you), `accepted` or `dismissed`. */
+                status?: "pending" | "accepted" | "dismissed";
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MinedSkillProposalOutPage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    accept_mined_skill_proposal_v1_me_skills_proposals__proposal_id__accept_post: {
+        parameters: {
+            query?: {
+                /** @description Import even when the draft duplicates a skill the user already has. */
+                force?: boolean;
+            };
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibrarySkillOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    dismiss_mined_skill_proposal_v1_me_skills_proposals__proposal_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillProposalDismissed"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
@@ -18069,6 +19087,373 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_skills_route_v1_skills_get: {
+        parameters: {
+            query?: {
+                /** @description Only skills with these visibilities. Repeat the parameter for more than one. */
+                visibility?: ("private" | "org" | "public")[] | null;
+                /** @description Only skills with these owners: `me`, `org`, `system` (built-in) or `anyone` (public skills from outside your organization). Repeat for more than one. */
+                owner?: ("me" | "org" | "system" | "anyone")[] | null;
+                /** @description Only skills of these origins: `created`, `mined`, `imported` or `system`. Repeat for more than one. */
+                origin?: ("created" | "mined" | "imported" | "system")[] | null;
+                /** @description `true` for the skills in your library, `false` for the ones you could install. */
+                installed?: boolean | null;
+                /** @description Words to match in the name, description or body. */
+                search?: string | null;
+                /** @description Only skills of this domain. */
+                domain?: string | null;
+                /** @description Add each skill's SKILL.md folder as `files`. A page then holds at most 25 skills, whatever `limit` asks; follow `next_cursor`. */
+                include_content?: boolean;
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillOutPage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    create_skill_route_v1_skills_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportBundleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillDetailOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_skill_route_v1_skills__skill_id__get: {
+        parameters: {
+            query?: {
+                /** @description Add the skill's SKILL.md folder as `files`. */
+                include_content?: boolean;
+            };
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillDetailOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    delete_skill_v1_skills__skill_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_skill_bundle_v1_skills__skill_id__bundle_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillBundleOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    replace_skill_bundle_v1_skills__skill_id__bundle_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SkillBundleReplaceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillBundleOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    download_skill_bundle_zip_v1_skills__skill_id__bundle_zip_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
