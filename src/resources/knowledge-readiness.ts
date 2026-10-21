@@ -113,7 +113,9 @@ export interface AlreadyUploaded extends JsonObject {
  * Indexing does not store bytes already in the same place twice: it rejects the
  * new file as `duplicate` and keeps the existing one (`duplicate_of`). That is
  * "already uploaded", not a failure, so an upload whose only failed files are
- * duplicates reads `succeeded` (Python's `already_uploaded_outcome`).
+ * duplicates reads `succeeded` (Python's `already_uploaded_outcome`). An engine
+ * that counts them in `summary.duplicates` leaves them out of `summary.failed`;
+ * an earlier one counted them there.
  */
 export function alreadyUploadedOutcome(batchStatus: JsonObject): {
   duplicates: AlreadyUploaded[];
@@ -130,8 +132,10 @@ export function alreadyUploadedOutcome(batchStatus: JsonObject): {
       duplicate_of: { ...keptRef, artifact_id: String(keptRef["artifact_id"]) },
     });
   }
-  const failed = Number((batchStatus["summary"] as JsonObject | undefined)?.["failed"] ?? 0);
-  return duplicates.length && failed <= duplicates.length
+  const summary = (batchStatus["summary"] as JsonObject | undefined) ?? {};
+  const failed = Number(summary["failed"] ?? 0);
+  const othersFailed = "duplicates" in summary ? failed : failed - duplicates.length;
+  return duplicates.length && othersFailed <= 0
     ? { duplicates, status: "succeeded" }
     : { duplicates };
 }
