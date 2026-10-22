@@ -10651,6 +10651,12 @@ export interface components {
          */
         StartRunResponse: {
             /**
+             * Injected Into Run
+             * @description True when no new run was started because the thread's run was still working: the message was delivered to that run as a follow-up. run_id and stream_url are that run's, and user_message_id is the delivered message.
+             * @default false
+             */
+            injected_into_run?: boolean;
+            /**
              * Job Id
              * Format: uuid
              * @description Id of the background job; read it at `status_url`.
