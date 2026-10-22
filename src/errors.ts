@@ -90,6 +90,15 @@ export class PermissionDeniedError extends BeakrError {
   }
 }
 
+/**
+ * 403 `person_review_required`: the project (or organization) requires a
+ * person to accept proposals and commit Knowledge
+ * (`GET /v1/knowledge/agent-review`), and this API key or token may not. A
+ * signed-in person, or a key holding the `proposals:accept` scope, can; staging
+ * the proposal stays open to the key.
+ */
+export class PersonReviewRequiredError extends PermissionDeniedError {}
+
 export class NotFoundError extends BeakrError {}
 
 /**
@@ -242,10 +251,8 @@ export function errorFromResponse(
     const requiredScope =
       (details["required_scope"] as string | undefined) ??
       (envelope["required_scope"] as string | undefined);
-    return new PermissionDeniedError(
-      message,
-      requiredScope === undefined ? common : { ...common, requiredScope },
-    );
+    const Refusal = code === "person_review_required" ? PersonReviewRequiredError : PermissionDeniedError;
+    return new Refusal(message, requiredScope === undefined ? common : { ...common, requiredScope });
   }
   if (status === 404) return new NotFoundError(message, common);
   if (status === 409) return new ConflictError(message, common);

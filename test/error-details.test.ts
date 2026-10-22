@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { errorFromResponse, PermissionDeniedError, RateLimitError, ValidationError } from "../src/errors.js";
+import {
+  errorFromResponse,
+  PermissionDeniedError,
+  PersonReviewRequiredError,
+  RateLimitError,
+  ValidationError,
+} from "../src/errors.js";
 
 // The server's envelope carries structured context in `error.details` (SPEC-117);
 // older servers put it beside `code`. Both must reach the typed error.
@@ -28,6 +34,22 @@ describe("error.details", () => {
     }) as PermissionDeniedError;
     expect(legacy.requiredScope).toBe("kb:read");
     expect(legacy.details).toEqual({});
+  });
+
+  it("types a person-only refusal as PersonReviewRequiredError", () => {
+    const error = errorFromResponse(403, new Headers(), {
+      error: {
+        code: "person_review_required",
+        message: "A person must accept proposals in this project.",
+        fix: "Ask a person to accept it in Beakr.",
+      },
+    });
+    expect(error).toBeInstanceOf(PersonReviewRequiredError);
+    expect(error).toBeInstanceOf(PermissionDeniedError);
+    expect(error.code).toBe("person_review_required");
+    expect(error.fix).toBe("Ask a person to accept it in Beakr.");
+    const other = errorFromResponse(403, new Headers(), { error: { code: "insufficient_scope", message: "m" } });
+    expect(other).not.toBeInstanceOf(PersonReviewRequiredError);
   });
 
   it("defaults details to an empty object for legacy bodies", () => {

@@ -156,9 +156,29 @@ export interface paths {
         put?: never;
         /**
          * Compile a file into Knowledge
-         * @description Compile an already indexed file into its project's Knowledge, for a file uploaded with `ingest_to_wiki: false` or one to compile again. The file is not parsed again. A file still being indexed answers `409`; retry once its indexing job has finished. For an output (a document Beakr wrote), this also turns on automatic recompiles when it changes, reported as `knowledge_autosync`.
+         * @description Compile an already indexed file into its project's Knowledge, for a file uploaded with `ingest_to_wiki: false` or one to compile again. The file is not parsed again. A file still being indexed answers `409`; retry once its indexing job has finished. For an output (a document Beakr wrote), this also turns on automatic recompiles when it changes, reported as `knowledge_autosync`. Asked by an API key or token where a person must approve agents' files, it is not compiled: `queue_result` is `waiting_for_person`.
          */
         post: operations["create_knowledge_from_artifact_route_v1_artifacts__artifact_id__knowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/artifacts/{artifact_id}/knowledge/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a file for Knowledge
+         * @description Compile a file an API key or token asked to put into Knowledge, in a project whose `agent_uploads_need_a_person` policy is on (`GET /v1/knowledge/agent-review`). Until then the file reads `knowledge_status: waiting_for_person`. Only a signed-in person or a key holding `proposals:accept` may approve: any other key or token answers `403 person_review_required`. A file that is not waiting answers `409 not_waiting`.
+         */
+        post: operations["approve_artifact_knowledge_route_v1_artifacts__artifact_id__knowledge_approve_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -868,6 +888,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/agent-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the agent review policy
+         * @description Whether a person must accept agents' proposals, for the org and `project_id`. Whether a person must accept agents' proposals, for the org and ``project_id``.
+         */
+        get: operations["get_agent_review_settings_v1_knowledge_agent_review_get"];
+        /**
+         * Set the organization's agent review policy
+         * @description Change fields of the organization's policy (fields a project sets itself win there).
+         */
+        put: operations["set_org_agent_review_v1_knowledge_agent_review_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/agent-review/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set a project's agent review policy
+         * @description Give one project its own policy, or clear it to follow the organization's.
+         */
+        put: operations["set_project_agent_review_v1_knowledge_agent_review_projects__project_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/documents": {
         parameters: {
             query?: never;
@@ -1099,6 +1163,12 @@ export interface paths {
         /**
          * Accept a Knowledge proposal
          * @description Accept a wiki proposal — apply the proposed changes.
+         *
+         *     In a project that requires a person to accept proposals
+         *     (``GET /v1/knowledge/agent-review``), an API key or token accepting any
+         *     proposal is refused with 403 ``person_review_required`` unless the key holds
+         *     the ``proposals:accept`` scope. The proposal read says so in
+         *     ``needs_person_to_accept``.
          */
         post: operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"];
         delete?: never;
@@ -2384,6 +2454,76 @@ export interface components {
             project_id?: string | null;
         };
         /**
+         * AgentReviewPolicyBody
+         * @description One level's policy, every field resolved.
+         */
+        AgentReviewPolicyBody: {
+            /**
+             * Agent Proposals Need A Person
+             * @description Only a person may accept proposals (an API key or token's accept of any proposal is refused with 403 person_review_required), and the person's auto-approve does not apply. With this or agent_uploads_need_a_person on, a key or token is also refused every other commit to Knowledge that has no accept (direct page writes, reverts, conflict resolution).
+             */
+            agent_proposals_need_a_person: boolean;
+            /**
+             * Agent Uploads Need A Person
+             * @description Files an API key or token uploads or sends to Knowledge are stored, but compiled into Knowledge only after a person (or a key holding proposals:accept) approves them with POST /v1/artifacts/{artifact_id}/knowledge/approve. Until then the file reads knowledge_status waiting_for_person. Turning this off does not compile held files: each still waits for a person's approval.
+             */
+            agent_uploads_need_a_person: boolean;
+            /**
+             * Capture Auto Approve Allowed
+             * @description With agent_proposals_need_a_person on, still let a person's own auto-approve accept the capture suggestions filed for them. Ignored while it is off.
+             */
+            capture_auto_approve_allowed: boolean;
+        };
+        /**
+         * AgentReviewPolicyChange
+         * @description The fields to change. A field left out keeps its value; null unsets it.
+         *
+         *     Unset on the organization means off; unset on a project means it follows the
+         *     organization for that field. So a client that does not know a field never
+         *     resets it, and a project override never silently exempts the project from a
+         *     field it does not set.
+         */
+        AgentReviewPolicyChange: {
+            /**
+             * Agent Proposals Need A Person
+             * @description Only a person may accept proposals (an API key or token's accept of any proposal is refused with 403 person_review_required), and the person's auto-approve does not apply. With this or agent_uploads_need_a_person on, a key or token is also refused every other commit to Knowledge that has no accept (direct page writes, reverts, conflict resolution).
+             */
+            agent_proposals_need_a_person?: boolean | null;
+            /**
+             * Agent Uploads Need A Person
+             * @description Files an API key or token uploads or sends to Knowledge are stored, but compiled into Knowledge only after a person (or a key holding proposals:accept) approves them with POST /v1/artifacts/{artifact_id}/knowledge/approve. Until then the file reads knowledge_status waiting_for_person. Turning this off does not compile held files: each still waits for a person's approval.
+             */
+            agent_uploads_need_a_person?: boolean | null;
+            /**
+             * Capture Auto Approve Allowed
+             * @description With agent_proposals_need_a_person on, still let a person's own auto-approve accept the capture suggestions filed for them. Ignored while it is off.
+             */
+            capture_auto_approve_allowed?: boolean | null;
+        };
+        /**
+         * AgentReviewSettingsOut
+         * @description Both levels of the setting and the policy they resolve to.
+         */
+        AgentReviewSettingsOut: {
+            /**
+             * Available
+             * @description Whether this setting can be changed here at all.
+             */
+            available: boolean;
+            /** @description The policy in force for project_id (the organization's without one). */
+            effective: components["schemas"]["AgentReviewPolicyBody"];
+            /** @description The organization's policy. */
+            org: components["schemas"]["AgentReviewPolicyBody"];
+            /**
+             * Project Id
+             * @description Id of the project it belongs to, or the project to act in.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id?: string | null;
+            /** @description The fields this project sets itself (null fields follow the organization); null when it follows the organization for all of them. */
+            project_override?: components["schemas"]["AgentReviewPolicyChange"] | null;
+        };
+        /**
          * ApiError
          * @description Why the request failed and how to correct it.
          */
@@ -2822,9 +2962,9 @@ export interface components {
             knowledge_event_id?: string | null;
             /**
              * Knowledge Status
-             * @description Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`.
+             * @description Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`, `waiting_for_person`.
              */
-            knowledge_status?: ("queued" | "running" | "created" | "failed" | "stale" | "incomplete" | "skipped") | null;
+            knowledge_status?: ("queued" | "running" | "created" | "failed" | "stale" | "incomplete" | "skipped" | "waiting_for_person") | null;
             /**
              * Knowledge Version Id
              * @description Id of the knowledge version.
@@ -2865,7 +3005,7 @@ export interface components {
              * @example 8f2c6a1e-5b3d-4e7f-a9c0-1d2e3f4a5b6c
              */
             owner_user_id?: string | null;
-            /** @description Queue result: one of `queued`, `already_queued`, `already_current`. */
+            /** @description Queue result: one of `queued`, `already_queued`, `already_current`, `waiting_for_person`. */
             queue_result: components["schemas"]["WikiIngestQueueResult"];
             /**
              * Saved To Files
@@ -3167,9 +3307,9 @@ export interface components {
             knowledge_event_id?: string | null;
             /**
              * Knowledge Status
-             * @description Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`.
+             * @description Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`, `waiting_for_person`.
              */
-            knowledge_status?: ("queued" | "running" | "created" | "failed" | "stale" | "incomplete" | "skipped") | null;
+            knowledge_status?: ("queued" | "running" | "created" | "failed" | "stale" | "incomplete" | "skipped" | "waiting_for_person") | null;
             /**
              * Knowledge Version Id
              * @description Id of the knowledge version.
@@ -6934,7 +7074,7 @@ export interface components {
             sent_at: string;
             /**
              * Status
-             * @description How the file's ingest into the project's Knowledge is going: `queued`, `processing`, `done`, `failed`, `skipped`, or `removed` (the file was deleted).
+             * @description How the file's ingest into the project's Knowledge is going: `queued`, `processing`, `done`, `failed`, `skipped`, `removed` (the file was deleted), or `waiting_for_person`: an API key or token sent it where a person must approve agents' files. Sending it again does not release it; a person approves the file with `POST /v1/artifacts/{artifact_id}/knowledge/approve`.
              */
             status: string;
         };
@@ -10511,6 +10651,12 @@ export interface components {
          */
         StartRunResponse: {
             /**
+             * Injected Into Run
+             * @description True when no new run was started because the thread's run was still working: the message was delivered to that run as a follow-up. run_id and stream_url are that run's, and user_message_id is the delivered message.
+             * @default false
+             */
+            injected_into_run?: boolean;
+            /**
              * Job Id
              * Format: uuid
              * @description Id of the background job; read it at `status_url`.
@@ -11332,7 +11478,7 @@ export interface components {
          * @description Stable caller-visible result of requesting Knowledge compilation.
          * @enum {string}
          */
-        WikiIngestQueueResult: "queued" | "already_queued" | "already_current";
+        WikiIngestQueueResult: "queued" | "already_queued" | "already_current" | "waiting_for_person";
         /**
          * WikiPageDetail
          * @example {
@@ -11934,6 +12080,12 @@ export interface components {
         /** WikiProposalOut */
         WikiProposalOut: {
             /**
+             * Client
+             * @description The client that filed it, as it declared itself in `X-Beakr-Client` (e.g. `sdk-python/0.1.0`, `beakr-cli/0.4.0`); null when filed in Beakr itself. Read-only; the same value as `filed_by.client`.
+             * @default null
+             */
+            client?: string | null;
+            /**
              * Content Hash
              * @description SHA-256 of this proposal as stored (its id, type and whole payload). Echo it back as reviewed_hash when accepting, so a proposal that changed after it was read is not applied.
              * @default null
@@ -11957,6 +12109,12 @@ export interface components {
              * @description Unique id of this wiki proposal.
              */
             id: string;
+            /**
+             * Needs Person To Accept
+             * @description True when this proposal's project requires a person to accept proposals: an accept from an API key or token is refused (403 person_review_required) unless the key holds the proposals:accept scope.
+             * @default false
+             */
+            needs_person_to_accept?: boolean;
             /**
              * Page Id
              * @description Id of the page.
@@ -11993,7 +12151,7 @@ export interface components {
             proposal_type?: string | null;
             /**
              * Source
-             * @description Where it came from.
+             * @description What staged it. `mcp` is any client that filed through `POST /v1/knowledge/wiki/write` -- an MCP server, the CLI or an SDK; `client` names which.
              * @default null
              */
             source?: string | null;
@@ -12336,6 +12494,12 @@ export interface components {
         /** WikiToolOutcome */
         WikiToolOutcome: {
             /**
+             * Auto Approve
+             * @description Writes only: true when the caller's auto-approve setting will apply what this call staged (usually within seconds), false when it waits for review.
+             * @default null
+             */
+            auto_approve?: boolean | null;
+            /**
              * Commit Ids
              * @description Ids of the commits.
              * @default []
@@ -12357,7 +12521,7 @@ export interface components {
             };
             /**
              * Error Code
-             * @description Why a call was refused. On writes, `citation_not_citeable`: a citation (or a `{{token}}` in the prose) is not the caller's own conversation, a file it uploaded, or a source Knowledge already cites that it can read; `citation_needs_excerpt`: a conversation, agent_note or user_note citation without `source_title` and `meta.excerpt`; `invalid_source_ref`: a `source_ref` that resolves to nothing the caller can read.
+             * @description Why a call was refused. On writes, `citation_not_citeable`: a citation (or a `{{token}}` in the prose) is not the caller's own conversation, a file it uploaded (at a place the file has), or a source Knowledge already cites that it can read; `citation_needs_excerpt`: a conversation, agent_note or user_note citation without `source_title` and `meta.excerpt`; `invalid_source_ref`: a `source_ref` that resolves to nothing the caller can read.
              * @default null
              */
             error_code?: string | null;
@@ -12384,16 +12548,27 @@ export interface components {
             /** @description How it turned out. */
             outcome: components["schemas"]["WikiToolOutcome"];
             /**
-             * @description The proposal a section or row write staged (edit_section, add_fact, add_connection, add_finding, edit_rows).
+             * @description The proposal a section or row write staged (edit_section, add_fact, add_connection, add_finding, edit_rows), or the review a flag filed or joined.
              * @default null
              */
             proposal?: components["schemas"]["StagedProposalRef"] | null;
+            /**
+             * Proposal Id
+             * @description `proposal.id`, at the top level, whenever a proposal was staged.
+             * @default null
+             */
+            proposal_id?: string | null;
             /**
              * Sources
              * @description The sources it cites or draws on.
              * @default null
              */
             sources?: components["schemas"]["SourceRecord"][] | null;
+        };
+        /** ProjectOverrideUpdate */
+        beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate: {
+            /** @description The fields to change in the project's own policy (merged; null fields follow the organization); null to follow the organization for every field. */
+            policy: components["schemas"]["AgentReviewPolicyChange"] | null;
         };
     };
     responses: never;
@@ -12836,6 +13011,55 @@ export interface operations {
         };
     };
     create_knowledge_from_artifact_route_v1_artifacts__artifact_id__knowledge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artifact_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactKnowledgeQueueResponse"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    approve_artifact_knowledge_route_v1_artifacts__artifact_id__knowledge_approve_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -14677,6 +14901,159 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobStatus"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_agent_review_settings_v1_knowledge_agent_review_get: {
+        parameters: {
+            query?: {
+                project_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentReviewSettingsOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    set_org_agent_review_v1_knowledge_agent_review_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentReviewPolicyChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentReviewSettingsOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    set_project_agent_review_v1_knowledge_agent_review_projects__project_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentReviewSettingsOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
