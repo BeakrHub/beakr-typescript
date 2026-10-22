@@ -11934,6 +11934,12 @@ export interface components {
         /** WikiProposalOut */
         WikiProposalOut: {
             /**
+             * Client
+             * @description The client that filed it, as it declared itself in `X-Beakr-Client` (e.g. `sdk-python/0.1.0`, `beakr-cli/0.4.0`); null when filed in Beakr itself. Read-only; the same value as `filed_by.client`.
+             * @default null
+             */
+            client?: string | null;
+            /**
              * Content Hash
              * @description SHA-256 of this proposal as stored (its id, type and whole payload). Echo it back as reviewed_hash when accepting, so a proposal that changed after it was read is not applied.
              * @default null
@@ -11993,7 +11999,7 @@ export interface components {
             proposal_type?: string | null;
             /**
              * Source
-             * @description Where it came from.
+             * @description What staged it. `mcp` is any client that filed through `POST /v1/knowledge/wiki/write` -- an MCP server, the CLI or an SDK; `client` names which.
              * @default null
              */
             source?: string | null;
@@ -12336,6 +12342,12 @@ export interface components {
         /** WikiToolOutcome */
         WikiToolOutcome: {
             /**
+             * Auto Approve
+             * @description Writes only: true when the caller's auto-approve setting will apply what this call staged (usually within seconds), false when it waits for review.
+             * @default null
+             */
+            auto_approve?: boolean | null;
+            /**
              * Commit Ids
              * @description Ids of the commits.
              * @default []
@@ -12357,7 +12369,7 @@ export interface components {
             };
             /**
              * Error Code
-             * @description Why a call was refused. On writes, `citation_not_citeable`: a citation (or a `{{token}}` in the prose) is not the caller's own conversation, a file it uploaded, or a source Knowledge already cites that it can read; `citation_needs_excerpt`: a conversation, agent_note or user_note citation without `source_title` and `meta.excerpt`; `invalid_source_ref`: a `source_ref` that resolves to nothing the caller can read.
+             * @description Why a call was refused. On writes, `citation_not_citeable`: a citation (or a `{{token}}` in the prose) is not the caller's own conversation, a file it uploaded (at a place the file has), or a source Knowledge already cites that it can read; `citation_needs_excerpt`: a conversation, agent_note or user_note citation without `source_title` and `meta.excerpt`; `invalid_source_ref`: a `source_ref` that resolves to nothing the caller can read.
              * @default null
              */
             error_code?: string | null;
@@ -12384,10 +12396,16 @@ export interface components {
             /** @description How it turned out. */
             outcome: components["schemas"]["WikiToolOutcome"];
             /**
-             * @description The proposal a section or row write staged (edit_section, add_fact, add_connection, add_finding, edit_rows).
+             * @description The proposal a section or row write staged (edit_section, add_fact, add_connection, add_finding, edit_rows), or the review a flag filed or joined.
              * @default null
              */
             proposal?: components["schemas"]["StagedProposalRef"] | null;
+            /**
+             * Proposal Id
+             * @description `proposal.id`, at the top level, whenever a proposal was staged.
+             * @default null
+             */
+            proposal_id?: string | null;
             /**
              * Sources
              * @description The sources it cites or draws on.
