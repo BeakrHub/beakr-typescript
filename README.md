@@ -284,7 +284,9 @@ contract is always assumed served: the document cannot speak for it.
 Every failure is a `BeakrError` with `status`, `code` (from the error
 envelope's `error.code`), `message` and `requestId`. Subclasses:
 `AuthenticationError` (401), `PermissionDeniedError` (403, with
-`requiredScope`), `NotFoundError`, `ConflictError`, `ValidationError`,
+`requiredScope`; `PersonReviewRequiredError` for `person_review_required`,
+where only a person or a key holding `proposals:accept` may accept proposals
+or commit Knowledge), `NotFoundError`, `ConflictError`, `ValidationError`,
 `RateLimitError` (with `retryAfter`), `ServerError`, `APIConnectionError`,
 `KnowledgeCommandError` (a refused Knowledge command) and `DeviceLoginError`;
 `runs.answer()` throws `RunFailedError` for a run
