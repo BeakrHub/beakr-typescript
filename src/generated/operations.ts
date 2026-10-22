@@ -14,6 +14,7 @@ export const OPERATIONS = {
   "files.deleteArtifact": { method: "DELETE", path: "/v1/artifacts/{artifact_id}" },
   "files.getArtifactContent": { method: "GET", path: "/v1/artifacts/{artifact_id}/content" },
   "files.createKnowledgeFromArtifact": { method: "POST", path: "/v1/artifacts/{artifact_id}/knowledge" },
+  "files.approveArtifactKnowledge": { method: "POST", path: "/v1/artifacts/{artifact_id}/knowledge/approve" },
   "files.moveArtifact": { method: "POST", path: "/v1/artifacts/{artifact_id}/move" },
   "files.downloadUrl": { method: "POST", path: "/v1/artifacts/download-url" },
   "files.readFile": { method: "POST", path: "/v1/artifacts/read" },
@@ -52,6 +53,9 @@ export const OPERATIONS = {
   "interviews.linkResult": { method: "GET", path: "/v1/interview/sendables/links/{link_id}/result" },
   "interviews.revokeLink": { method: "POST", path: "/v1/interview/sendables/links/{link_id}/revoke" },
   "jobs.getJob": { method: "GET", path: "/v1/jobs/{job_id}" },
+  "knowledge.getAgentReviewSettings": { method: "GET", path: "/v1/knowledge/agent-review" },
+  "knowledge.setOrgAgentReview": { method: "PUT", path: "/v1/knowledge/agent-review" },
+  "knowledge.setProjectAgentReview": { method: "PUT", path: "/v1/knowledge/agent-review/projects/{project_id}" },
   "knowledge.documents": { method: "POST", path: "/v1/knowledge/documents" },
   "knowledge.research": { method: "POST", path: "/v1/knowledge/research" },
   "knowledge.runWikiCommand": { method: "POST", path: "/v1/knowledge/wiki/command" },
@@ -373,6 +377,12 @@ export class FilesApi {
     return this.transport.request(request);
   }
 
+  /** POST /v1/artifacts/{artifact_id}/knowledge/approve (Approve a file for Knowledge) */
+  approveArtifactKnowledge(args: { path: operations["approve_artifact_knowledge_route_v1_artifacts__artifact_id__knowledge_approve_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["approve_artifact_knowledge_route_v1_artifacts__artifact_id__knowledge_approve_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/artifacts/${enc(String(args.path.artifact_id))}/knowledge/approve`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
   /** POST /v1/artifacts/{artifact_id}/move (Move a file to another project) */
   moveArtifact(args: { path: operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]["parameters"]["path"]; body: NonNullable<operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/artifacts/${enc(String(args.path.artifact_id))}/move`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
@@ -565,6 +575,24 @@ export class JobsApi {
 /** Public operations tagged knowledge. */
 export class KnowledgeApi {
   constructor(private readonly transport: Transport) {}
+
+  /** GET /v1/knowledge/agent-review (Get the agent review policy) */
+  getAgentReviewSettings(args?: { query?: NonNullable<operations["get_agent_review_settings_v1_knowledge_agent_review_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["get_agent_review_settings_v1_knowledge_agent_review_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/knowledge/agent-review", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PUT /v1/knowledge/agent-review (Set the organization's agent review policy) */
+  setOrgAgentReview(args: { body: NonNullable<operations["set_org_agent_review_v1_knowledge_agent_review_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["set_org_agent_review_v1_knowledge_agent_review_put"]>> {
+    const request: RequestOptions = { method: "PUT", path: "/v1/knowledge/agent-review", body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PUT /v1/knowledge/agent-review/projects/{project_id} (Set a project's agent review policy) */
+  setProjectAgentReview(args: { path: operations["set_project_agent_review_v1_knowledge_agent_review_projects__project_id__put"]["parameters"]["path"]; body: NonNullable<operations["set_project_agent_review_v1_knowledge_agent_review_projects__project_id__put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["set_project_agent_review_v1_knowledge_agent_review_projects__project_id__put"]>> {
+    const request: RequestOptions = { method: "PUT", path: `/v1/knowledge/agent-review/projects/${enc(String(args.path.project_id))}`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
 
   /** POST /v1/knowledge/documents (Search and read original documents) */
   documents(args?: { body?: NonNullable<operations["documents_v1_knowledge_documents_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["documents_v1_knowledge_documents_post"]>> {
