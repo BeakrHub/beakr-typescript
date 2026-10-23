@@ -111,6 +111,13 @@ export type {
   ProjectKnowledgeProfilePatch,
 } from "./resources/projects.js";
 export {
+  ModelRefusals,
+  type ModelRefusalEvents,
+  type ModelRefusalFiles,
+  type ModelRefusalSummary,
+  type ModelRefusalWindow,
+} from "./resources/model-refusals.js";
+export {
   JobFailedError,
   JobTimeoutError,
   TERMINAL_JOB_STATUSES,
