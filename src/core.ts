@@ -39,6 +39,7 @@ import {
   SERVICE_ACCOUNT_FILE_ENV,
   type ServiceAccountCredentials,
 } from "./service-account.js";
+import { maskSecret } from "./redact.js";
 import { IDEMPOTENCY_RETRY_CODES, replaysIdempotencyKey } from "./replay.js";
 import type { Page } from "./types.js";
 import { VERSION } from "./version.js";
@@ -223,6 +224,17 @@ interface CliLinks {
 
 type PendingLinks = FileLinks | CliLinks;
 
+/** Node's hook for `util.inspect` and `console.log`; a plain symbol everywhere else. */
+export const INSPECT_CUSTOM = Symbol.for("nodejs.util.inspect.custom");
+
+/** The parts of a transport that are safe to print. */
+export interface TransportDescription {
+  baseUrl: string;
+  orgId: string | undefined;
+  /** The credential in use, masked (`bk_live_...a1b2`), or "unresolved". */
+  credential: string;
+}
+
 export class Transport {
   readonly baseUrl: string;
   readonly clientName: string;
@@ -230,17 +242,21 @@ export class Transport {
   orgId: string | undefined;
   readonly timeoutMs: number;
   readonly maxRetries: number;
-  private apiKey: string | undefined;
-  private tokens: TokenPair | undefined;
+  // The credential lives in #private fields: a TypeScript `private` field is an
+  // ordinary enumerable property, so `console.log(beakr)`, `util.inspect` and
+  // `JSON.stringify` printed the full key. Inspection shows it masked instead.
+  #apiKey: string | undefined;
+  #tokens: TokenPair | undefined;
   /** The CLI's sign-in, when that is the credential (never refreshed here: the CLI refreshes it). */
-  private cliLogin: CliLogin | undefined;
+  #cliLogin: CliLogin | undefined;
   /** Credential-chain links still to resolve at the first request (see `settleCredential`). */
   private pendingLinks: PendingLinks | undefined;
   private settling: Promise<void> | undefined;
   /** In-flight `beakr auth token` runs, keyed by the refused token ("" for none). */
   private readonly cliRuns = new Map<string, Promise<CliTokenOutcome>>();
   private readonly onTokens: ClientOptions["onTokens"];
-  private readonly defaultHeaders: Record<string, string>;
+  /** May carry an `Authorization` header, so it is kept off the object like the key. */
+  readonly #defaultHeaders: Record<string, string>;
   private readonly fetchImpl: FetchLike;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly now: () => number;
@@ -254,10 +270,10 @@ export class Transport {
     this.orgId = options.orgId ?? env("BEAKR_ORG_ID");
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.maxRetries = Math.max(0, options.maxRetries ?? DEFAULT_MAX_RETRIES);
-    this.tokens = options.tokens;
-    this.apiKey = options.tokens ? options.apiKey : this.resolveApiKey(options);
+    this.#tokens = options.tokens;
+    this.#apiKey = options.tokens ? options.apiKey : this.resolveApiKey(options);
     this.onTokens = options.onTokens;
-    this.defaultHeaders = { ...(options.defaultHeaders ?? {}) };
+    this.#defaultHeaders = { ...(options.defaultHeaders ?? {}) };
     const globalFetch = (globalThis as { fetch?: FetchLike }).fetch;
     const fetchImpl = options.fetch ?? globalFetch?.bind(globalThis);
     if (!fetchImpl) throw new BeakrError("No fetch implementation available; pass `fetch`.");
@@ -298,7 +314,7 @@ export class Transport {
     if (!links.cliLogin) return this.serviceAccountKey(undefined);
     const login = readCliLogin(normalizeOrigin(this.baseUrl));
     if (login && !cliLoginExpired(login)) {
-      this.cliLogin = login;
+      this.#cliLogin = login;
       return undefined;
     }
     if (isNodeRuntime()) {
@@ -334,18 +350,18 @@ export class Transport {
         await prepareCliLoginFiles();
         const key = this.resolveFileLinks(links);
         if (this.pendingLinks === links) this.pendingLinks = undefined;
-        this.apiKey = key;
+        this.#apiKey = key;
         continue;
       }
       const outcome = await this.askCli();
       if (outcome.ok) {
-        this.cliLogin = outcome.token;
+        this.#cliLogin = outcome.token;
         this.pendingLinks = undefined;
         return;
       }
       if (links.fileLoginExpired || outcome.reason === "failed") throw this.cliLoginError(outcome);
       // No CLI, or the CLI has no credential for this API: the rest of the chain.
-      this.apiKey = this.keyAfterCliLogin();
+      this.#apiKey = this.keyAfterCliLogin();
       this.pendingLinks = undefined;
     }
   }
@@ -402,13 +418,30 @@ export class Transport {
     return account.apiKey;
   }
 
+  /** What the client may show of itself: where it talks to and its credential, masked. */
+  describe(): TransportDescription {
+    return {
+      baseUrl: this.baseUrl,
+      orgId: this.orgId,
+      credential: maskSecret(this.#tokens?.accessToken ?? this.#apiKey ?? this.#cliLogin?.accessToken) ?? "unresolved",
+    };
+  }
+
+  toJSON(): TransportDescription {
+    return this.describe();
+  }
+
+  [INSPECT_CUSTOM](): string {
+    return `Transport ${JSON.stringify(this.describe())}`;
+  }
+
   /** The current token pair (after any refresh), when the client uses one. */
   get currentTokens(): TokenPair | undefined {
-    return this.tokens ? { ...this.tokens } : undefined;
+    return this.#tokens ? { ...this.#tokens } : undefined;
   }
 
   private authHeader(): Record<string, string> {
-    const token = this.tokens?.accessToken ?? this.apiKey ?? this.cliLogin?.accessToken;
+    const token = this.#tokens?.accessToken ?? this.#apiKey ?? this.#cliLogin?.accessToken;
     if (!token) {
       throw new AuthenticationError(
         "No credential configured: pass `apiKey` or `tokens`, set BEAKR_API_KEY or " +
@@ -423,7 +456,7 @@ export class Transport {
     const headers: Record<string, string> = {
       Accept: "application/json",
       "X-Beakr-Client": this.clientName,
-      ...this.defaultHeaders,
+      ...this.#defaultHeaders,
     };
     if (this.agent) headers["X-Beakr-Agent"] = this.agent;
     if (this.orgId) headers["X-Org-Id"] = this.orgId;
@@ -445,15 +478,15 @@ export class Transport {
   private async prepareCredential(options: RequestOptions): Promise<void> {
     if (options.authenticated === false) return;
     await this.settleCredential();
-    if (!this.cliLogin || !cliLoginExpired(this.cliLogin)) return;
+    if (!this.#cliLogin || !cliLoginExpired(this.#cliLogin)) return;
     const stored = readCliLogin(normalizeOrigin(this.baseUrl));
     if (stored && !cliLoginExpired(stored)) {
-      this.cliLogin = stored;
+      this.#cliLogin = stored;
       return;
     }
     const outcome = await this.askCli();
     if (!outcome.ok) throw this.cliLoginError(outcome);
-    this.cliLogin = outcome.token;
+    this.#cliLogin = outcome.token;
   }
 
   /**
@@ -462,25 +495,25 @@ export class Transport {
    * still the stored one. True when there is a different token to resend with.
    */
   private async recoverCliLogin(): Promise<boolean> {
-    const current = this.cliLogin;
+    const current = this.#cliLogin;
     if (!current) return false;
     const stored = readCliLogin(normalizeOrigin(this.baseUrl));
     if (stored && stored.accessToken !== current.accessToken && !cliLoginExpired(stored)) {
-      this.cliLogin = stored;
+      this.#cliLogin = stored;
       return true;
     }
     const outcome = await this.askCli(current.accessToken);
     if (!outcome.ok || outcome.token.accessToken === current.accessToken) return false;
-    this.cliLogin = outcome.token;
+    this.#cliLogin = outcome.token;
     return true;
   }
 
   private canRefresh(): boolean {
-    return Boolean(this.tokens?.refreshToken && this.tokens.tokenEndpoint);
+    return Boolean(this.#tokens?.refreshToken && this.#tokens.tokenEndpoint);
   }
 
   private needsProactiveRefresh(): boolean {
-    const expiresAt = this.tokens?.expiresAt;
+    const expiresAt = this.#tokens?.expiresAt;
     return this.canRefresh() && expiresAt !== undefined && Date.now() >= expiresAt - REFRESH_SKEW_MS;
   }
 
@@ -496,7 +529,7 @@ export class Transport {
 
   /** Refresh at the OAuth issuer's token endpoint (RFC 6749 section 6). */
   private async doRefresh(): Promise<void> {
-    const previous = this.tokens;
+    const previous = this.#tokens;
     if (!previous?.refreshToken || !previous.tokenEndpoint) {
       throw new AuthenticationError("No refresh token and token endpoint to refresh with.");
     }
@@ -505,8 +538,8 @@ export class Transport {
       refresh_token: previous.refreshToken,
       client_id: previous.clientId ?? "",
     });
-    this.tokens = tokenPairFromResponse(data, previous);
-    await this.onTokens?.({ ...this.tokens });
+    this.#tokens = tokenPairFromResponse(data, previous);
+    await this.onTokens?.({ ...this.#tokens });
   }
 
   /** Send a request, applying refresh and the retry policy. */
