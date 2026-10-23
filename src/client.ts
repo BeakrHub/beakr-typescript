@@ -1,11 +1,13 @@
 import { BeakrApi } from "./generated/operations.js";
 import type { JsonObject } from "./types.js";
 import {
+  INSPECT_CUSTOM,
   Transport,
   type ClientOptions,
   type QueryValue,
   type RequestOptions,
   type TokenPair,
+  type TransportDescription,
 } from "./core.js";
 import { Conversations } from "./resources/conversations.js";
 import { EndUserTokens } from "./resources/end-user-tokens.js";
@@ -126,5 +128,19 @@ export class Beakr {
   /** Call any route, including ones without a resource method yet. */
   request<T = unknown>(options: RequestOptions): Promise<T> {
     return this.transport.request<T>(options);
+  }
+
+  /** `JSON.stringify(beakr)`: where it talks to and its credential, masked. */
+  toJSON(): TransportDescription {
+    return this.transport.describe();
+  }
+
+  toString(): string {
+    return `Beakr ${JSON.stringify(this.transport.describe())}`;
+  }
+
+  /** `console.log(beakr)` / `util.inspect(beakr)`: the same, never the key. */
+  [INSPECT_CUSTOM](): string {
+    return this.toString();
   }
 }
