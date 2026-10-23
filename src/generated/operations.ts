@@ -125,6 +125,9 @@ export const OPERATIONS = {
   "projects.listMembers": { method: "GET", path: "/v1/projects/{project_id}/members" },
   "projects.addMember": { method: "POST", path: "/v1/projects/{project_id}/members" },
   "projects.removeMember": { method: "DELETE", path: "/v1/projects/{project_id}/members/{principal_type}/{principal_id}" },
+  "projects.listModelRefusals": { method: "GET", path: "/v1/projects/{project_id}/model-refusals" },
+  "projects.listModelRefusalFiles": { method: "GET", path: "/v1/projects/{project_id}/model-refusals/files" },
+  "projects.getModelRefusalSummary": { method: "GET", path: "/v1/projects/{project_id}/model-refusals/summary" },
   "projects.listProjectPendingInvitations": { method: "GET", path: "/v1/projects/{project_id}/pending-invitations" },
   "projects.revokeProjectMembershipInvitation": { method: "DELETE", path: "/v1/projects/{project_id}/pending-invitations/{invitation_id}" },
   "threads.listSharedThreads": { method: "GET", path: "/v1/projects/{project_id}/threads" },
@@ -989,6 +992,36 @@ export class ProjectsApi {
   /** DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id} (Remove a project member) */
   removeMember(args: { path: operations["remove_member_route_v1_projects__project_id__members__principal_type___principal_id__delete"]["parameters"]["path"] }, options?: CallOptions): Promise<void> {
     const request: RequestOptions = { method: "DELETE", path: `/v1/projects/${enc(String(args.path.project_id))}/members/${enc(String(args.path.principal_type))}/${enc(String(args.path.principal_id))}`, responseType: "none", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/projects/{project_id}/model-refusals (List a project's model refusals) */
+  listModelRefusals(args: { path: operations["list_model_refusals_route_v1_projects__project_id__model_refusals_get"]["parameters"]["path"]; query?: NonNullable<operations["list_model_refusals_route_v1_projects__project_id__model_refusals_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_model_refusals_route_v1_projects__project_id__model_refusals_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/model-refusals`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/projects/{project_id}/model-refusals, following its cursor. */
+  listModelRefusalsAll(args: { path: operations["list_model_refusals_route_v1_projects__project_id__model_refusals_get"]["parameters"]["path"]; query?: NonNullable<operations["list_model_refusals_route_v1_projects__project_id__model_refusals_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_model_refusals_route_v1_projects__project_id__model_refusals_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/model-refusals`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** GET /v1/projects/{project_id}/model-refusals/files (List files with model refusals) */
+  listModelRefusalFiles(args: { path: operations["list_model_refusal_files_route_v1_projects__project_id__model_refusals_files_get"]["parameters"]["path"]; query?: NonNullable<operations["list_model_refusal_files_route_v1_projects__project_id__model_refusals_files_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_model_refusal_files_route_v1_projects__project_id__model_refusals_files_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/model-refusals/files`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/projects/{project_id}/model-refusals/files, following its cursor. */
+  listModelRefusalFilesAll(args: { path: operations["list_model_refusal_files_route_v1_projects__project_id__model_refusals_files_get"]["parameters"]["path"]; query?: NonNullable<operations["list_model_refusal_files_route_v1_projects__project_id__model_refusals_files_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_model_refusal_files_route_v1_projects__project_id__model_refusals_files_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/model-refusals/files`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** GET /v1/projects/{project_id}/model-refusals/summary (Get a project's model refusal counts) */
+  getModelRefusalSummary(args: { path: operations["get_model_refusal_summary_route_v1_projects__project_id__model_refusals_summary_get"]["parameters"]["path"]; query?: NonNullable<operations["get_model_refusal_summary_route_v1_projects__project_id__model_refusals_summary_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["get_model_refusal_summary_route_v1_projects__project_id__model_refusals_summary_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/model-refusals/summary`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
