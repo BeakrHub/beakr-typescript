@@ -11,13 +11,12 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=48d65cec67345848851eb3b895217d4a4d5a0bbcc961038114ba5c2c89811f67 changelog sha256=e08b30dfb2c2cb51768af7072da2d92af676caae23989561d94e5eb0f645ea60 -->
+<!-- contract-stamp: public-openapi sha256=48d65cec67345848851eb3b895217d4a4d5a0bbcc961038114ba5c2c89811f67 changelog sha256=bd50d3db7da46b1ae541a03121d342123ecc51c6dccb0bc900df7c0e5b08df5b -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- `GET /v1/artifacts` and `POST /v1/artifacts/list` take a new
-  `knowledge_status` filter. `knowledge_status=waiting_for_person` lists only
+- `GET /v1/artifacts` takes a new `knowledge_status` filter. `knowledge_status=waiting_for_person` lists only
   the files held out of Knowledge until a person approves them (with
   `POST /v1/artifacts/{artifact_id}/knowledge/approve`), so a review screen no
   longer pages through every file. Any other value is refused with `422`.
