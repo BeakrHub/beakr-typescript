@@ -2,6 +2,8 @@ import { cleanBody } from "../core.js";
 import type { BodyOf, JsonObject, ResponseOf } from "../types.js";
 import { Resource, enc } from "./base.js";
 import { waitForKnowledge, type KnowledgeWaitOptions } from "./knowledge-readiness.js";
+import { ModelRefusals } from "./model-refusals.js";
+import type { Transport } from "../core.js";
 
 /** A project's Knowledge status (`GET /v1/projects/{project_id}/knowledge-summary`). */
 export type ProjectKnowledgeStatus = ResponseOf<"/v1/projects/{project_id}/knowledge-summary", "get">;
@@ -30,6 +32,14 @@ export type ProjectKnowledgeProfilePatch = BodyOf<
 >;
 
 export class Projects extends Resource {
+  /** When a model refused a Knowledge stage in a project (`/model-refusals`). */
+  readonly modelRefusals: ModelRefusals;
+
+  constructor(transport: Transport) {
+    super(transport);
+    this.modelRefusals = new ModelRefusals(transport);
+  }
+
   list(
     options: { memberOnly?: boolean } = {},
   ): Promise<ResponseOf<"/v1/projects", "get">> {
