@@ -39,6 +39,11 @@ export interface ReadFileOptions {
   offset?: number;
   /** The most characters to return (default and maximum 20,000; a unit's window is at most 6,000). */
   maxChars?: number;
+  /**
+   * Only open a file in this project (its id or name). A project you cannot read
+   * rejects with `NotFoundError`, naming the closest ones.
+   */
+  project?: string;
   signal?: AbortSignal;
 }
 
@@ -66,6 +71,7 @@ export class Files extends Resource {
       reference: options.unit ? `${reference}#${options.unit}` : reference,
       offset: options.offset ?? 0,
       max_chars: options.maxChars ?? 20_000,
+      ...(options.project ? { project: options.project } : {}),
     };
     return this.transport.request<FileRead>({
       method: "POST",

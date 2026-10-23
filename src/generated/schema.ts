@@ -2007,10 +2007,12 @@ export interface paths {
         put?: never;
         /**
          * Retry failed Knowledge files
-         * @description Send the project's failed files to Knowledge again: all of them, or the ones named.
+         * @description Send the project's failed and incomplete files to Knowledge again: all of them, or the ones named.
          *
-         *     Safe to repeat. A file already queued or running is left alone, and one
-         *     whose latest attempt did not fail is never re-sent, so calling this again
+         *     An incomplete file (its latest attempt saved only part of its changes) is
+         *     resumed from what was saved. Safe to repeat. A file already queued or
+         *     running is left alone, and one whose latest attempt neither failed nor was
+         *     incomplete is never re-sent, so calling this again
          *     before the retried files finish queues nothing new. Needs permission to add
          *     files to the project; a project you cannot read is a 404.
          */
@@ -2060,6 +2062,76 @@ export interface paths {
          * @description Remove a member from a project. principal_type must be: user, group, org, service, or link.
          */
         delete: operations["remove_member_route_v1_projects__project_id__members__principal_type___principal_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/model-refusals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a project's model refusals
+         * @description The project's model refusals and fallbacks, newest first.
+         *
+         *     Each event names the stage, the model that refused, the model that answered
+         *     instead and how it ended. A project you cannot read is a 404.
+         */
+        get: operations["list_model_refusals_route_v1_projects__project_id__model_refusals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/model-refusals/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List files with model refusals
+         * @description The project's files with model refusals or fallbacks in a window, most refusals first.
+         *
+         *     A project you cannot read is a 404.
+         */
+        get: operations["list_model_refusal_files_route_v1_projects__project_id__model_refusals_files_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/model-refusals/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a project's model refusal counts
+         * @description Counts of the project's model refusals and fallbacks over a window.
+         *
+         *     `refusals` counts events where a model declined; `fallbacks` counts events
+         *     where another model was tried; `outcomes` says how they ended;
+         *     `fallback_ladder` lists the fallback models in force, in order, and whether
+         *     each is available here. A project you cannot read is a 404.
+         */
+        get: operations["get_model_refusal_summary_route_v1_projects__project_id__model_refusals_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2854,6 +2926,12 @@ export interface components {
              */
             checksum?: string | null;
             /**
+             * Compile Needed Fallback
+             * @description Whether a request about this file needed a different model to answer.
+             * @default false
+             */
+            compile_needed_fallback?: boolean;
+            /**
              * Created At
              * Format: date-time
              * @description When it was created (ISO 8601, UTC).
@@ -2962,7 +3040,7 @@ export interface components {
             knowledge_event_id?: string | null;
             /**
              * Knowledge Status
-             * @description Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`, `waiting_for_person`.
+             * @description Where the file's current version is in the project's Knowledge: `queued` or `running` (being added); `created` (added: Knowledge was built from it, the finished state); `incomplete` (only part of its changes were saved; a retry resumes it); `failed`; `stale` (an older version is in Knowledge, or the file changed since); `skipped` (read, with nothing to add); `waiting_for_person` (held until a person approves it). Null when it was never sent to Knowledge.
              */
             knowledge_status?: ("queued" | "running" | "created" | "failed" | "stale" | "incomplete" | "skipped" | "waiting_for_person") | null;
             /**
@@ -2987,6 +3065,12 @@ export interface components {
              * @description MIME type of the content.
              */
             mime_type?: string | null;
+            /**
+             * Model Refusal Count
+             * @description How many times a model declined a request about this file.
+             * @default 0
+             */
+            model_refusal_count?: number;
             /**
              * Org Id
              * Format: uuid
@@ -3211,6 +3295,12 @@ export interface components {
              */
             checksum?: string | null;
             /**
+             * Compile Needed Fallback
+             * @description Whether a request about this file needed a different model to answer.
+             * @default false
+             */
+            compile_needed_fallback?: boolean;
+            /**
              * Created At
              * Format: date-time
              * @description Timestamp of the last create propagated from the resource row.
@@ -3307,7 +3397,7 @@ export interface components {
             knowledge_event_id?: string | null;
             /**
              * Knowledge Status
-             * @description Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`, `waiting_for_person`.
+             * @description Where the file's current version is in the project's Knowledge: `queued` or `running` (being added); `created` (added: Knowledge was built from it, the finished state); `incomplete` (only part of its changes were saved; a retry resumes it); `failed`; `stale` (an older version is in Knowledge, or the file changed since); `skipped` (read, with nothing to add); `waiting_for_person` (held until a person approves it). Null when it was never sent to Knowledge.
              */
             knowledge_status?: ("queued" | "running" | "created" | "failed" | "stale" | "incomplete" | "skipped" | "waiting_for_person") | null;
             /**
@@ -3332,6 +3422,12 @@ export interface components {
              * @description Optional MIME type of the artifact payload.
              */
             mime_type?: string | null;
+            /**
+             * Model Refusal Count
+             * @description How many times a model declined a request about this file.
+             * @default 0
+             */
+            model_refusal_count?: number;
             /**
              * Org Id
              * Format: uuid
@@ -5284,6 +5380,11 @@ export interface components {
              */
             offset?: number;
             /**
+             * Project
+             * @description Only open a file in this project: its id or name, as GET /v1/projects lists it. A path or name then resolves among that project's files alone, and a reference to a file elsewhere answers 404. A project you cannot read answers 404 not_found, naming the closest projects you can. Omit to read across every project you can see.
+             */
+            project?: string | null;
+            /**
              * Reference
              * @description The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' › <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's or source_ref's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).
              */
@@ -6380,7 +6481,7 @@ export interface components {
             artifact_id: string;
             /**
              * Outcome
-             * @description `queued` (sent to Knowledge again), `already_queued` (already queued or running; nothing was done), `not_failed` (its latest attempt did not fail; nothing was done), `not_found` (no file with this id in the project that you can read) or `skipped` (it failed but cannot be retried now; see `reason`).
+             * @description `queued` (sent to Knowledge again), `already_queued` (already queued or running; nothing was done), `not_failed` (its latest attempt neither failed nor saved only part of its changes; nothing was done), `not_found` (no file with this id in the project that you can read) or `skipped` (it cannot be retried now; see `reason`).
              * @enum {string}
              */
             outcome: "queued" | "already_queued" | "not_failed" | "not_found" | "skipped";
@@ -6392,12 +6493,12 @@ export interface components {
         };
         /**
          * KnowledgeRetryRequest
-         * @description Which failed files to send to Knowledge again.
+         * @description Which failed or incomplete files to send to Knowledge again.
          */
         KnowledgeRetryRequest: {
             /**
              * Artifact Ids
-             * @description Files to retry, up to 500. Omit to retry every failed file in the project (up to 500 per call; `has_more` says when more remain).
+             * @description Files to retry, up to 500. Omit to retry every failed or incomplete file in the project (up to 500 per call; `has_more` says when more remain).
              */
             artifact_ids?: string[] | null;
         };
@@ -6426,7 +6527,7 @@ export interface components {
             has_more?: boolean;
             /**
              * Not Failed
-             * @description Named files whose latest attempt did not fail.
+             * @description Named files whose latest attempt neither failed nor was incomplete.
              * @default 0
              */
             not_failed?: number;
@@ -6444,7 +6545,7 @@ export interface components {
             queued?: number;
             /**
              * Skipped
-             * @description Failed files that could not be retried now.
+             * @description Failed or incomplete files that could not be retried now.
              * @default 0
              */
             skipped?: number;
@@ -7689,6 +7790,290 @@ export interface components {
              */
             next_cursor?: string | null;
         };
+        /**
+         * ModelRefusalEventOut
+         * @description One model refusal or fallback.
+         */
+        ModelRefusalEventOut: {
+            /**
+             * Artifact Id
+             * @description The file, when known.
+             * @example 3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40
+             */
+            artifact_id?: string | null;
+            /**
+             * Event Type
+             * @description Event type: one of `refusal`, `fallback`.
+             * @enum {string}
+             */
+            event_type: "refusal" | "fallback";
+            /**
+             * Excerpt
+             * @description Why it was refused, in at most 240 characters with credentials cut: the provider's refusal category or explanation, or the model's refusal in words. Never the model's answer. Often null.
+             */
+            excerpt?: string | null;
+            /**
+             * Fallback Model
+             * @description The model that answered instead, or the last one tried.
+             */
+            fallback_model?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             * @description Unique id of this model refusal event.
+             */
+            id: string;
+            /**
+             * Ingestion Event Id
+             * @description Id of the ingestion event.
+             */
+            ingestion_event_id?: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             * @description When it was occurred (ISO 8601, UTC).
+             */
+            occurred_at: string;
+            /**
+             * Outcome
+             * @description How it turned out. One of `recovered`, `failed`, `skipped`.
+             * @enum {string}
+             */
+            outcome: "recovered" | "failed" | "skipped";
+            /**
+             * Outcome Reason
+             * @description Why it ended that way, such as `no_available_fallback` (the fallback model is not available on this deployment) or `all_tiers_refused`.
+             */
+            outcome_reason?: string | null;
+            /**
+             * Project Id
+             * @description Id of the project it belongs to, or the project to act in.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id?: string | null;
+            /**
+             * Refusal Kind
+             * @description Refusal kind: one of `stop_reason`, `policy_text`, `empty`, `blocked`.
+             */
+            refusal_kind?: ("stop_reason" | "policy_text" | "empty" | "blocked") | null;
+            /**
+             * Refused Model
+             * @description The model that declined, or that was unavailable.
+             */
+            refused_model?: string | null;
+            /**
+             * Stage
+             * @description Where the model call happened: `compile`, `evidence_scan`, `evidence_extract`, `chat`, or the name of another step such as `classification`.
+             */
+            stage: string;
+        };
+        /** ModelRefusalEventOutPage */
+        ModelRefusalEventOutPage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["ModelRefusalEventOut"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @default false
+             * @example false
+             */
+            has_more?: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * ModelRefusalFileCounts
+         * @description One file's refusals and fallbacks over a time window.
+         */
+        ModelRefusalFileCounts: {
+            /**
+             * Artifact Id
+             * Format: uuid
+             * @description Id of the artifact.
+             * @example 3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40
+             */
+            artifact_id: string;
+            /**
+             * Failed
+             * @description Events where no model answered (every model tried refused or failed).
+             * @default 0
+             */
+            failed?: number;
+            /**
+             * Fallbacks
+             * @description Events where another model was tried.
+             * @default 0
+             */
+            fallbacks?: number;
+            /**
+             * Last Event At
+             * Format: date-time
+             * @description Time of the last event (ISO 8601, UTC).
+             */
+            last_event_at: string;
+            /**
+             * Recovered
+             * @description Events where another model answered instead.
+             * @default 0
+             */
+            recovered?: number;
+            /**
+             * Refusals
+             * @description Events where a model declined the request.
+             * @default 0
+             */
+            refusals?: number;
+            /**
+             * Skipped
+             * @description Events where no other model was tried.
+             * @default 0
+             */
+            skipped?: number;
+            /**
+             * Title
+             * @description Title of the model refusal file counts.
+             */
+            title?: string | null;
+        };
+        /** ModelRefusalFileCountsPage */
+        ModelRefusalFileCountsPage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["ModelRefusalFileCounts"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @default false
+             * @example false
+             */
+            has_more?: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * ModelRefusalOutcomes
+         * @description How many events ended each way.
+         */
+        ModelRefusalOutcomes: {
+            /**
+             * Failed
+             * @description Events where no model answered (every model tried refused or failed).
+             * @default 0
+             */
+            failed?: number;
+            /**
+             * Recovered
+             * @description Events where another model answered instead.
+             * @default 0
+             */
+            recovered?: number;
+            /**
+             * Skipped
+             * @description Events where no other model was tried.
+             * @default 0
+             */
+            skipped?: number;
+        };
+        /**
+         * ModelRefusalStageCounts
+         * @description Refusals and fallbacks at one stage.
+         */
+        ModelRefusalStageCounts: {
+            /**
+             * Fallbacks
+             * @description Events where another model was tried.
+             * @default 0
+             */
+            fallbacks?: number;
+            /**
+             * Refusals
+             * @description Events where a model declined the request.
+             * @default 0
+             */
+            refusals?: number;
+        };
+        /**
+         * ModelRefusalSummary
+         * @description A project's model refusals and fallbacks over a time window.
+         */
+        ModelRefusalSummary: {
+            /**
+             * By Model
+             * @description Refusals keyed by the model that refused.
+             */
+            by_model?: {
+                [key: string]: number;
+            };
+            /**
+             * By Stage
+             * @description Counts keyed by where the model call happened, such as `compile`.
+             */
+            by_stage?: {
+                [key: string]: components["schemas"]["ModelRefusalStageCounts"];
+            };
+            /**
+             * Fallback Ladder
+             * @description The fallback models in force, in the order they are tried, each with whether it is available here. Empty when no fallback is configured.
+             */
+            fallback_ladder?: {
+                [key: string]: boolean;
+            };
+            /**
+             * Fallbacks
+             * @description Events where another model was tried.
+             */
+            fallbacks: number;
+            /**
+             * Files Affected
+             * @description Distinct files with at least one event.
+             */
+            files_affected: number;
+            /** @description How the events ended. */
+            outcomes: components["schemas"]["ModelRefusalOutcomes"];
+            /**
+             * Project Id
+             * Format: uuid
+             * @description Id of the project it belongs to, or the project to act in.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /**
+             * Refusals
+             * @description Events where a model declined the request.
+             */
+            refusals: number;
+            /**
+             * Since
+             * Format: date-time
+             * @description Start of the counted window.
+             */
+            since: string;
+            /**
+             * Until
+             * Format: date-time
+             * @description End of the counted window (the time of the request).
+             */
+            until: string;
+            /**
+             * Window
+             * @description Window: one of `24h`, `7d`, `30d`.
+             * @enum {string}
+             */
+            window: "24h" | "7d" | "30d";
+        };
         /** ObjectPage */
         ObjectPage: {
             /**
@@ -8420,9 +8805,10 @@ export interface components {
          * ProjectKnowledgeStatusResponse
          * @description A project's Knowledge status: coverage counts, readiness and the files that failed.
          *
-         *     Counts cover the files the caller can read. ``queued``, ``running`` and
-         *     ``failed`` break the coverage counts down further: ``queued + running`` is
-         *     ``syncing``, and ``failed`` is part of ``eligible``.
+         *     Counts cover the files the caller can read. ``queued``, ``running``,
+         *     ``failed`` and ``incomplete`` break the coverage counts down further:
+         *     ``queued + running`` is ``syncing``, and ``failed`` and ``incomplete`` are
+         *     parts of ``eligible``.
          */
         ProjectKnowledgeStatusResponse: {
             /**
@@ -8448,6 +8834,12 @@ export interface components {
              */
             failed_files_next_cursor?: string | null;
             /**
+             * Incomplete
+             * @description Files whose latest attempt saved only part of its changes to Knowledge (their `knowledge_status` is `incomplete`; a subset of `eligible`, never counted in `failed`). A retry resumes them.
+             * @default 0
+             */
+            incomplete?: number;
+            /**
              * Knowledge Skipped
              * @description Files that finished processing without producing Knowledge (a subset of `synced`).
              * @default 0
@@ -8466,7 +8858,7 @@ export interface components {
             queued?: number;
             /**
              * Ready
-             * @description True when nothing is queued or running, so answers from this project's Knowledge reflect every file that will be added. Failed files do not make it false; check `failed`.
+             * @description True when nothing is queued or running, so answers from this project's Knowledge reflect every file that will be added. Failed and incomplete files do not make it false; check `failed` and `incomplete`.
              * @default true
              */
             ready?: boolean;
@@ -12594,6 +12986,8 @@ export interface operations {
                 lite?: boolean;
                 /** @description Case-insensitive search across title, description, and artifact type */
                 search?: string | null;
+                /** @description Only files whose `knowledge_status` is this. `waiting_for_person`: files held out of Knowledge until a person approves them (`POST /v1/artifacts/{artifact_id}/knowledge/approve`), so a review screen needs no scan of every file. */
+                knowledge_status?: "waiting_for_person" | null;
                 /** @description Sort field: updated_at, created_at, title, size_bytes, artifact_type */
                 sort_by?: string;
                 /** @description Sort direction: asc or desc */
@@ -19051,6 +19445,174 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_model_refusals_route_v1_projects__project_id__model_refusals_get: {
+        parameters: {
+            query?: {
+                /** @description Only this file's events. */
+                artifact_id?: string | null;
+                /** @description Only events that ended this way. */
+                outcome?: ("recovered" | "failed" | "skipped") | null;
+                /** @description Only events at this stage. */
+                stage?: string | null;
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelRefusalEventOutPage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_model_refusal_files_route_v1_projects__project_id__model_refusals_files_get: {
+        parameters: {
+            query?: {
+                /** @description How far back to count: `24h`, `7d` or `30d`. */
+                window?: "24h" | "7d" | "30d";
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelRefusalFileCountsPage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_model_refusal_summary_route_v1_projects__project_id__model_refusals_summary_get: {
+        parameters: {
+            query?: {
+                /** @description How far back to count: `24h`, `7d` or `30d`. */
+                window?: "24h" | "7d" | "30d";
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelRefusalSummary"];
+                };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
             422: {

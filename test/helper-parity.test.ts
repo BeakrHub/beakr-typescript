@@ -68,4 +68,17 @@ describe("files.read (Python's files.read, POST /v1/artifacts/read)", () => {
     await beakr.files.read("{{artifact:v1-u3}}", { offset: 40, maxChars: 100 });
     expect(calls[1]!.body).toEqual({ reference: "{{artifact:v1-u3}}", offset: 40, max_chars: 100 });
   });
+
+  it("keeps a read to the project it names", async () => {
+    const window = { file: { id: "f1", title: "memo.pdf", display_path: "memo.pdf" }, text: "x" };
+    const { fetch, calls } = mockFetch([json(window)]);
+    const { beakr } = client(fetch);
+    await beakr.files.read("memo.pdf", { project: "Science Ingest 018" });
+    expect(calls[0]!.body).toEqual({
+      reference: "memo.pdf",
+      offset: 0,
+      max_chars: 20000,
+      project: "Science Ingest 018",
+    });
+  });
 });
