@@ -6224,10 +6224,10 @@ export interface components {
             artifact_id: string;
             /**
              * Error Code
-             * @description Why it failed: `processing_failed` (the file could not be read), `timed_out`, `concurrent_update` (another Knowledge update ran at the same time) or `compile_failed` (anything else).
+             * @description Why it failed: `processing_failed` (the file could not be read), `timed_out`, `concurrent_update` (another Knowledge update ran at the same time), `model_refused` (a model declined the file and no fallback model answered; a retry is refused again unless the model or its fallback changes) or `compile_failed` (anything else).
              * @enum {string}
              */
-            error_code: "processing_failed" | "timed_out" | "concurrent_update" | "compile_failed";
+            error_code: "processing_failed" | "timed_out" | "concurrent_update" | "model_refused" | "compile_failed";
             /**
              * Failed At
              * Format: date-time
@@ -6251,7 +6251,7 @@ export interface components {
             reason: string;
             /**
              * Retryable
-             * @description Whether you may retry this file (`POST /v1/projects/{project_id}/knowledge/retry-failed`): you can edit it. Every failure code is worth a retry.
+             * @description Whether you may retry this file (`POST /v1/projects/{project_id}/knowledge/retry-failed`): you can edit it. Every failure code but `model_refused` is worth a plain retry; retry `model_refused` once the model or its fallback has changed.
              */
             retryable: boolean;
         };
