@@ -1584,7 +1584,7 @@ export interface paths {
         };
         /**
          * List your threads
-         * @description Threads the caller created in the active organization, latest activity first. Filter with `project_ids`; `q` searches titles. `group_id` is deprecated.
+         * @description Threads the caller created in the active organization, latest activity first. Filter with `project_ids`; `q` searches titles. `notifications=only` lists just the conversations notifications opened (`origin` `notification`), and `notifications=exclude` leaves them out; omitted, both are listed. `group_id` is deprecated.
          */
         get: operations["list_my_threads_v1_me_threads_get"];
         put?: never;
@@ -17873,6 +17873,8 @@ export interface operations {
                 project_ids?: string[] | null;
                 /** @description Deprecated; use project_ids */
                 group_id?: string | null;
+                /** @description `only` lists just the conversations a notification opened (`origin` `notification`); `exclude` leaves them out. Omitted, both are listed. */
+                notifications?: ("only" | "exclude") | null;
                 /** @description Opaque cursor from a previous page's `next_cursor`. */
                 cursor?: string | null;
                 /** @description Page size, 1 to 200. */
