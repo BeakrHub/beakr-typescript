@@ -7842,7 +7842,7 @@ export interface components {
             outcome: "recovered" | "failed" | "skipped";
             /**
              * Outcome Reason
-             * @description Why it ended that way, such as `no_available_fallback` (the fallback model is not available on this deployment) or `all_tiers_refused`.
+             * @description Why it ended that way, such as `no_available_fallback` (the fallback model is not available on this deployment), `no_capable_fallback` (no fallback model could do this stage's job, such as read a page image or call its tools) or `all_tiers_refused`.
              */
             outcome_reason?: string | null;
             /**
@@ -8025,6 +8025,13 @@ export interface components {
                 [key: string]: components["schemas"]["ModelRefusalStageCounts"];
             };
             /**
+             * Failed By Reason
+             * @description Unrecovered events keyed by why: `all_tiers_refused`, `no_available_fallback`, `no_capable_fallback` (no fallback model could do this stage's job, such as read a page image), `no_fallback_configured`, `fallback_error`.
+             */
+            failed_by_reason?: {
+                [key: string]: number;
+            };
+            /**
              * Fallback Ladder
              * @description The fallback models in force, in the order they are tried, each with whether it is available here. Empty when no fallback is configured.
              */
@@ -8050,6 +8057,13 @@ export interface components {
              * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
              */
             project_id: string;
+            /**
+             * Recovered By Model
+             * @description Recovered events keyed by the model that answered instead.
+             */
+            recovered_by_model?: {
+                [key: string]: number;
+            };
             /**
              * Refusals
              * @description Events where a model declined the request.
