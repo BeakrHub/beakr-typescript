@@ -8026,7 +8026,7 @@ export interface components {
             };
             /**
              * Failed By Reason
-             * @description Unrecovered events keyed by why: `all_tiers_refused`, `no_available_fallback`, `no_capable_fallback` (no fallback model could do this stage's job, such as read a page image), `no_fallback_configured`, `fallback_error`.
+             * @description Unrecovered events keyed by why: `all_tiers_refused`, `no_available_fallback`, `no_capable_fallback` (no fallback model could do this stage's job, such as read a page image), `no_fallback_configured`, `fallback_error`, or `unspecified` for an event recorded without a reason.
              */
             failed_by_reason?: {
                 [key: string]: number;
