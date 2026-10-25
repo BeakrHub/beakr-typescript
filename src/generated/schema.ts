@@ -10103,7 +10103,7 @@ export interface components {
             created_at: string;
             /**
              * Delivery Channel
-             * @description How the link was delivered: gmail or outlook (from the sender's own account), or links (minted for the sender to share).
+             * @description How the link was delivered: gmail or outlook (from the sender's own mailbox), slack (a direct message from the sender's own Slack), or links (minted for the sender to share).
              */
             delivery_channel?: string | null;
             /**
