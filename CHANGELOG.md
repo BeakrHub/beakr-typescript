@@ -7,6 +7,22 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/runs`: a caller who can read a project but not save conversations
+  to it (a project viewer, or an external user whose label grants the project)
+  may now pass that project as `home_project_id`. The run starts with a private
+  conversation instead of answering `403`; saving a conversation to a project
+  still needs member access.
+- `POST /v1/knowledge/documents` is now reachable with a token minted for an
+  external user. It covers the projects that user's labels and project
+  memberships reach. `coverage` adds `rows_not_searched`: documents in scope
+  whose table rows were not searched, only their profile.
+- `POST /v1/projects/{project_id}/members` and
+  `DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id}`:
+  `principal_type` `service` now names one of the organization's service
+  accounts. The member is stored and listed as `principal_type` `user` with
+  `principal_kind` `service_account`, and gets the project access its role
+  gives; before, it was listed but had no access. `service` with any other id
+  is refused with 422 `validation_error` on `principal_id`.
 - `GET /v1/me/threads` adds `notifications`: `only` lists just the
   conversations a notification opened (their `origin` is `notification`), and
   `exclude` leaves them out. Omitted, both are listed, as before. Conversations

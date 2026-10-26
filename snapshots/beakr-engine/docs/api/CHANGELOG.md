@@ -11,11 +11,27 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=1b28c92ce179921848ca778436d93174b0a241b21cd6f2c3d619d0f1e67cbab2 changelog sha256=795adf45e23a9b650515c65c74625472baa0da4ed1fbdf047cf73d40c92aee47 -->
+<!-- contract-stamp: public-openapi sha256=d9266a022cf9258cef498d608ae0289e4741dbf36e37c8d8482cd32a050fa7e1 changelog sha256=261b8c99defde063d146dc9f88b76927d0952e8d48c6581cc67222b8641b131d -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/runs`: a caller who can read a project but not save conversations
+  to it (a project viewer, or an external user whose label grants the project)
+  may now pass that project as `home_project_id`. The run starts with a private
+  conversation instead of answering `403`; saving a conversation to a project
+  still needs member access.
+- `POST /v1/knowledge/documents` is now reachable with a token minted for an
+  external user. It covers the projects that user's labels and project
+  memberships reach. `coverage` adds `rows_not_searched`: documents in scope
+  whose table rows were not searched, only their profile.
+- `POST /v1/projects/{project_id}/members` and
+  `DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id}`:
+  `principal_type` `service` now names one of the organization's service
+  accounts. The member is stored and listed as `principal_type` `user` with
+  `principal_kind` `service_account`, and gets the project access its role
+  gives; before, it was listed but had no access. `service` with any other id
+  is refused with 422 `validation_error` on `principal_id`.
 - `GET /v1/me/threads` adds `notifications`: `only` lists just the
   conversations a notification opened (their `origin` is `notification`), and
   `exclude` leaves them out. Omitted, both are listed, as before. Conversations
