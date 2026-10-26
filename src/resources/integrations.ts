@@ -23,9 +23,20 @@ export interface ToolsQuery {
  * `integrations:read` / `integrations:admin`.
  */
 export class Integrations extends Resource {
-  /** Connections you can see, each with the projects it feeds. */
-  list(): Promise<{ data: JsonObject[] }> {
-    return this.transport.request({ method: "GET", path: "/v1/integrations" });
+  /** One page of the connections you can see, each with the projects it feeds. */
+  list(
+    query: { cursor?: string; limit?: number } = {},
+  ): Promise<{ data: JsonObject[]; next_cursor?: string | null; has_more?: boolean }> {
+    return this.transport.request({
+      method: "GET",
+      path: "/v1/integrations",
+      query: { cursor: query.cursor, limit: query.limit },
+    });
+  }
+
+  /** Every connection you can see, following cursors. */
+  iter(pageSize?: number): AsyncGenerator<JsonObject> {
+    return this.transport.paginate({ method: "GET", path: "/v1/integrations" }, pageSize);
   }
 
   /** Returns `connect_url`; open it in a browser to finish connecting. */

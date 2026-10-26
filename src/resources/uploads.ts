@@ -11,6 +11,7 @@ import {
   type UploadedFolderFile,
 } from "./folder-upload.js";
 import { sha256Hex } from "../sha256.js";
+import { guessMimeType } from "./file-types.js";
 import { uploadBatch, type BatchUpload, type UploadManyOptions } from "./batch-upload.js";
 import { Jobs, type Job, type JobWaitOptions } from "./jobs.js";
 import {
@@ -221,7 +222,9 @@ export class Uploads extends Resource {
     }
     const session = await this.create({
       ...options,
-      contentType: options.contentType ?? "application/octet-stream",
+      // Inferred from the name the way folder and batch uploads do, so a
+      // single `.md` is not stored as application/octet-stream.
+      contentType: options.contentType ?? (blob.type || guessMimeType(options.path)),
       contentLength: blob.size,
       // Declared up front, as the Python SDK does, so the server can check
       // the assembled object (hashed as a stream: no whole-file buffer).

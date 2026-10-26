@@ -1,7 +1,7 @@
 import { AnswerBuilder, TextStream, answerDelta, type Answer } from "../answers.js";
 import { cleanBody } from "../core.js";
 import { ValidationError } from "../errors.js";
-import type { JsonObject } from "../types.js";
+import type { JsonObject, ResponseOf } from "../types.js";
 import { Resource, enc } from "./base.js";
 
 export interface RunEvent {
@@ -248,12 +248,35 @@ export class Runs extends Resource {
     }
   }
 
-  /** The caller's threads. */
-  threads(query: { limit?: number } = {}): Promise<unknown> {
-    return this.transport.request({
-      method: "GET",
-      path: "/v1/me/threads",
-      query,
-    });
+  /** One page of the caller's threads; {@link iterThreads} follows every page. */
+  threads(query: ListThreadsQuery = {}): Promise<ResponseOf<"/v1/me/threads", "get">> {
+    return this.transport.request({ method: "GET", path: "/v1/me/threads", query: threadsQuery(query) });
   }
+
+  /** Every thread of the caller's matching the filters, following cursors. */
+  iterThreads(query: Omit<ListThreadsQuery, "cursor" | "limit"> = {}, pageSize?: number): AsyncGenerator<JsonObject> {
+    return this.transport.paginate({ method: "GET", path: "/v1/me/threads", query: threadsQuery(query) }, pageSize);
+  }
+}
+
+/** The filters and paging `GET /v1/me/threads` takes. */
+export interface ListThreadsQuery {
+  /** Search thread titles. */
+  q?: string;
+  /** Only threads attached to these projects. */
+  projectIds?: readonly string[];
+  /** `only`: just the conversations a notification opened; `exclude`: leave them out. */
+  notifications?: "only" | "exclude";
+  cursor?: string;
+  limit?: number;
+}
+
+function threadsQuery(query: ListThreadsQuery): Record<string, string | number | readonly string[] | undefined> {
+  return {
+    q: query.q,
+    project_ids: query.projectIds,
+    notifications: query.notifications,
+    cursor: query.cursor,
+    limit: query.limit,
+  };
 }

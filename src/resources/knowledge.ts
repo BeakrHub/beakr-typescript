@@ -1,4 +1,5 @@
 import type { QuerySpec } from "./query-spec.js";
+import type { ResponseMeta } from "../core.js";
 import { KnowledgeCommandError } from "../errors.js";
 import { publicSource, type SourceRecord } from "../sources.js";
 import type { JsonObject, ResponseOf, components } from "../types.js";
@@ -161,20 +162,57 @@ export function resultText(result: KnowledgeResult): string {
     .join("\n");
 }
 
-function checked<R extends KnowledgeResult>(result: R, check: boolean): R {
+function checked<R extends KnowledgeResult>(result: R, check: boolean, meta?: ResponseMeta): R {
   if (check && result.outcome?.status === "error") {
-    throw new KnowledgeCommandError(resultText(result) || "The Knowledge command was refused.", result);
+    const outcomeCode = result.outcome["code"];
+    throw new KnowledgeCommandError(resultText(result) || "The Knowledge command was refused.", result, {
+      status: meta?.status,
+      requestId: meta?.requestId,
+      ...(typeof outcomeCode === "string" && outcomeCode ? { code: outcomeCode } : {}),
+    });
   }
   return result;
 }
 
+/** The filters and paging `GET /v1/knowledge/wiki/proposals` takes. */
+export interface ListProposalsQuery {
+  /** `pending` (the default), `dismissed`, ... */
+  status?: string;
+  projectId?: string;
+  groupId?: string;
+  labelId?: string;
+  /** The proposals one write batch staged. */
+  batchId?: string;
+  source?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+function proposalsQuery(query: ListProposalsQuery): Record<string, string | number | undefined> {
+  return {
+    status: query.status,
+    project_id: query.projectId,
+    group_id: query.groupId,
+    label_id: query.labelId,
+    batch_id: query.batchId,
+    source: query.source,
+    cursor: query.cursor,
+    limit: query.limit,
+  };
+}
+
 class Proposals extends Resource {
-  list(query: { status?: string; projectId?: string; limit?: number } = {}): Promise<WikiProposalPage> {
-    return this.transport.request({
-      method: "GET",
-      path: "/v1/knowledge/wiki/proposals",
-      query: { status: query.status, project_id: query.projectId, limit: query.limit },
-    });
+  /** One page of proposals (pending by default); {@link iter} follows every page. */
+  list(query: ListProposalsQuery = {}): Promise<WikiProposalPage> {
+    return this.transport.request({ method: "GET", path: "/v1/knowledge/wiki/proposals", query: proposalsQuery(query) });
+  }
+
+  /** Every proposal matching the filters, following cursors. */
+  iter(query: Omit<ListProposalsQuery, "cursor" | "limit"> = {}, pageSize?: number): AsyncGenerator<WikiProposal> {
+    return this.transport.paginate(
+      { method: "GET", path: "/v1/knowledge/wiki/proposals", query: proposalsQuery(query) },
+      pageSize,
+    );
   }
 
   get(proposalId: string): Promise<WikiProposal> {
@@ -233,12 +271,16 @@ export class Knowledge extends Resource {
   async command(command: string, args: JsonObject = {}, options: DoorOptions = {}): Promise<KnowledgeResult> {
     const body: JsonObject = { ...args, command };
     if (options.scope) body["scope"] = options.scope;
+    let meta: ResponseMeta | undefined;
     const result = await this.transport.request<KnowledgeResult>({
       method: "POST",
       path: "/v1/knowledge/wiki/command",
       body,
+      onResponse: (received) => {
+        meta = received;
+      },
     });
-    return checked(result, options.check ?? true);
+    return checked(result, options.check ?? true, meta);
   }
 
   /**
@@ -248,12 +290,16 @@ export class Knowledge extends Resource {
   async write(action: string, args: JsonObject = {}, options: DoorOptions = {}): Promise<KnowledgeWriteResult> {
     const body: JsonObject = { ...args, action };
     if (options.scope) body["scope"] = options.scope;
+    let meta: ResponseMeta | undefined;
     const result = await this.transport.request<KnowledgeWriteResult>({
       method: "POST",
       path: "/v1/knowledge/wiki/write",
       body,
+      onResponse: (received) => {
+        meta = received;
+      },
     });
-    return checked(result, options.check ?? true);
+    return checked(result, options.check ?? true, meta);
   }
 
   /**
