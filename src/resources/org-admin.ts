@@ -15,14 +15,31 @@ export interface MintKeyOptions {
 }
 
 class ServiceAccounts extends OrgScoped {
-  async list(orgId?: string): Promise<{ data: JsonObject[] }> {
+  /** One page of the organization's service accounts; {@link iter} follows every page. */
+  async list(
+    orgId?: string,
+    query: { cursor?: string; limit?: number } = {},
+  ): Promise<{ data: JsonObject[]; next_cursor?: string | null; has_more?: boolean }> {
     return this.transport.request({
       method: "GET",
       path: `${await this.orgBase(orgId)}/service-accounts`,
+      query: { cursor: query.cursor, limit: query.limit },
     });
   }
 
-  /** Needs a web session (refused to keys and tokens with `session_required`). */
+  /** Every service account of the organization, following cursors. */
+  async *iter(orgId?: string, pageSize?: number): AsyncGenerator<JsonObject> {
+    yield* this.transport.paginate<JsonObject>(
+      { method: "GET", path: `${await this.orgBase(orgId)}/service-accounts` },
+      pageSize,
+    );
+  }
+
+  /**
+   * Web app only: creating a service account needs a signed-in person, so API
+   * keys and tokens are refused with `session_required`. Create it under
+   * Settings > Organization > Developer, then use its key from your backend.
+   */
   async create(
     name: string,
     role: "member" | "admin" | "viewer" = "member",
@@ -35,7 +52,10 @@ class ServiceAccounts extends OrgScoped {
     });
   }
 
-  /** Deactivates the account and revokes its keys. */
+  /**
+   * Deactivates the account and revokes its keys. Web app only: API keys and
+   * tokens are refused with `session_required`.
+   */
   async disable(accountId: string, orgId?: string): Promise<JsonObject> {
     return this.transport.request({
       method: "POST",
@@ -43,7 +63,11 @@ class ServiceAccounts extends OrgScoped {
     });
   }
 
-  /** A scoped key owned by the service account; `key` is returned once. */
+  /**
+   * A scoped key owned by the service account; `key` is returned once. Web app
+   * only: keys and tokens never create keys, so API keys and tokens are refused
+   * with `session_required`.
+   */
   async mintKey(
     accountId: string,
     options: MintKeyOptions,

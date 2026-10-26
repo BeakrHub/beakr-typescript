@@ -4591,6 +4591,12 @@ export interface components {
              */
             resume_after_document?: string | null;
             /**
+             * Rows Not Searched
+             * @description Documents in scope whose table rows were not searched, only their profile; no match in them is not evidence the value is absent.
+             * @default null
+             */
+            rows_not_searched?: number | null;
+            /**
              * Total
              * @description Entries found: matching lines (content) or documents.
              * @default null
@@ -8946,7 +8952,7 @@ export interface components {
              */
             principal_id: string;
             /**
-             * @description What kind of principal `principal_id` names. One of `user`, `group`, `org`, `service`, `link`.
+             * @description What kind of principal `principal_id` names. Use `user` for a person or a service account; `service` is also accepted for one of the organization's service accounts and is stored and listed as `user`. One of `user`, `group`, `org`, `service`, `link`.
              * @default user
              */
             principal_type?: components["schemas"]["PrincipalType"];
@@ -10982,7 +10988,7 @@ export interface components {
             files?: string[] | null;
             /**
              * Home Project Id
-             * @description Id of the project that holds it.
+             * @description Project to save a new conversation to, so the project's members see it. Saving needs member access; a caller who can only read the project gets a private conversation, and `scope` still decides what the run reads.
              * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
              */
             home_project_id?: string | null;

@@ -1,5 +1,6 @@
 import { NotFoundError } from "../errors.js";
 import type { BodyOf, JsonObject, ResponseOf } from "../types.js";
+import { assertInside, namesDirectory, safePathComponent } from "../paths.js";
 import { Resource, enc } from "./base.js";
 import { nodeBuiltin } from "../node-builtins.js";
 
@@ -150,8 +151,9 @@ export class Files extends Resource {
   }
 
   /**
-   * Save the original file (Node). `destination` may be an existing directory,
-   * in which case the file keeps its original name. Resolves to the path written.
+   * Save the original file (Node). `destination` may be a directory (one that
+   * exists, or a path ending in `/`, created if missing), in which case the
+   * file keeps its original name. Resolves to the path written.
    */
   async downloadTo(artifactId: string, destination: string): Promise<string> {
     const fs = await nodeBuiltin<typeof import("node:fs/promises")>("node:fs/promises");
@@ -159,7 +161,11 @@ export class Files extends Resource {
     const file = await this.download(artifactId);
     let target = destination;
     const existing = await fs.stat(destination).catch(() => undefined);
-    if (existing?.isDirectory()) target = nodePath.join(destination, file.filename);
+    if (namesDirectory(destination, existing?.isDirectory() ?? false)) {
+      // The name comes from the server: one plain file name, kept inside the folder.
+      target = nodePath.join(destination, safePathComponent(file.filename, "the file's name"));
+      assertInside(nodePath, destination, target, "the downloaded file");
+    }
     await fs.mkdir(nodePath.dirname(target), { recursive: true });
     await fs.writeFile(target, file.data);
     return target;
