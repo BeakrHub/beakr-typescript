@@ -18,6 +18,7 @@ import { cleanBody } from "../core.js";
 import { nodeBuiltin } from "../node-builtins.js";
 import { Sha256 } from "../sha256.js";
 import type { JsonObject, ResponseOf } from "../types.js";
+import { assertInside, namesDirectory, safePathComponent } from "../paths.js";
 import { Resource, enc } from "./base.js";
 
 export type SkillVisibility = "private" | "org" | "public";
@@ -97,7 +98,13 @@ export function bundleSha256(files: SkillFiles): string {
 /** `path` as a relative POSIX path inside the skill, or a `TypeError`. */
 function safeRelative(path: string): string {
   const parts = path.replace(/\\/g, "/").split("/");
-  if (path.startsWith("/") || /^[A-Za-z]:/.test(path) || parts.includes("..") || !parts.some(Boolean)) {
+  if (
+    path.startsWith("/") ||
+    /^[A-Za-z]:/.test(path) ||
+    path.includes("\0") ||
+    parts.includes("..") ||
+    !parts.some(Boolean)
+  ) {
     throw new TypeError(`Skill file path ${JSON.stringify(path)} leaves the skill folder.`);
   }
   return parts.filter((part) => part && part !== ".").join("/");
@@ -305,28 +312,41 @@ export class Skills extends Resource {
 
   /**
    * Save a skill's SKILL.md folder, or its zip with `asZip` (Node). When
-   * `destination` is an existing directory the skill is saved inside it, as
-   * `<slug>/` or `<slug>.zip`; otherwise `destination` is the folder or zip
-   * itself. Resolves to the path written.
+   * `destination` is a directory (one that exists, or a path ending in `/`,
+   * created if missing) the skill is saved inside it, as `<slug>/` or
+   * `<slug>.zip`; otherwise `destination` is the folder or the zip file itself,
+   * written exactly as named (add `.zip` yourself). Resolves to the path written.
    */
   async download(skillId: string, destination: string, options: { asZip?: boolean } = {}): Promise<string> {
     const fs = await nodeBuiltin<typeof import("node:fs/promises")>("node:fs/promises");
     const nodePath = await nodeBuiltin<typeof import("node:path")>("node:path");
-    const isDir = (await fs.stat(destination).catch(() => undefined))?.isDirectory() ?? false;
+    const exists = (await fs.stat(destination).catch(() => undefined))?.isDirectory() ?? false;
+    const isDir = namesDirectory(destination, exists);
     if (options.asZip) {
       const data = await this.downloadZip(skillId);
-      const target = isDir ? nodePath.join(destination, `${(await this.bundle(skillId)).slug}.zip`) : destination;
+      let target = destination;
+      if (isDir) {
+        const slug = safePathComponent((await this.bundle(skillId)).slug, "the skill's slug");
+        target = nodePath.join(destination, `${slug}.zip`);
+        assertInside(nodePath, destination, target, "the skill's zip");
+      }
       await fs.mkdir(nodePath.dirname(target), { recursive: true });
       await fs.writeFile(target, data);
       return target;
     }
     const bundle = await this.bundle(skillId);
-    const folder = isDir ? nodePath.join(destination, bundle.slug) : destination;
+    let folder = destination;
+    if (isDir) {
+      folder = nodePath.join(destination, safePathComponent(bundle.slug, "the skill's slug"));
+      assertInside(nodePath, destination, folder, "the skill's folder");
+    }
     // Every path is checked before anything is written, so a bundle naming a
     // path outside the folder leaves no partial copy behind.
-    const targets = Object.entries(bundle.files ?? {}).map(
-      ([name, content]) => [nodePath.join(folder, ...safeRelative(name).split("/")), content] as const,
-    );
+    const targets = Object.entries(bundle.files ?? {}).map(([name, content]) => {
+      const target = nodePath.join(folder, ...safeRelative(name).split("/"));
+      assertInside(nodePath, folder, target, `skill file ${JSON.stringify(name)}`);
+      return [target, content] as const;
+    });
     for (const [target, content] of targets) {
       await fs.mkdir(nodePath.dirname(target), { recursive: true });
       await fs.writeFile(target, content, "utf8");
@@ -372,6 +392,14 @@ export class Skills extends Resource {
   ): Promise<SkillBundle> {
     const payload = typeof files === "string" ? await readSkillFolder(files) : files;
     const body: Record<string, unknown> = { files: payload, replace: options.replace ?? true };
+    if ("expectedSha256" in options && options.expectedSha256 === undefined) {
+      // A bundle reports its digest as `files_sha256`; passing `bundle.sha256`
+      // (undefined) used to skip the overwrite check silently.
+      throw new TypeError(
+        "expectedSha256 is undefined. Pass the bundle's files_sha256 (skills.bundle(id).files_sha256), " +
+          "or leave the option out to write without the conflict check.",
+      );
+    }
     if (options.expectedSha256 !== undefined) body["expected_sha256"] = options.expectedSha256;
     if (options.force) body["force"] = true;
     return this.transport.request({ method: "PUT", path: `/v1/skills/${enc(skillId)}/bundle`, body });

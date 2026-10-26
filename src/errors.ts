@@ -136,10 +136,19 @@ export class ServerError extends BeakrError {}
  * A Knowledge command or write answered HTTP 200 with `outcome.status ===
  * "error"` (an unknown page, a refused write). `result` keeps the full reply.
  */
+/**
+ * The Knowledge door answered 200 but reported `outcome.status: "error"`. It
+ * carries the response's `status` and `requestId` like every other error, and
+ * the door's own `outcome.code` as `code` when it named one.
+ */
 export class KnowledgeCommandError extends BeakrError {
   readonly result: Record<string, unknown>;
-  constructor(message: string, result: Record<string, unknown>) {
-    super(message, { code: "knowledge_command_error" });
+  constructor(
+    message: string,
+    result: Record<string, unknown>,
+    options: Omit<BeakrErrorOptions, "body"> = {},
+  ) {
+    super(message, { code: "knowledge_command_error", ...options, body: result });
     this.result = result;
   }
 }

@@ -25,7 +25,7 @@ const beakr = new Beakr(); // reads BEAKR_API_KEY, or pass { apiKey }
 // The API: `baseUrl`, else BEAKR_BASE_URL, else BEAKR_API_URL, else production.
 
 const me = await beakr.me.get();
-const projects = await beakr.projects.list();
+const projects = await beakr.projects.list(); // one page; beakr.projects.iter() follows every page
 
 // Read Knowledge through the same door Beakr's own agents use.
 const page = await beakr.knowledge.command("cat", { page: "Pump calibration" }, { scope: "Assay Lab" });
@@ -96,7 +96,7 @@ await beakr.uploads.uploadEntries(
 );
 
 const { data, filename } = await beakr.files.download(artifactId); // any runtime
-await beakr.files.downloadTo(artifactId, "./downloads"); // Node
+await beakr.files.downloadTo(artifactId, "./downloads/"); // Node; a trailing / means a folder, created if missing
 
 // Search the original documents by meaning, then download a result in one step.
 const found = await beakr.knowledge.documentsSearch("who covers losses from defects");
@@ -141,7 +141,7 @@ const toInstall = await beakr.skills.list({ visibility: "public", installed: fal
 for await (const skill of beakr.skills.iter({ owner: ["org", "system"] })) console.log(skill.slug);
 
 const skill = await beakr.skills.createFromFolder("skills/plate-reader"); // or a .zip (Node)
-await beakr.skills.download(skill.id, "exported/");                       // exported/plate-reader/
+await beakr.skills.download(skill.id, "exported/");                       // exported/plate-reader/ (created if missing)
 await beakr.skills.install(toInstall.data[0]!.id);
 for (const proposal of (await beakr.skills.proposals.list()).data) {
   await beakr.skills.proposals.accept(proposal.id);
@@ -150,8 +150,10 @@ for (const proposal of (await beakr.skills.proposals.list()).data) {
 
 `skills.get` takes an id or a slug; a slug resolves to your own skill first,
 then a built-in, then one you installed, then your organization's.
-`uploadBundle(skillId, files, { expectedSha256 })` throws `ConflictError`
-(`code === "skill_conflict"`) when the skill changed since you read it.
+`uploadBundle(skillId, files, { expectedSha256: bundle.files_sha256 })` throws
+`ConflictError` (`code === "skill_conflict"`) when the skill changed since you
+read it. The digest is the bundle's `files_sha256`; passing `expectedSha256:
+undefined` throws a `TypeError` rather than silently writing without the check.
 
 ### Know when Knowledge is ready
 
@@ -214,9 +216,12 @@ compound: a batch already being read finishes and its proposals stay, no further
 batch starts, and the conversation's `compound_status` reads `cancelled`.
 `engine.compound` resumes from where it stopped.
 
-Without `baseIndex` a batch is read as the whole session from the start. If the
-server has a different count, the import rejects with a `ConflictError` whose
-`expectedBaseIndex` says where to resend from.
+Without `baseIndex` a batch is read as the whole session from the start. A
+`baseIndex` past the number of messages already stored (a gap) rejects with a
+`ConflictError` whose `expectedBaseIndex` says where to resend from. A
+`baseIndex` below that count is not an error: the stored session is replaced
+from that position on, by design for clients that compact their transcripts,
+so a stale resend rewrites history rather than failing. Track what you sent.
 
 ### Query what the caller has connected
 
@@ -246,18 +251,33 @@ if (result.status === "completed") await beakr.interviews.sendToProjects(link.li
 ### Tokens for the users of your own product
 
 With a service account's key, mirror your users and mint each a short-lived
-token that can never do more than the key:
+token that can never do more than the key. The service account and its key are
+made in the web app (Settings > Organization > Developer); creating either from
+an API key or token is refused with `session_required`. Add the service account
+to the projects it manages before attaching labels to them.
 
 ```ts
+// Acts as the external user: its label and project memberships decide what it reaches.
 const user = await beakr.externalUsers.create({ external_id: "acme-42", name: "Ada" });
+const label = await beakr.labels.create({ name: "acme" });
+await beakr.labels.addMember(label.id, { user_id: user.user_id });
+await beakr.labels.attachProject(label.id, { project_id: projectId }); // viewer
 const { token } = await beakr.endUserTokens.mint({
   externalUserId: user.user_id,
-  scopes: ["kb:read"],
-  projectIds: [projectId],
+  scopes: ["kb:read", "agent:run"],
   ttlSeconds: 900,
 });
 const asUser = new Beakr({ apiKey: token });
+
+// Or: acts as your service account, confined to the projects you name.
+const scoped = await beakr.endUserTokens.mint({
+  subject: "acme-42",
+  projectIds: [projectId],
+  scopes: ["kb:read"],
+});
 ```
+
+Give either `externalUserId`, or `subject` with `projectIds`; the server refuses both.
 
 ### What this installation serves: `beakr.meta.capabilities()`
 
@@ -296,7 +316,15 @@ wrong host reads as that. Branch on `code`, never on the message.
 
 Codes a program should expect from sensitive actions: `session_required`
 (do it in the web app), `mfa_required` (verify a second factor and retry),
-`client_not_allowed`, `insufficient_scope`.
+`client_not_allowed`, `insufficient_scope`. Web app only, always refused to API
+keys and tokens: creating API keys, creating a service account, minting or
+disabling its keys. Deleting a project and changing a member's role are refused
+to keys and tokens wherever the organization protects sensitive actions (SSO or
+step-up required).
+
+`KnowledgeCommandError` carries the response's `status` and `requestId` like
+every other error, the door's `outcome.code` as `code` when it named one, and
+the whole reply as `result`.
 
 ## Retries and idempotency
 

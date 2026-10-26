@@ -31,6 +31,34 @@ export type ProjectKnowledgeProfilePatch = BodyOf<
   "patch"
 >;
 
+/** The filters and paging `GET /v1/projects` takes. */
+export interface ListProjectsQuery {
+  /** Only projects you are a member of, not every project your organization role lets you see. */
+  memberOnly?: boolean;
+  ownerUserId?: string;
+  groupId?: string;
+  /** Include each project's Knowledge counts. */
+  includeKnowledge?: boolean;
+  cursor?: string;
+  limit?: number;
+}
+
+/** One project as `GET /v1/projects` lists it. */
+export type Project = NonNullable<ResponseOf<"/v1/projects", "get">["data"]>[number];
+/** One project member as `GET /v1/projects/{project_id}/members` lists it. */
+export type ProjectMember = NonNullable<ResponseOf<"/v1/projects/{project_id}/members", "get">["data"]>[number];
+
+function projectsQuery(options: ListProjectsQuery): Record<string, string | number | boolean | undefined> {
+  return {
+    member_only: options.memberOnly,
+    owner_user_id: options.ownerUserId,
+    group_id: options.groupId,
+    include_knowledge: options.includeKnowledge,
+    cursor: options.cursor,
+    limit: options.limit,
+  };
+}
+
 export class Projects extends Resource {
   /** When a model refused a Knowledge stage in a project (`/model-refusals`). */
   readonly modelRefusals: ModelRefusals;
@@ -40,14 +68,17 @@ export class Projects extends Resource {
     this.modelRefusals = new ModelRefusals(transport);
   }
 
-  list(
-    options: { memberOnly?: boolean } = {},
-  ): Promise<ResponseOf<"/v1/projects", "get">> {
-    return this.transport.request({
-      method: "GET",
-      path: "/v1/projects",
-      query: { member_only: options.memberOnly },
-    });
+  /**
+   * One page of the projects you can see (`{data, next_cursor, has_more}`).
+   * Pass `cursor` from the previous page, or use {@link iter} to follow every page.
+   */
+  list(options: ListProjectsQuery = {}): Promise<ResponseOf<"/v1/projects", "get">> {
+    return this.transport.request({ method: "GET", path: "/v1/projects", query: projectsQuery(options) });
+  }
+
+  /** Every project you can see, following cursors. */
+  iter(options: Omit<ListProjectsQuery, "cursor" | "limit"> = {}, pageSize?: number): AsyncGenerator<Project> {
+    return this.transport.paginate({ method: "GET", path: "/v1/projects", query: projectsQuery(options) }, pageSize);
   }
 
   get(
@@ -84,7 +115,9 @@ export class Projects extends Resource {
   /**
    * Delete the project permanently; it cannot be restored (archive is reversible).
    * Needs admin access to the project; a personal project cannot be deleted (403).
-   * May need a fresh second factor (`mfa_required`).
+   * Web app only in practice: API keys and tokens are refused with
+   * `session_required` wherever the organization protects sensitive actions,
+   * and a session may need a fresh second factor (`mfa_required`).
    */
   delete(projectId: string): Promise<void> {
     return this.transport.request({
@@ -94,13 +127,21 @@ export class Projects extends Resource {
     });
   }
 
+  /** One page of the project's members; {@link iterMembers} follows every page. */
   members(
     projectId: string,
+    query: { cursor?: string; limit?: number } = {},
   ): Promise<ResponseOf<"/v1/projects/{project_id}/members", "get">> {
     return this.transport.request({
       method: "GET",
       path: `/v1/projects/${enc(projectId)}/members`,
+      query: { cursor: query.cursor, limit: query.limit },
     });
+  }
+
+  /** Every member of the project, following cursors. */
+  iterMembers(projectId: string, pageSize?: number): AsyncGenerator<ProjectMember> {
+    return this.transport.paginate({ method: "GET", path: `/v1/projects/${enc(projectId)}/members` }, pageSize);
   }
 
   /**

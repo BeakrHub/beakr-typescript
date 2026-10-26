@@ -166,6 +166,18 @@ export interface RequestOptions {
    * timeout is shorter (a route that is slow by design, like research).
    */
   minTimeoutMs?: number;
+  /**
+   * Told the status and request id of the successful response, before its body
+   * is decoded: for a route that reports a refusal inside a 200 body (the
+   * Knowledge door), so the error built from that body can name both.
+   */
+  onResponse?: (meta: ResponseMeta) => void;
+}
+
+/** What a successful response said about itself, for {@link RequestOptions.onResponse}. */
+export interface ResponseMeta {
+  status: number;
+  requestId: string | undefined;
 }
 
 function env(name: string): string | undefined {
@@ -586,7 +598,13 @@ export class Transport {
         });
       }
 
-      if (response.ok) return (await decode(response, options.responseType ?? "json")) as T;
+      if (response.ok) {
+        options.onResponse?.({
+          status: response.status,
+          requestId: response.headers.get("x-request-id") ?? undefined,
+        });
+        return (await decode(response, options.responseType ?? "json")) as T;
+      }
 
       const body = await readBody(response);
       if (

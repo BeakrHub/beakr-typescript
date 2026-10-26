@@ -6,14 +6,20 @@ import { userIdOf } from "./external-users.js";
 export type EndUserToken = ResponseOf<"/v1/auth/end-user-tokens", "post">;
 export type EndUserTokenPage = ResponseOf<"/v1/auth/end-user-tokens", "get">;
 
+/**
+ * Give either `externalUserId` (the token acts as that external user, and its
+ * label and project memberships decide its projects), or `subject` with
+ * `projectIds` (the token acts as your service account, confined to those
+ * projects). The server refuses both together.
+ */
 export interface MintEndUserTokenOptions {
-  /** Who the token acts for in your product; recorded in the audit trail. */
+  /** Who the token acts for in your product; recorded in the audit trail. With `projectIds`. */
   subject?: string;
-  /** An external user (see `externalUsers`) the token acts as, by its `user_id`. */
+  /** An external user (see `externalUsers`) the token acts as, by its `user_id`. Without `subject`/`projectIds`. */
   externalUserId?: string;
   /** Scopes, never more than the caller's own. */
   scopes: string[];
-  /** Confine the token to these projects. */
+  /** Confine the token to these projects. With `subject`. */
   projectIds?: string[];
   /** Lifetime in seconds. */
   ttlSeconds?: number;
