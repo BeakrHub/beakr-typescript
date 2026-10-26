@@ -70,6 +70,7 @@ export const OPERATIONS = {
   "knowledge.acceptProposal": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/accept" },
   "knowledge.dismissProposal": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/dismiss" },
   "knowledge.searchWikiPages": { method: "GET", path: "/v1/knowledge/wiki/search" },
+  "knowledge.revertWikiSource": { method: "POST", path: "/v1/knowledge/wiki/sources/{source_type}/{source_id}/revert" },
   "knowledge.runWikiWrite": { method: "POST", path: "/v1/knowledge/wiki/write" },
   "labels.listLabels": { method: "GET", path: "/v1/labels" },
   "labels.createLabel": { method: "POST", path: "/v1/labels" },
@@ -709,6 +710,12 @@ export class KnowledgeApi {
   searchWikiPagesAll(args: { query: NonNullable<operations["search_wiki_pages_v1_knowledge_wiki_search_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["search_wiki_pages_v1_knowledge_wiki_search_get"]>> {
     const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/search", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert (Undo a source's compiled Knowledge contributions) */
+  revertWikiSource(args: { path: operations["revert_wiki_source_v1_knowledge_wiki_sources__source_type___source_id__revert_post"]["parameters"]["path"]; query?: NonNullable<operations["revert_wiki_source_v1_knowledge_wiki_sources__source_type___source_id__revert_post"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["revert_wiki_source_v1_knowledge_wiki_sources__source_type___source_id__revert_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/sources/${enc(String(args.path.source_type))}/${enc(String(args.path.source_id))}/revert`, query: args?.query as Record<string, QueryValue> | undefined, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
   }
 
   /** POST /v1/knowledge/wiki/write (Propose a Knowledge change) */
