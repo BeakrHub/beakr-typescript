@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=d9266a022cf9258cef498d608ae0289e4741dbf36e37c8d8482cd32a050fa7e1 changelog sha256=261b8c99defde063d146dc9f88b76927d0952e8d48c6581cc67222b8641b131d -->
+<!-- contract-stamp: public-openapi sha256=d9266a022cf9258cef498d608ae0289e4741dbf36e37c8d8482cd32a050fa7e1 changelog sha256=e928787cfcd10f25981953d3802e84a9b91b00d42ccf9f804465d272115df4ac -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -32,6 +32,14 @@ The first public version.
   `principal_kind` `service_account`, and gets the project access its role
   gives; before, it was listed but had no access. `service` with any other id
   is refused with 422 `validation_error` on `principal_id`.
+- `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: a
+  file you uploaded can be cited by any reference a documents read
+  (`POST /v1/knowledge/documents`) returns for it: its `source_ref`, bare or in
+  `{{...}}`, in `evidence` or in `citations[].source_ref`, and its passage key
+  (`rag:...`) in `evidence` or `citations[].key`. These were refused with
+  `citation_not_citeable`. A `source_ref` in `evidence` that names nothing you
+  may cite is now refused with `citation_not_citeable`, naming it, instead of
+  being stored as a token that cites nothing.
 - `GET /v1/me/threads` adds `notifications`: `only` lists just the
   conversations a notification opened (their `origin` is `notification`), and
   `exclude` leaves them out. Omitted, both are listed, as before. Conversations

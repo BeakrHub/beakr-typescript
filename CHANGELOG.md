@@ -23,6 +23,14 @@ Each release lists the public API changes it supports, taken from the API change
   `principal_kind` `service_account`, and gets the project access its role
   gives; before, it was listed but had no access. `service` with any other id
   is refused with 422 `validation_error` on `principal_id`.
+- `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: a
+  file you uploaded can be cited by any reference a documents read
+  (`POST /v1/knowledge/documents`) returns for it: its `source_ref`, bare or in
+  `{{...}}`, in `evidence` or in `citations[].source_ref`, and its passage key
+  (`rag:...`) in `evidence` or `citations[].key`. These were refused with
+  `citation_not_citeable`. A `source_ref` in `evidence` that names nothing you
+  may cite is now refused with `citation_not_citeable`, naming it, instead of
+  being stored as a token that cites nothing.
 - `GET /v1/me/threads` adds `notifications`: `only` lists just the
   conversations a notification opened (their `origin` is `notification`), and
   `exclude` leaves them out. Omitted, both are listed, as before. Conversations

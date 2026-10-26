@@ -2,10 +2,10 @@
   "sources": {
     "beakr-engine": {
       "repository": "BeakrHub/beakr-engine",
-      "commit": "053641852d9a47e418aafaad438cb33413ed6501",
+      "commit": "492d8f6ac6e3d1760b892c75d54be781dd5dbf8d",
       "uncommitted_changes": false,
       "files": {
-        "docs/api/CHANGELOG.md": "sha256:8c8a724a7645c9218b8c920cf3b0ea8a8ab0d0edbff146afd5bc0c62692c57e2",
+        "docs/api/CHANGELOG.md": "sha256:26998ee9d28172a1970df1dc64ec0f26095b815eecfe5279882120cf42e85cc2",
         "docs/api/public-openapi.json": "sha256:d9266a022cf9258cef498d608ae0289e4741dbf36e37c8d8482cd32a050fa7e1"
       }
     },
