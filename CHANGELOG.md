@@ -7,6 +7,17 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: three
+  readable references a Knowledge read prints, which were refused with
+  `citation_not_citeable`, now resolve. `Page Title › Section` resolves for a
+  section whose heading carries a date tag such as `[2026-02-26]`, whether you
+  cite the title with or without the tag. A connected file with no drive path
+  (a synced Drive or GitHub file) is cited by the name a read prints, such as
+  `KG Benchmarking Design.txt › segment 1` or
+  `GitHub: org/repo/README.md › para 2`. `Page Title › Section` is stored as a
+  citation of that section; it was stored as a citation of the whole page. When
+  the page resolves but the section does not, the refusal lists the page's
+  section titles.
 - `POST /v1/runs`: a caller who can read a project but not save conversations
   to it (a project viewer, or an external user whose label grants the project)
   may now pass that project as `home_project_id`. The run starts with a private
