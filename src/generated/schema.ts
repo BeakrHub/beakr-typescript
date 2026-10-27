@@ -7122,6 +7122,16 @@ export interface components {
              */
             scripts?: components["schemas"]["SkillScriptOut"][] | null;
             /**
+             * Shared Project Id
+             * @description Id of the shared project.
+             */
+            shared_project_id?: string | null;
+            /**
+             * Shared Project Name
+             * @description Name of the shared project.
+             */
+            shared_project_name?: string | null;
+            /**
              * Slug
              * @description The skill's handle, such as `scanpy`. Not unique: your own skill and a built-in can share one, so address a skill by `id` when it matters which.
              */
@@ -7148,7 +7158,7 @@ export interface components {
              * @description Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization).
              * @enum {string}
              */
-            visibility: "private" | "org" | "public";
+            visibility: "private" | "project" | "org" | "public";
         };
         /**
          * LinkKnowledgeOut
@@ -7499,6 +7509,8 @@ export interface components {
             sources?: {
                 [key: string]: unknown;
             }[] | null;
+            /** @description Set on the first message of a thread an agent's schedule or webhook started: what started the run. Nobody typed that message. Null on every other message. */
+            started_by?: components["schemas"]["MessageStartedBy"] | null;
             /**
              * Status Messages
              * @description Status and activity updates recorded during the turn.
@@ -7518,6 +7530,8 @@ export interface components {
             widgets?: {
                 [key: string]: unknown;
             }[] | null;
+            /** @description Set on the milestone messages a workflow run posts into its thread: which run, which milestone and, for a wait, how it ended. Null on every other message. */
+            workflow_event?: components["schemas"]["WorkflowChatEvent"] | null;
         };
         /**
          * MessageCursor
@@ -7682,6 +7696,38 @@ export interface components {
              * @description Where it came from.
              */
             source: string;
+        };
+        /**
+         * MessageStartedBy
+         * @description What started a run nobody typed: an agent trigger's schedule or webhook.
+         *
+         *     On the first message of a trigger's thread. ``task`` is the trigger's own
+         *     text; ``payload`` is what a webhook request sent (outside data, already cut
+         *     to the size the model saw). Clients show a "started by" card, not a
+         *     message from the person.
+         */
+        MessageStartedBy: {
+            /**
+             * Kind
+             * @description What started the run: the agent's schedule or a webhook request.
+             * @enum {string}
+             */
+            kind: "schedule" | "webhook";
+            /**
+             * Name
+             * @description The name of the schedule or webhook that started the run.
+             */
+            name: string;
+            /**
+             * Payload
+             * @description What a webhook request sent, cut to the size the agent read. Outside data: show it as such. Null for a schedule.
+             */
+            payload?: string | null;
+            /**
+             * Task
+             * @description The trigger's own task text, as its creator wrote it.
+             */
+            task: string;
         };
         /**
          * MfaStatusOut
@@ -10414,10 +10460,10 @@ export interface components {
             updated_at: string;
             /**
              * Visibility
-             * @description Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).
+             * @description Who may see it: `private` (its author), `project` (the people with access to one project in the author's organization), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).
              * @enum {string}
              */
-            visibility: "private" | "org" | "public";
+            visibility: "private" | "project" | "org" | "public";
         };
         /** SkillInstalled */
         SkillInstalled: {
@@ -10504,10 +10550,10 @@ export interface components {
             updated_at: string;
             /**
              * Visibility
-             * @description Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).
+             * @description Who may see it: `private` (its author), `project` (the people with access to one project in the author's organization), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).
              * @enum {string}
              */
-            visibility: "private" | "org" | "public";
+            visibility: "private" | "project" | "org" | "public";
         };
         /** SkillOutPage */
         SkillOutPage: {
@@ -10922,6 +10968,11 @@ export interface components {
          */
         StartRunRequest: {
             /**
+             * Agent Id
+             * @description Id of an agent to talk to. The thread remembers it, so later turns that name no agent keep talking to it.
+             */
+            agent_id?: string | null;
+            /**
              * Approval Decision
              * @description The person's decision on a gated action: `{type: approve|reject, message?, tool_call_id?}`. Resumes the paused run.
              */
@@ -11131,6 +11182,16 @@ export interface components {
         /** ThreadDetailResponse */
         ThreadDetailResponse: {
             /**
+             * Agent Id
+             * @description Id of the agent this thread talks to, or null when it talks to none.
+             */
+            agent_id?: string | null;
+            /**
+             * Agent Name
+             * @description Name of the agent this thread talks to, or null.
+             */
+            agent_name?: string | null;
+            /**
              * Canvases
              * @description The outputs.
              */
@@ -11260,6 +11321,21 @@ export interface components {
         };
         /** ThreadSummary */
         ThreadSummary: {
+            /**
+             * Agent Id
+             * @description Id of the agent this thread talks to, or null when it talks to none.
+             */
+            agent_id?: string | null;
+            /**
+             * Agent Name
+             * @description Name of the agent this thread talks to, or null.
+             */
+            agent_name?: string | null;
+            /**
+             * Agent Origin
+             * @description How the thread with an agent started: `chat` (the person chatted with it), `task` (the person started it on a task) or `trigger` (a schedule or webhook started it). Null when the thread talks to no agent.
+             */
+            agent_origin?: ("chat" | "task" | "trigger") | null;
             /**
              * Created At
              * Format: date-time
@@ -12981,6 +13057,64 @@ export interface components {
              * @default null
              */
             sources?: components["schemas"]["SourceRecord"][] | null;
+        };
+        /**
+         * WorkflowChatEvent
+         * @description What a workflow run's milestone message is about, for clients that render it.
+         *
+         *     Written by the workflow executor on the plain messages it posts into a run's
+         *     thread ("Started", waiting for an answer or a review, finished, stopped).
+         *     The message ``text`` stays readable on its own; this lets a client show the
+         *     milestone as part of the run instead of as an assistant answer. A waiting
+         *     message is updated in place once the wait ends, so ``state`` says how it
+         *     ended. The text never says "you": a client compares ``reviewer_ids`` and
+         *     ``decided_by`` with the viewer.
+         */
+        WorkflowChatEvent: {
+            /**
+             * Decided By
+             * @description Who approved, rejected, edited or answered, once someone did.
+             */
+            decided_by?: string | null;
+            /**
+             * Flagged Steps
+             * @description How many steps finished with problems. Set only when kind is finished.
+             * @default 0
+             */
+            flagged_steps?: number;
+            /**
+             * Kind
+             * @description Which milestone of the run the message marks.
+             * @enum {string}
+             */
+            kind: "started" | "waiting_input" | "waiting_review" | "finished" | "stopped";
+            /**
+             * Node Id
+             * @description The step that is (or was) waiting. Null for run milestones.
+             */
+            node_id?: string | null;
+            /**
+             * Reviewer Ids
+             * @description Who is asked to review. Empty unless kind is waiting_review.
+             */
+            reviewer_ids?: string[];
+            /**
+             * Run Id
+             * Format: uuid
+             * @description The workflow run this message is about.
+             * @example f3b7c9e1-0a2d-4c6e-8f1b-3d5e7a9c0b24
+             */
+            run_id: string;
+            /**
+             * State
+             * @description For waiting_input and waiting_review: 'waiting' while the run waits, then how the wait ended. Null on a waiting message means the run stopped before anyone decided. Always null for started, finished and stopped.
+             */
+            state?: ("waiting" | "approved" | "rejected" | "edited" | "answered") | null;
+            /**
+             * Step Title
+             * @description That step's title, as the workflow names it.
+             */
+            step_title?: string | null;
         };
         /** ProjectOverrideUpdate */
         beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate: {
@@ -17884,6 +18018,10 @@ export interface operations {
                 project_ids?: string[] | null;
                 /** @description Deprecated; use project_ids */
                 group_id?: string | null;
+                /** @description Only one kind of thread: `chat` (no workflow, no agent), `agent` or `workflow`. */
+                kind?: ("chat" | "agent" | "workflow") | null;
+                /** @description Only threads with this agent. */
+                agent_id?: string | null;
                 /** @description `only` lists just the conversations a notification opened (`origin` `notification`); `exclude` leaves them out. Omitted, both are listed. */
                 notifications?: ("only" | "exclude") | null;
                 /** @description Opaque cursor from a previous page's `next_cursor`. */
@@ -20088,7 +20226,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Only skills with these visibilities. Repeat the parameter for more than one. */
-                visibility?: ("private" | "org" | "public")[] | null;
+                visibility?: ("private" | "project" | "org" | "public")[] | null;
                 /** @description Only skills with these owners: `me`, `org`, `system` (built-in) or `anyone` (public skills from outside your organization). Repeat for more than one. */
                 owner?: ("me" | "org" | "system" | "anyone")[] | null;
                 /** @description Only skills of these origins: `created`, `mined`, `imported` or `system`. Repeat for more than one. */
