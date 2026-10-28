@@ -37,6 +37,8 @@ export type SkillBundle = ResponseOf<"/v1/skills/{skill_id}/bundle", "get">;
 export type CreatedSkill = ResponseOf<"/v1/skills", "post">;
 /** A skill's files: each path in its folder mapped to its text. */
 export type SkillFiles = Record<string, string>;
+/** A skill Beakr drafted from repeated work, as `skills.proposals.list()` pages it. */
+export type SkillProposal = ResponseOf<"/v1/me/skills/proposals", "get">["data"][number];
 
 export const SKILL_MD = "SKILL.md";
 
@@ -222,7 +224,10 @@ export class SkillProposals extends Resource {
   }
 
   /** Every proposal of a status, following cursors. */
-  iter(query: { status?: "pending" | "accepted" | "dismissed" } = {}, pageSize?: number): AsyncGenerator<JsonObject> {
+  iter(
+    query: { status?: "pending" | "accepted" | "dismissed" } = {},
+    pageSize?: number,
+  ): AsyncGenerator<SkillProposal> {
     return this.transport.paginate({ method: "GET", path: "/v1/me/skills/proposals", query }, pageSize);
   }
 

@@ -18,7 +18,9 @@ export {
   type StagedProposal,
   type WikiProposal,
   type WikiProposalPage,
+  type ListedWikiProposal,
   type ResearchOptions,
+  type ResearchResult,
   type DocumentsResult,
   type DocumentsSearchOptions,
   type RowsOptions,
@@ -27,12 +29,23 @@ export type {
   ConversationClient,
   SourceRead,
   ConversationHit,
+  ConversationImported,
+  ConversationPage,
+  ConversationSummary,
   ImportOptions,
   ImportedMessage,
   SearchConversationsOptions,
 } from "./resources/conversations.js";
 export type { MintKeyOptions } from "./resources/org-admin.js";
-export type { AnswerOptions, RunEvent, StartRunOptions } from "./resources/runs.js";
+export type {
+  AnswerOptions,
+  RunEvent,
+  RunStatus,
+  StartRunOptions,
+  StartedRun,
+  ThreadSummary,
+} from "./resources/runs.js";
+export type { AgentContext, ContextOptions } from "./resources/engine.js";
 export {
   AnswerBuilder,
   RunFailedError,
@@ -90,6 +103,7 @@ export {
   type SkillOrigin,
   type SkillOwner,
   type SkillPage,
+  type SkillProposal,
   type SkillVisibility,
   type UploadBundleOptions,
 } from "./resources/skills.js";
@@ -129,6 +143,7 @@ export {
 export {
   MULTIPART_THRESHOLD,
   UploadInterruptedError,
+  type BatchStatus,
   type FileBody,
   type UploadComplete,
   type UploadManyResult,

@@ -88,12 +88,24 @@ describe("uploads.upload content type", () => {
 });
 
 // Root cause: the door answers 200 with outcome.status "error", and the error
-// built from it carried no HTTP status and an empty request id.
+// built from it carried no HTTP status and an empty request id. It also read
+// `outcome.code`, which the door never sends: its outcome protocol
+// (`beakr.wiki_tool_outcome.v1`) names the refusal in `outcome.error_code`, so
+// `code` was always the generic `knowledge_command_error`.
 describe("KnowledgeCommandError", () => {
-  it("carries the response status, request id and the door's code", async () => {
+  const refusal = {
+    protocol: "beakr.wiki_tool_outcome.v1",
+    status: "error",
+    error_code: "invalid_arguments",
+    committed_page_ids: [],
+    committed_revisions: {},
+    commit_ids: [],
+  };
+
+  it("carries the response status, request id and the door's error_code", async () => {
     const { fetch } = mockFetch([
       json(
-        { content: [{ type: "text", text: "add_fact needs evidence" }], outcome: { status: "error", code: "missing_evidence" } },
+        { content: [{ type: "text", text: "add_fact needs evidence" }], outcome: refusal },
         200,
         { "x-request-id": "req-123" },
       ),
@@ -105,8 +117,30 @@ describe("KnowledgeCommandError", () => {
     expect(error).toBeInstanceOf(KnowledgeCommandError);
     expect(error.status).toBe(200);
     expect(error.requestId).toBe("req-123");
-    expect(error.code).toBe("missing_evidence");
-    expect(error.result["outcome"]).toEqual({ status: "error", code: "missing_evidence" });
+    expect(error.code).toBe("invalid_arguments");
+    expect(error.result["outcome"]).toEqual(refusal);
+  });
+
+  it("names the refusal on a read command too", async () => {
+    const { fetch } = mockFetch([
+      json({
+        content: [{ type: "text", text: "Unknown command: bogus_cmd." }],
+        outcome: { ...refusal, error_code: "unknown_command" },
+      }),
+    ]);
+    const { beakr } = client(fetch);
+    const error = (await beakr.knowledge.command("bogus_cmd").catch((e: unknown) => e)) as KnowledgeCommandError;
+    expect(error).toBeInstanceOf(KnowledgeCommandError);
+    expect(error.code).toBe("unknown_command");
+  });
+
+  it("falls back to the generic code when the outcome names none", async () => {
+    const { fetch } = mockFetch([
+      json({ content: [{ type: "text", text: "refused" }], outcome: { status: "error" } }),
+    ]);
+    const { beakr } = client(fetch);
+    const error = (await beakr.knowledge.command("cat").catch((e: unknown) => e)) as KnowledgeCommandError;
+    expect(error.code).toBe("knowledge_command_error");
   });
 });
 

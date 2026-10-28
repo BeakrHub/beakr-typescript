@@ -142,7 +142,8 @@ for await (const skill of beakr.skills.iter({ owner: ["org", "system"] })) conso
 
 const skill = await beakr.skills.createFromFolder("skills/plate-reader"); // or a .zip (Node)
 await beakr.skills.download(skill.id, "exported/");                       // exported/plate-reader/ (created if missing)
-await beakr.skills.install(toInstall.data[0]!.id);
+const [installable] = toInstall.data;
+if (installable) await beakr.skills.install(installable.id);
 for (const proposal of (await beakr.skills.proposals.list()).data) {
   await beakr.skills.proposals.accept(proposal.id);
 }
@@ -230,7 +231,7 @@ rest, against the integrations the caller connected:
 
 ```ts
 const { data: tools } = await beakr.integrations.tools({ provider: "slack" });
-const result = await beakr.integrations.callTool("slack_search", { query: "calibration" });
+const result = await beakr.integrations.callTool("slack_search_messages", { query: "calibration" });
 console.log(result.content, result.sources);
 ```
 
@@ -323,8 +324,10 @@ to keys and tokens wherever the organization protects sensitive actions (SSO or
 step-up required).
 
 `KnowledgeCommandError` carries the response's `status` and `requestId` like
-every other error, the door's `outcome.code` as `code` when it named one, and
-the whole reply as `result`.
+every other error, the door's `outcome.error_code` as `code` when it named one
+(`invalid_arguments`, `unknown_command`, `scope_not_found`,
+`citation_not_citeable`, ...; otherwise `knowledge_command_error`), and the
+whole reply as `result`.
 
 ## Retries and idempotency
 
@@ -365,17 +368,20 @@ resume), `files` (downloads), `jobs` (`wait`), `knowledge` (with
 import { sourceWhere } from "@beakr/sdk";
 
 const { text, sources, run_id } = await beakr.runs.answer("How long is a compile lease?", { projectId });
-console.log(text); // "... lasts 300 seconds [1]."
-for (const [i, source] of sources.entries()) console.log(`[${i + 1}] ${sourceWhere(source)}`);
+console.log(text); // "... lasts 300 seconds (compile-lease.md › line 4)."
+for (const source of sources) console.log(sourceWhere(source));
 ```
 
-`text` has its `{{key}}` citations rendered as `[n]` in order of first use, and
-`sources[n-1]` is the public source record behind `[n]`: `filename`,
-`provider`, `location` (`url`/`display_path` of the original, or `file_id` for
-Beakr's copy), and the cited `evidence`. `knowledge.pages.sources(pageId)`
-returns the same records. To show the answer as it is written,
-`for await (const chunk of beakr.runs.streamText(runId))` yields the visible
-text with citations numbered; `runs.stream()` yields the raw server-sent
+`text` shows each citation as the readable reference in parentheses, as the
+engine renders it (`(memo.pdf › p. 7)`, `(Page Title › Section)`), and
+`sources` lists the cited documents in order of first use, one public source
+record each: `filename`, `provider`, `location` (`url`/`display_path` of the
+original, or `file_id` for Beakr's copy), and the cited `evidence`.
+`knowledge.pages.sources(pageId)` returns the same records. To show the answer
+as it is written, `for await (const chunk of beakr.runs.streamText(runId))`
+yields the visible text with each citation key numbered `[n]` in order of
+first use; those numbers are for display while streaming and do not index
+`runs.answer()`'s `sources`. `runs.stream()` yields the raw server-sent
 events.
 
 A run reads the organization's Knowledge unless `knowledge: false` is passed
