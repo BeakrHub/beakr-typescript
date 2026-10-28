@@ -81,23 +81,23 @@ describe("the public surface", () => {
 
 describe("integrations tools", () => {
   it("lists the read-only tools with filters", async () => {
-    const { fetch, calls } = mockFetch([json({ data: [{ name: "slack_search" }], next_cursor: null, has_more: false })]);
+    const { fetch, calls } = mockFetch([json({ data: [{ name: "slack_search_messages" }], next_cursor: null, has_more: false })]);
     const { beakr } = client(fetch);
     const page = await beakr.integrations.tools({ provider: "slack", connectorId: "c1", limit: 10 });
-    expect(page.data[0]?.name).toBe("slack_search");
+    expect(page.data[0]?.name).toBe("slack_search_messages");
     expect(calls[0]!.method).toBe("GET");
     expect(path(calls[0]!.url)).toBe("/v1/integrations/tools?provider=slack&connector_id=c1&limit=10");
   });
 
   it("calls one tool with its arguments and the chosen connection", async () => {
     const { fetch, calls } = mockFetch([
-      json({ tool: "slack_search", provider: "slack", connector_ids: ["c1"], content: "3 hits", is_error: false, sources: [] }),
+      json({ tool: "slack_search_messages", provider: "slack", connector_ids: ["c1"], content: "3 hits", is_error: false, sources: [] }),
     ]);
     const { beakr } = client(fetch);
-    const result = await beakr.integrations.callTool("slack_search", { query: "assay" }, { connectorId: "c1" });
+    const result = await beakr.integrations.callTool("slack_search_messages", { query: "assay" }, { connectorId: "c1" });
     expect(result.content).toBe("3 hits");
     expect(calls[0]!.method).toBe("POST");
-    expect(path(calls[0]!.url)).toBe("/v1/integrations/tools/slack_search/call");
+    expect(path(calls[0]!.url)).toBe("/v1/integrations/tools/slack_search_messages/call");
     expect(calls[0]!.body).toEqual({ arguments: { query: "assay" }, connector_id: "c1" });
   });
 

@@ -1,5 +1,5 @@
 import { cleanBody } from "../core.js";
-import type { JsonObject, Page } from "../types.js";
+import type { JsonObject, ResponseOf } from "../types.js";
 import { Resource, enc } from "./base.js";
 
 export interface ImportedMessage {
@@ -82,6 +82,15 @@ export interface ImportOptions {
   holdText?: boolean;
 }
 
+/** What an import stored: `conversation_id`, `created`, `appended`, `revision`, `stored`, ... */
+export type ConversationImported = ResponseOf<"/v1/conversations/import", "post">;
+
+/** A page of imported conversations: `{data, next_cursor, has_more}`. */
+export type ConversationPage = ResponseOf<"/v1/conversations", "get">;
+
+/** One imported conversation as a {@link ConversationPage} lists it. */
+export type ConversationSummary = ConversationPage["data"][number];
+
 export interface ListConversationsQuery {
   client?: string;
   projectId?: string;
@@ -121,7 +130,7 @@ export type SourceRead =
 
 export class Conversations extends Resource {
   /** Import (or append to) a session. Not retried after an ambiguous failure. */
-  import(options: ImportOptions): Promise<JsonObject> {
+  import(options: ImportOptions): Promise<ConversationImported> {
     return this.transport.request({
       method: "POST",
       path: "/v1/conversations/import",
@@ -145,12 +154,12 @@ export class Conversations extends Resource {
     });
   }
 
-  list(query: ListConversationsQuery = {}): Promise<Page<JsonObject>> {
+  list(query: ListConversationsQuery = {}): Promise<ConversationPage> {
     return this.transport.request({ method: "GET", path: "/v1/conversations", query: this.query(query) });
   }
 
   /** Every conversation, following cursors. */
-  iter(query: Omit<ListConversationsQuery, "cursor" | "limit"> = {}, pageSize?: number): AsyncGenerator<JsonObject> {
+  iter(query: Omit<ListConversationsQuery, "cursor" | "limit"> = {}, pageSize?: number): AsyncGenerator<ConversationSummary> {
     return this.transport.paginate({ method: "GET", path: "/v1/conversations", query: this.query(query) }, pageSize);
   }
 

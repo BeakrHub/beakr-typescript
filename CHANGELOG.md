@@ -7,6 +7,43 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: four
+  citation fixes for API keys and tokens. A citation named by its `source_ref`
+  or `reference` that also carries a `key` of your own, such as
+  `{key: "plan", source_ref: ...}`, is cited in the prose by that key: write
+  `{{plan}}` and it is stored under the key its source has, as a web citation's
+  own key already was. Each card row's `evidence` and `citations` resolve as the
+  call's own do, in `add_fact`, `add_connection` and `add_finding` `rows` and in
+  the new `rows` of `edit_rows`, so a row's `source_ref` or readable reference
+  cites its source instead of being refused or stored as a token that cites
+  nothing; a row that names no source still inherits only the call's. A
+  `citation_not_citeable` refusal now names the reference you sent, a
+  `{{token}}` without its braces (it read `Not citeable: ''`). Evidence that
+  names a file Knowledge cites without naming a place in it (`memo.pdf`) cites
+  the whole file, keyed `artifact:<version>`, instead of the newest passage of
+  it Knowledge cites; name the place (`memo.pdf › p. 7`) to cite that passage.
+- `POST /v1/runs` returns a `stream_url` of `GET /v1/runs/{run_id}/events`, the
+  documented events path; it named a deprecated path that serves the same
+  stream.
+- `GET /v1/runs/{run_id}/events`: resuming a finished run with a
+  `Last-Event-ID` at or past its last event now ends the stream at once with
+  the run's final status; it waited about 30 seconds first.
+- `POST /v1/runs` and the other run operations, called with an end-user token
+  or a project-limited key, answer `403 insufficient_scope` saying runs are not
+  yet available to project-restricted credentials and pointing at
+  `POST /v1/knowledge/research`; the message said the operation was not
+  addressed by a single project.
+- `DELETE /v1/projects/{project_id}/pending-invitations/{invitation_id}`: an
+  invitation that does not exist answers `404`; it answered `400`. An invitation
+  that cannot be revoked still answers `400`.
+- `GET /v1/auth/end-user-tokens` and `DELETE /v1/auth/end-user-tokens/{token_id}`
+  called with a personal key or a CLI sign-in answer `403 minter_not_supported`
+  with a message about listing and revoking; it said only a service-account key
+  can mint.
+- `POST /v1/knowledge/documents`: a plain-text or Markdown file uploaded from
+  now on keeps its line breaks, so `read` returns its lines as written; such a
+  file uploaded earlier read back as one line until it is uploaded again.
+
 - `GET /v1/skills`, `GET /v1/skills/{skill_id}`, `POST /v1/skills` and
   `POST /v1/me/skills/proposals/{proposal_id}/accept`: a skill's `visibility`
   can be `project`, a personal skill its author shared with the people of one
@@ -1511,8 +1548,24 @@ Each release lists the public API changes it supports, taken from the API change
   as one `/v1/bulk` batch, keeping subdirectories as folders; `jobs.wait` takes
   an uploaded folder item directly.
 - **Answers without parsing events.** `runs.answer({question, projectId})`
-  returns `{text, sources, run_id}` with citations rendered as `[n]`;
-  `runs.streamText` yields the visible text as it streams.
+  returns `{text, sources, run_id}`: the engine's rendering, each citation
+  shown as the readable reference in parentheses (`(memo.pdf › p. 7)`), and
+  the cited documents in order of first use; `runs.streamText` yields the
+  visible text as it streams, with each citation key numbered `[n]`.
+- **`KnowledgeCommandError.code` names the refusal.** It is the door's
+  `outcome.error_code` (`invalid_arguments`, `unknown_command`,
+  `scope_not_found`, `citation_not_citeable`, ...); it was always
+  `knowledge_command_error`, because the client read `outcome.code`, which the
+  door never sends.
+- **Typed responses.** `runs.start`, `runs.get`, `runs.iterThreads`,
+  `knowledge.research`, `knowledge.documents`, `knowledge.proposals.iter`,
+  `conversations.import`, `conversations.list`, `conversations.iter`,
+  `engine.context`, `uploads.upload`, `uploads.batchStatus` and
+  `skills.proposals.iter` return the contract's response types (`StartedRun`,
+  `RunStatus`, `ThreadSummary`, `ResearchResult`, `DocumentsResult`,
+  `ListedWikiProposal`, `ConversationImported`, `ConversationPage`,
+  `ConversationSummary`, `AgentContext`, `UploadComplete`, `BatchStatus`,
+  `SkillProposal`) instead of `JsonObject` or `unknown`.
 - **Credentials.** After `apiKey` and `BEAKR_API_KEY`, the client reads the
   Beakr CLI's sign-in (the credentials file, or `beakr auth token` when it is in
   the OS keychain or has expired), on Node 18 and later. `BEAKR_API_URL` is read

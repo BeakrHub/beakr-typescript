@@ -1,7 +1,7 @@
 import { AnswerBuilder, TextStream, answerDelta, type Answer } from "../answers.js";
 import { cleanBody } from "../core.js";
 import { ValidationError } from "../errors.js";
-import type { JsonObject, ResponseOf } from "../types.js";
+import type { ResponseOf } from "../types.js";
 import { Resource, enc } from "./base.js";
 
 export interface RunEvent {
@@ -126,6 +126,15 @@ export interface StartRunOptions {
   idempotencyKey?: string;
 }
 
+/** What `runs.start()` returns: `run_id`, `thread_id`, `status`, `stream_url`, `status_url`, ... */
+export type StartedRun = ResponseOf<"/v1/runs", "post">;
+
+/** A run as `runs.get()` reports it: `status`, and `answer` once completed or `question` while it waits. */
+export type RunStatus = ResponseOf<"/v1/runs/{run_id}", "get">;
+
+/** One of the caller's threads, as `runs.threads()` lists it. */
+export type ThreadSummary = ResponseOf<"/v1/me/threads", "get">["data"][number];
+
 /** `runs.answer()`: the question plus the same options as `runs.start()`. */
 export interface AnswerOptions extends StartRunOptions {
   question: string;
@@ -135,7 +144,7 @@ export interface AnswerOptions extends StartRunOptions {
 /** Agent runs: start, follow, cancel. */
 export class Runs extends Resource {
   /** Start a run (a new thread unless `threadId`). Returns `{run_id, thread_id, ...}`. */
-  start(message: string, options: StartRunOptions = {}): Promise<JsonObject> {
+  start(message: string, options: StartRunOptions = {}): Promise<StartedRun> {
     return this.transport.request({
       method: "POST",
       path: "/v1/runs",
@@ -165,9 +174,10 @@ export class Runs extends Resource {
    * `const { text, sources, run_id } = await beakr.runs.answer("question", { projectId })`
    * (or `runs.answer({ question, projectId })`). An empty question throws
    * `ValidationError` without sending a request.
-   * `text` has its citations rendered as `[n]`, and `sources[n-1]` is the
-   * public source record behind `[n]`. Throws `RunFailedError` when the run
-   * ends `error`, `failed` or `cancelled`.
+   * `text` shows each citation as the readable reference in parentheses
+   * (`(memo.pdf › p. 7)`), as the engine renders it, and `sources` lists the
+   * cited documents in order of first use as public source records. Throws
+   * `RunFailedError` when the run ends `error`, `failed` or `cancelled`.
    */
   async answer(question: string, options?: Omit<AnswerOptions, "question">): Promise<Answer>;
   async answer(options: AnswerOptions): Promise<Answer>;
@@ -184,7 +194,7 @@ export class Runs extends Resource {
       throw new ValidationError("runs.answer needs a non-empty question.", { code: "validation_error" });
     }
     const run = await this.start(question, start);
-    const runId = String(run["run_id"] ?? run["id"]);
+    const runId = String(run.run_id);
     const builder = new AnswerBuilder(runId);
     for await (const event of this.stream(runId, signal ? { signal } : {})) builder.feed(event);
     // The run as the server reports it once the stream ends: its rendered
@@ -194,8 +204,11 @@ export class Runs extends Resource {
 
   /**
    * The visible answer text of a run as it is written, thinking left out and
-   * citations numbered `[n]` in order of first use:
+   * each citation key numbered `[n]` in order of first use:
    * `for await (const chunk of beakr.runs.streamText(runId)) process.stdout.write(chunk)`.
+   * The numbers are for showing the text while it streams; they do not index
+   * {@link answer}'s `sources`, which has one record per cited document and
+   * whose `text` shows readable references instead.
    */
   async *streamText(
     runId: string,
@@ -210,7 +223,7 @@ export class Runs extends Resource {
     if (rest) yield rest;
   }
 
-  get(runId: string): Promise<JsonObject> {
+  get(runId: string): Promise<RunStatus> {
     return this.transport.request({
       method: "GET",
       path: `/v1/runs/${enc(runId)}`,
@@ -254,7 +267,7 @@ export class Runs extends Resource {
   }
 
   /** Every thread of the caller's matching the filters, following cursors. */
-  iterThreads(query: Omit<ListThreadsQuery, "cursor" | "limit"> = {}, pageSize?: number): AsyncGenerator<JsonObject> {
+  iterThreads(query: Omit<ListThreadsQuery, "cursor" | "limit"> = {}, pageSize?: number): AsyncGenerator<ThreadSummary> {
     return this.transport.paginate({ method: "GET", path: "/v1/me/threads", query: threadsQuery(query) }, pageSize);
   }
 }
