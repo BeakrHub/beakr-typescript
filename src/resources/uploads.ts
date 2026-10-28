@@ -1,6 +1,6 @@
 import { BeakrError, ConflictError, RateLimitError, ServerError, APIConnectionError } from "../errors.js";
 import { cleanBody } from "../core.js";
-import type { JsonObject } from "../types.js";
+import type { JsonObject, ResponseOf } from "../types.js";
 import { Resource, enc } from "./base.js";
 import {
   readDirectoryEntries,
@@ -42,6 +42,9 @@ export type UploadManyResult = BatchUpload & {
   /** Files already in Beakr: rejected as duplicates, with the copy that was kept. */
   duplicates?: AlreadyUploaded[];
 };
+
+/** An upload batch's per-file status: `batch_id`, `status`, `artifacts`, `summary`, `knowledge`. */
+export type BatchStatus = ResponseOf<"/v1/bulk/{batch_id}/status", "get">;
 
 export interface UploadedPart {
   part_number: number;
@@ -213,7 +216,7 @@ export class Uploads extends Resource {
    * `status_url`). An interrupted upload rejects with
    * {@link UploadInterruptedError}; pass its `uploadId` to {@link resume}.
    */
-  async upload(file: FileBody, options: UploadFileOptions): Promise<JsonObject> {
+  async upload(file: FileBody, options: UploadFileOptions): Promise<UploadComplete> {
     const blob = asBlob(file);
     if (blob.size === 0) {
       throw new BeakrError(`${options.path} is empty; Beakr does not store empty files`, {
@@ -368,7 +371,7 @@ export class Uploads extends Resource {
    * batch's `knowledge` counts (`queued`, `running`, `created`, `failed`,
    * `ready`...).
    */
-  batchStatus(batchId: string): Promise<JsonObject> {
+  batchStatus(batchId: string): Promise<BatchStatus> {
     return this.transport.request({ method: "GET", path: `/v1/bulk/${enc(batchId)}/status` });
   }
 

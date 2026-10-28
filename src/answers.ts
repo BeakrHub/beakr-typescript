@@ -4,19 +4,32 @@
  * A run streams `content_delta` events (some marked `is_thinking`), `sources`
  * events keyed by citation key, and a closing `stream_complete` carrying the
  * final text. Its citations are `{{key}}` tokens. `AnswerBuilder` folds those
- * events into `{text, sources, run_id}`, where each `{{key}}` became `[n]` in
- * order of first use and `sources[n-1]` is that citation's public source record.
- * `TextStream` does the same numbering on streamed deltas. A port of the Python
- * SDK's `beakr_sdk/answers.py`; keep the two in step.
+ * events into `{text, sources, run_id}`. Once the run has finished, the answer
+ * is the engine's own rendering from `GET /v1/runs/{run_id}`: each citation
+ * shown as the readable reference in parentheses (`(memo.pdf › p. 7)`), and
+ * one public source record per cited document in order of first use. Only a
+ * server that does not send that rendering gets the answer assembled from the
+ * stream, with each `{{key}}` numbered `[n]` and `sources[n-1]` behind it.
+ * `TextStream` numbers streamed deltas `[n]` per citation key, for showing an
+ * answer as it is written. A port of the Python SDK's `beakr_sdk/answers.py`;
+ * keep the two in step.
  */
 import { BeakrError } from "./errors.js";
 import { publicSource, type SourceRecord } from "./sources.js";
 
 /** What `runs.answer()` returns. */
 export interface Answer {
-  /** The answer, citations rendered as `[n]`. */
+  /**
+   * The answer, each citation shown as the readable reference in parentheses
+   * (`(memo.pdf › p. 7)`, `(Page Title › Section)`). From a server that does
+   * not render answers, the citations are numbered `[n]` instead.
+   */
   text: string;
-  /** `sources[n-1]` is the record behind `[n]`. */
+  /**
+   * The cited documents in order of first use, as public source records: one
+   * per document, however many of its passages the text cites. With `[n]`
+   * citations, `sources[n-1]` is the record behind `[n]`.
+   */
   sources: SourceRecord[];
   run_id: string;
 }

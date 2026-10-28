@@ -1,6 +1,9 @@
 import { cleanBody } from "../core.js";
-import type { JsonObject } from "../types.js";
+import type { JsonObject, ResponseOf } from "../types.js";
 import { Resource } from "./base.js";
+
+/** Onboarding context: `format`, the rendered `content`, and its `blocks`. */
+export type AgentContext = ResponseOf<"/v1/context", "post">;
 
 export interface ContextOptions {
   projectId?: string;
@@ -15,7 +18,7 @@ export interface ContextOptions {
 
 export class Engine extends Resource {
   /** Onboarding context for an agent: profiles, memories, recent changes, skills, entities. */
-  context(options: ContextOptions = {}): Promise<JsonObject> {
+  context(options: ContextOptions = {}): Promise<AgentContext> {
     return this.transport.request({
       method: "POST",
       path: "/v1/context",

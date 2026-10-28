@@ -139,7 +139,9 @@ export class ServerError extends BeakrError {}
 /**
  * The Knowledge door answered 200 but reported `outcome.status: "error"`. It
  * carries the response's `status` and `requestId` like every other error, and
- * the door's own `outcome.code` as `code` when it named one.
+ * the door's own `outcome.error_code` (`invalid_arguments`, `unknown_command`,
+ * `scope_not_found`, `citation_not_citeable`, ...) as `code` when it named one,
+ * else `knowledge_command_error`.
  */
 export class KnowledgeCommandError extends BeakrError {
   readonly result: Record<string, unknown>;

@@ -25,7 +25,7 @@ const upload = {
 describe("runs.answer", () => {
   // Every integrator used to hand-parse content_delta events, skip thinking and
   // render the {{key}} tokens; the helper does it once, with numbered sources.
-  it("returns the final text with [n] citations and their source records", async () => {
+  it("numbers the streamed text [n] when the server sends no rendered answer", async () => {
     const { fetch, calls } = mockFetch([
       json({ run_id: 42, thread_id: "t1" }),
       sse([
@@ -95,11 +95,12 @@ describe("runs.answer", () => {
       json({
         run_id: "r1",
         status: "completed",
-        answer: { text: "Engine-rendered.[1]", raw_text: "Engine-rendered.{{rag:a1}}", sources: [engineRecord] },
+        // The engine's rendering since engine #1428: readable references, not [n].
+        answer: { text: "Engine-rendered (lease.md).", raw_text: "Engine-rendered{{rag:a1}}.", sources: [engineRecord] },
       }),
     ]);
     const answer = await client(fetch).beakr.runs.answer({ question: "q" });
-    expect(answer.text).toBe("Engine-rendered.[1]");
+    expect(answer.text).toBe("Engine-rendered (lease.md).");
     expect(answer.sources[0]).toMatchObject({
       provider: "upload",
       location: { display_path: "lease.md", file_id: upload.artifact_id },

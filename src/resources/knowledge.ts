@@ -14,9 +14,11 @@ export const RESEARCH_TIMEOUT_MS = 170_000;
 /** Milliseconds a quick research call waits: the engine ends a quick run within 16s. */
 export const QUICK_RESEARCH_TIMEOUT_MS = 30_000;
 
-/** Options for {@link Knowledge.research}. */
 /** A documents command's response; a `search` adds `results`. */
 export type DocumentsResult = ResponseOf<"/v1/knowledge/documents", "post">;
+
+/** A research answer: `text`, `answer`, `sources`, `engine`, `stopped_early`, ... */
+export type ResearchResult = ResponseOf<"/v1/knowledge/research", "post">;
 
 export interface DocumentsSearchOptions {
   /** Documents per page (default 8, max 25). */
@@ -113,15 +115,16 @@ const ROWS_ARGUMENTS: Record<Exclude<keyof RowsOptions, "scope">, string> = {
   includeEvidence: "include_evidence",
 };
 
+/** Options for {@link Knowledge.research}. */
 export interface ResearchOptions {
   /** A short cited answer within 15 seconds from one search. */
   quick?: boolean;
 }
 
-/** The door's reply: `{content: [{type, text}], outcome, sources}`. */
+/** The door's reply: `{content: [{type, text}], outcome, sources}`; a refusal's `outcome.error_code` names why. */
 export interface KnowledgeResult extends JsonObject {
   content?: { type: string; text?: string }[];
-  outcome?: { status?: string; [key: string]: unknown };
+  outcome?: { status?: string; error_code?: string; [key: string]: unknown };
   sources?: unknown[];
 }
 
@@ -147,6 +150,9 @@ export type WikiProposal = ResponseOf<"/v1/knowledge/wiki/proposals/{proposal_id
 /** A page of proposals: `{data, next_cursor, has_more}`. */
 export type WikiProposalPage = ResponseOf<"/v1/knowledge/wiki/proposals", "get">;
 
+/** One proposal as a page of {@link WikiProposalPage} lists it. */
+export type ListedWikiProposal = WikiProposalPage["data"][number];
+
 export interface DoorOptions {
   /** A project id or name to read or write in. */
   scope?: string;
@@ -164,7 +170,9 @@ export function resultText(result: KnowledgeResult): string {
 
 function checked<R extends KnowledgeResult>(result: R, check: boolean, meta?: ResponseMeta): R {
   if (check && result.outcome?.status === "error") {
-    const outcomeCode = result.outcome["code"];
+    // The door's outcome protocol (`beakr.wiki_tool_outcome.v1`) names the
+    // refusal in `error_code`; `code` is read only as a fallback.
+    const outcomeCode = result.outcome["error_code"] ?? result.outcome["code"];
     throw new KnowledgeCommandError(resultText(result) || "The Knowledge command was refused.", result, {
       status: meta?.status,
       requestId: meta?.requestId,
@@ -208,7 +216,7 @@ class Proposals extends Resource {
   }
 
   /** Every proposal matching the filters, following cursors. */
-  iter(query: Omit<ListProposalsQuery, "cursor" | "limit"> = {}, pageSize?: number): AsyncGenerator<WikiProposal> {
+  iter(query: Omit<ListProposalsQuery, "cursor" | "limit"> = {}, pageSize?: number): AsyncGenerator<ListedWikiProposal> {
     return this.transport.paginate(
       { method: "GET", path: "/v1/knowledge/wiki/proposals", query: proposalsQuery(query) },
       pageSize,
@@ -352,7 +360,7 @@ export class Knowledge extends Resource {
     command: "grep" | "read" | "ls" | "search",
     args: JsonObject = {},
     projectId?: string,
-  ): Promise<unknown> {
+  ): Promise<DocumentsResult> {
     return this.transport.request({
       method: "POST",
       path: "/v1/knowledge/documents",
@@ -374,7 +382,7 @@ export class Knowledge extends Resource {
     for (const [key, value] of Object.entries(rest)) {
       if (value !== undefined) args[key] = value as JsonObject[string];
     }
-    return this.documents("search", args, projectId) as Promise<DocumentsResult>;
+    return this.documents("search", args, projectId);
   }
 
   /**
@@ -385,7 +393,7 @@ export class Knowledge extends Resource {
    * sources); the answer's `engine` is `quick`, and `stopped_early` is true when
    * it is the cited results without a written summary.
    */
-  research(query: string, projectId?: string, options: ResearchOptions = {}): Promise<unknown> {
+  research(query: string, projectId?: string, options: ResearchOptions = {}): Promise<ResearchResult> {
     return this.transport.request({
       method: "POST",
       path: "/v1/knowledge/research",
