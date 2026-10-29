@@ -216,7 +216,7 @@ async function runTool(
         text: string;
         citations: SourceRecord[];
       };
-      const cited = result.citations.map((source, n) => `[${n + 1}] ${sourceWhere(source)}`);
+      const cited = result.citations.map((source) => `- ${sourceWhere(source)}`);
       return { text: [result.text, ...cited].join("\n"), isError: false };
     }
     return { text: `Unknown tool ${name}`, isError: true };
@@ -264,13 +264,14 @@ async function answerWithOwnAgent(userToken: string, question: string): Promise<
 
 /**
  * Ask Beakr's agent as the user. With no projectId the run reads everything
- * the user can: their customer's project and General. The answer's citations
- * come back as [n], with sources[n-1] saying where each one lives.
+ * the user can: their customer's project and General. The answer cites by
+ * readable reference, (memo.pdf › p. 7), and sources says where each cited
+ * document lives.
  */
 async function answerWithBeakrAgent(userToken: string, question: string): Promise<string> {
   const userBeakr = new Beakr({ apiKey: userToken });
   const { text, sources } = await userBeakr.runs.answer({ question });
-  const cited = sources.map((source, n) => `[${n + 1}] ${sourceWhere(source)}`);
+  const cited = sources.map((source) => `- ${sourceWhere(source)}`);
   return [text, ...cited].join("\n");
 }
 
