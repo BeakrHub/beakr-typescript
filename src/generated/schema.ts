@@ -9525,7 +9525,8 @@ export interface components {
             gaps?: string | null;
             /**
              * Lead Model
-             * @description The model alias used by the lead research agent.
+             * @deprecated
+             * @description Deprecated and no longer returned: the model that answers is not part of the API. Always absent.
              * @default null
              */
             lead_model?: string | null;
