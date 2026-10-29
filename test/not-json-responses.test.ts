@@ -77,4 +77,31 @@ describe("responses that are not JSON", () => {
     expect((error as UnexpectedResponseError).code).toBe("unexpected_response");
     expect((error as Error).message).toContain('The server answered with an HTML page ("Beakr")');
   });
+
+  it("never names a user name, password or query of the base URL", () => {
+    // Security review: a base URL with credentials in it printed them.
+    const error = errorFromResponse(404, new Headers(), PAGE, "", Date.now(), "https://ada:s3cret@wrong.test:8443/api?token=abc");
+    expect(error.message).toContain("(called https://wrong.test:8443/api)");
+    expect(error.message).not.toContain("s3cret");
+    expect(error.message).not.toContain("token");
+  });
+
+  it("removes control characters from a title or excerpt", () => {
+    // Security review: the server's text is printed to a terminal; an ANSI
+    // escape sequence in it must not reach it.
+    const page = "<html><title>Hi\u001b[2J\u001b]0;owned\u0007 there\u202e</title></html>";
+    const error = errorFromResponse(404, new Headers(), page);
+    expect(error.message).toContain('("Hi[2J]0;owned there")');
+    expect(error.message).not.toMatch(/[\u0000-\u001f\u007f\u202e]/);
+    const plain = errorFromResponse(503, new Headers(), "down\u001b[31m now");
+    expect(plain.message).toBe("down[31m now");
+  });
+
+  it("searches only the start of a huge body for the title", () => {
+    // Security review: the unbounded pattern scanned the whole body.
+    const late = `<html>${" ".repeat(5000)}<title>Late</title></html>`;
+    expect(errorFromResponse(404, new Headers(), late).message).toContain("answered with an HTML page, not a Beakr API response");
+    const huge = `<html><title>${"x".repeat(5_000_000)}`;
+    expect(errorFromResponse(404, new Headers(), huge).message).not.toContain("x".repeat(100));
+  });
 });

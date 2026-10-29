@@ -203,11 +203,22 @@ export function parseRetryAfter(
 /** How much of a body that is not JSON an error message keeps. */
 const EXCERPT_CHARS = 200;
 const TITLE_CHARS = 80;
-const HTML_TITLE = /<title[^>]*>([\s\S]*?)<\/title>/i;
+/**
+ * A page's title is near its start: only this much of the body is searched,
+ * and the pattern itself is bounded, so a huge body costs no more than a small one.
+ */
+const TITLE_SEARCH_CHARS = 4096;
+const HTML_TITLE = /<title[^>]{0,200}>([\s\S]{0,500}?)<\/title>/i;
+/** Control, format and other non-printable characters (an ANSI escape sequence). */
+const NOT_PRINTABLE = /[\p{C}\p{Zl}\p{Zp}]/gu;
 const HTML_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'" };
 
+/**
+ * `text` as one short printable line. The text is the server's, and the
+ * message reaches a terminal: non-printable characters are removed.
+ */
 function oneLine(text: string, limit: number): string {
-  const line = text.split(/\s+/).filter(Boolean).join(" ");
+  const line = text.split(/\s+/).filter(Boolean).join(" ").replace(NOT_PRINTABLE, "");
   return line.length <= limit ? line : `${line.slice(0, limit - 3).trimEnd()}...`;
 }
 
@@ -223,7 +234,7 @@ export function isHtmlPage(contentType: string | null | undefined, text: string)
  * nothing about Beakr.
  */
 function htmlPageReason(status: number, text: string): { reason: string; fix: string } {
-  const title = HTML_TITLE.exec(text)?.[1];
+  const title = HTML_TITLE.exec(text.slice(0, TITLE_SEARCH_CHARS))?.[1];
   const named = title
     ? oneLine(title.replace(/&(amp|lt|gt|quot|#39|apos);/g, (_, name: string) => HTML_ENTITIES[name] ?? ""), TITLE_CHARS)
     : "";
@@ -247,8 +258,22 @@ export function unexpectedPageError(
   const requestId = headers.get("x-request-id");
   if (requestId) options.requestId = requestId;
   if (baseUrl !== undefined) options.baseUrl = baseUrl;
-  const called = baseUrl ? ` (called ${baseUrl})` : "";
+  const called = baseUrl ? ` (called ${shownUrl(baseUrl)})` : "";
   return new UnexpectedResponseError(`${reason}${called} To fix: ${fix}`, options);
+}
+
+/**
+ * `baseUrl` as a message names it: scheme, host, port and path only. A base URL
+ * can carry a user name and password (`https://user:pass@host`) or a token in
+ * its query, and an error message is printed and logged.
+ */
+function shownUrl(baseUrl: string): string {
+  try {
+    const url = new URL(baseUrl);
+    return `${url.protocol}//${url.host}${url.pathname === "/" ? "" : url.pathname}`;
+  } catch {
+    return baseUrl;
+  }
 }
 
 function detailMessage(detail: unknown): string | undefined {
@@ -311,7 +336,7 @@ export function errorFromResponse(
   const fix =
     page?.fix ??
     (typeof envelope["fix"] === "string" && envelope["fix"] ? (envelope["fix"] as string) : undefined);
-  let message = baseUrl ? `${reason} (called ${baseUrl})` : reason;
+  let message = baseUrl ? `${reason} (called ${shownUrl(baseUrl)})` : reason;
   if (quota) message += ` (${quota})`;
   if (fix) message += ` To fix: ${fix}`;
   const requestId =
