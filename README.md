@@ -44,7 +44,7 @@ The same order as the Python SDK, first match wins:
 4. in Node.js, the Beakr CLI's sign-in for this API (`beakr auth login`): read
    from `~/.beakr/credentials` (`$BEAKR_HOME/credentials`) when that holds a
    current one, otherwise asked of the installed CLI (`beakr auth token --json`);
-5. in Node.js, the key saved by `beakr auth login --api-key`, when it was saved
+5. in Node.js, the key saved by `beakr auth login --with-api-key`, when it was saved
    for this API;
 6. the service account file named by `BEAKR_SERVICE_ACCOUNT_FILE`, else
    `~/.beakr/service-account.json` when it exists.
@@ -309,11 +309,15 @@ envelope's `error.code`), `message` and `requestId`. Subclasses:
 where only a person or a key holding `proposals:accept` may accept proposals
 or commit Knowledge), `NotFoundError`, `ConflictError`, `ValidationError`,
 `RateLimitError` (with `retryAfter`), `ServerError`, `APIConnectionError`,
-`KnowledgeCommandError` (a refused Knowledge command) and `DeviceLoginError`;
-`runs.answer()` throws `RunFailedError` for a run
+`KnowledgeCommandError` (a refused Knowledge command), `UnexpectedResponseError`
+(a success whose body is an HTML page where JSON was expected) and
+`DeviceLoginError`; `runs.answer()` throws `RunFailedError` for a run
 that ended `error`, `failed` or `cancelled`. An error from the API ends its
 message with `(called <baseUrl>)` and carries `baseUrl`, so a key sent to the
-wrong host reads as that. Branch on `code`, never on the message.
+wrong host reads as that. A body that is not JSON is never the message: an HTML
+page (a base URL that is not a Beakr API, or a proxy in front of it) is named by
+its title, with a `fix` saying to check the base URL, and other text is cut to a
+short excerpt. Branch on `code`, never on the message.
 
 Codes a program should expect from sensitive actions: `session_required`
 (do it in the web app), `mfa_required` (verify a second factor and retry),

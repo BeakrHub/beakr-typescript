@@ -21,7 +21,9 @@ import {
   AuthenticationError,
   BeakrError,
   errorFromResponse,
+  isHtmlPage,
   parseRetryAfter,
+  unexpectedPageError,
 } from "./errors.js";
 import {
   type CliLogin,
@@ -86,7 +88,7 @@ export interface TokenPair {
  *    `~/.beakr/credentials` when it holds a current one, else from the
  *    installed CLI (`beakr auth token --json`), which reads the OS keychain
  *    and refreshes an expired login under its own lock (`cli-token.ts`);
- * 5. the API key saved by `beakr auth login --api-key`, when saved for this API;
+ * 5. the API key saved by `beakr auth login --with-api-key`, when saved for this API;
  * 6. the service account file named by `BEAKR_SERVICE_ACCOUNT_FILE`, else
  *    `~/.beakr/service-account.json` when it exists.
  *
@@ -603,7 +605,7 @@ export class Transport {
           status: response.status,
           requestId: response.headers.get("x-request-id") ?? undefined,
         });
-        return (await decode(response, options.responseType ?? "json")) as T;
+        return (await decode(response, options.responseType ?? "json", this.baseUrl)) as T;
       }
 
       const body = await readBody(response);
@@ -874,7 +876,11 @@ async function readBody(response: Response): Promise<unknown> {
   }
 }
 
-async function decode(response: Response, type: NonNullable<RequestOptions["responseType"]>): Promise<unknown> {
+async function decode(
+  response: Response,
+  type: NonNullable<RequestOptions["responseType"]>,
+  baseUrl: string,
+): Promise<unknown> {
   if (type === "none" || response.status === 204) return undefined;
   if (type === "bytes") return new Uint8Array(await response.arrayBuffer());
   if (type === "text") return response.text();
@@ -882,7 +888,12 @@ async function decode(response: Response, type: NonNullable<RequestOptions["resp
   // undeclared media type) must not be decoded as text: that corrupts bytes.
   const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
   if (contentType && !isTextual(contentType)) return new Uint8Array(await response.arrayBuffer());
-  return readBody(response);
+  const body = await readBody(response);
+  // An HTML page answering 200 for any path: the base URL is not a Beakr API.
+  if (typeof body === "string" && isHtmlPage(contentType, body)) {
+    throw unexpectedPageError(response.status, response.headers, body, baseUrl);
+  }
+  return body;
 }
 
 function isTextual(contentType: string): boolean {

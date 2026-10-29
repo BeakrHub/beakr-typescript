@@ -12,6 +12,12 @@
  * Routes that predate the envelope send `detail` only, so each field falls
  * back: the message to `detail`, the request id to the `X-Request-ID` header,
  * the code to one derived from the status.
+ *
+ * A body that is not JSON is never the message as it is: an HTML page (a web
+ * app, a proxy or a server that is not Beakr, at a wrong base URL) is named by
+ * its title, with a fix that says to check the API URL, and other text is cut
+ * to a short excerpt. A success whose body is an HTML page where JSON was
+ * expected throws `UnexpectedResponseError`.
  */
 import { parseHttpDate } from "./http-date.js";
 
@@ -133,6 +139,13 @@ export class RateLimitError extends BeakrError {
 export class ServerError extends BeakrError {}
 
 /**
+ * A success whose body is an HTML page where the operation answers JSON. Most
+ * often the base URL is not a Beakr API: a web app or a proxy answers 200 with
+ * a page for any path. `status` is that status.
+ */
+export class UnexpectedResponseError extends BeakrError {}
+
+/**
  * A Knowledge command or write answered HTTP 200 with `outcome.status ===
  * "error"` (an unknown page, a refused write). `result` keeps the full reply.
  */
@@ -187,6 +200,57 @@ export function parseRetryAfter(
   return deadline === undefined ? undefined : Math.max(0, (deadline - nowMs) / 1000);
 }
 
+/** How much of a body that is not JSON an error message keeps. */
+const EXCERPT_CHARS = 200;
+const TITLE_CHARS = 80;
+const HTML_TITLE = /<title[^>]*>([\s\S]*?)<\/title>/i;
+const HTML_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", apos: "'" };
+
+function oneLine(text: string, limit: number): string {
+  const line = text.split(/\s+/).filter(Boolean).join(" ");
+  return line.length <= limit ? line : `${line.slice(0, limit - 3).trimEnd()}...`;
+}
+
+/** Whether a body (with its `Content-Type`) is an HTML page. */
+export function isHtmlPage(contentType: string | null | undefined, text: string): boolean {
+  return (contentType ?? "").toLowerCase().includes("html") || text.trimStart().startsWith("<");
+}
+
+/**
+ * The message and fix for an HTML page where a Beakr API answer was expected:
+ * the base URL points somewhere else (or, for a 5xx, a proxy in front of the
+ * API answered). The page itself is never the message: it is long, and it says
+ * nothing about Beakr.
+ */
+function htmlPageReason(status: number, text: string): { reason: string; fix: string } {
+  const title = HTML_TITLE.exec(text)?.[1];
+  const named = title
+    ? oneLine(title.replace(/&(amp|lt|gt|quot|#39|apos);/g, (_, name: string) => HTML_ENTITIES[name] ?? ""), TITLE_CHARS)
+    : "";
+  const page = named ? `an HTML page ("${named}")` : "an HTML page";
+  const fix =
+    status >= 500
+      ? "If the API URL (baseUrl, or BEAKR_BASE_URL) is right, a proxy in front of the API answered: retry shortly."
+      : "Check the API URL (baseUrl, or BEAKR_BASE_URL): it must be a Beakr API, such as https://api.thebeakr.com.";
+  return { reason: `The server answered with ${page}, not a Beakr API response`, fix };
+}
+
+/** The error for a success whose body is an HTML page where JSON was expected. */
+export function unexpectedPageError(
+  status: number,
+  headers: Headers,
+  text: string,
+  baseUrl?: string,
+): UnexpectedResponseError {
+  const { reason, fix } = htmlPageReason(status, text);
+  const options: BeakrErrorOptions = { status, code: "unexpected_response", body: text, fix };
+  const requestId = headers.get("x-request-id");
+  if (requestId) options.requestId = requestId;
+  if (baseUrl !== undefined) options.baseUrl = baseUrl;
+  const called = baseUrl ? ` (called ${baseUrl})` : "";
+  return new UnexpectedResponseError(`${reason}${called} To fix: ${fix}`, options);
+}
+
 function detailMessage(detail: unknown): string | undefined {
   if (detail === undefined || detail === null) return undefined;
   if (typeof detail === "string") return detail;
@@ -230,7 +294,12 @@ export function errorFromResponse(
 
   let code = (envelope["code"] as string | undefined) ?? DEFAULT_CODES[status];
   if (code === undefined && status >= 500) code = "internal_error";
+  // Not JSON: an HTML page (a wrong base URL, a proxy) or bare text.
+  const page = typeof body === "string" && isHtmlPage(headers.get("content-type"), body) ? htmlPageReason(status, body) : undefined;
+  const text = typeof body === "string" && !page ? oneLine(body, EXCERPT_CHARS) : undefined;
   const reason =
+    page?.reason ??
+    text ??
     (envelope["message"] as string | undefined) ??
     detailMessage(detail) ??
     (statusText || `HTTP ${status}`);
@@ -239,7 +308,9 @@ export function errorFromResponse(
     rawDetailsForMessage && typeof rawDetailsForMessage === "object" && !Array.isArray(rawDetailsForMessage)
       ? quotaText(rawDetailsForMessage as Record<string, unknown>)
       : undefined;
-  const fix = typeof envelope["fix"] === "string" && envelope["fix"] ? (envelope["fix"] as string) : undefined;
+  const fix =
+    page?.fix ??
+    (typeof envelope["fix"] === "string" && envelope["fix"] ? (envelope["fix"] as string) : undefined);
   let message = baseUrl ? `${reason} (called ${baseUrl})` : reason;
   if (quota) message += ` (${quota})`;
   if (fix) message += ` To fix: ${fix}`;
