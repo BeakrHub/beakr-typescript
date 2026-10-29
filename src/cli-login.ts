@@ -3,7 +3,7 @@
  *
  * `beakr auth login` keeps one login per API origin. In Node.js the SDK reads
  * the file copy, `~/.beakr/credentials` (or `$BEAKR_HOME/credentials`), and the
- * key saved by `beakr auth login --api-key` in `~/.beakr/config.json` -- the
+ * key saved by `beakr auth login --with-api-key` in `~/.beakr/config.json` -- the
  * same files, payload and origin binding the Python SDK reads
  * (`beakr_sdk/credentials.py`). A stored credential is only offered to a client
  * pointed at the API that issued it.
@@ -167,7 +167,7 @@ export function cliLoginExpired(login: CliLogin, now = Date.now()): boolean {
   return login.expiresAt !== undefined && now >= login.expiresAt - REFRESH_SKEW_SECONDS * 1000;
 }
 
-/** The API key saved by `beakr auth login --api-key`, when it was saved for `origin`. */
+/** The API key saved by `beakr auth login --with-api-key`, when it was saved for `origin`. */
 export function readCliSavedKey(origin: string): string | undefined {
   const config = cliConfig();
   const key = config["api_key"];

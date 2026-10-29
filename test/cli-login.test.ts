@@ -143,7 +143,7 @@ describe("the CLI's stored sign-in", () => {
     expect(second.calls[0]!.headers.authorization).toBe("Bearer at-fresh");
   });
 
-  it("falls back to the key saved by `beakr auth login --api-key` for this API", async () => {
+  it("falls back to the key saved by `beakr auth login --with-api-key` for this API", async () => {
     vi.stubEnv("BEAKR_API_KEY", "");
     beakrHome({ "config.json": { api_key: "bk_live_saved", api_url: "https://api.test/" } });
     const { fetch, calls } = mockFetch([json({})]);
