@@ -12817,6 +12817,12 @@ export interface components {
              */
             page_type?: string | null;
             /**
+             * Relevance
+             * @description How close this page is in meaning: strong, moderate or weak. Set only when no page matched the keywords and pages were ranked by meaning.
+             * @default null
+             */
+            relevance?: string | null;
+            /**
              * Score
              * @description Relevance score; higher is more relevant.
              * @default null
@@ -12879,12 +12885,24 @@ export interface components {
              */
             has_more: boolean;
             /**
+             * Match Strength
+             * @description When no page matched the keywords and pages were ranked by meaning: the best result's band, strong, moderate or weak. Absent for a keyword answer.
+             * @default null
+             */
+            match_strength?: string | null;
+            /**
              * Next Cursor
              * @description Pass as `cursor` to read the next page; null on the last page.
              * @default null
              * @example null
              */
             next_cursor?: string | null;
+            /**
+             * Note
+             * @description Present when even the best result is a weak match: the corpus may not cover the question. The same warning knowledge_base sections gives.
+             * @default null
+             */
+            note?: string | null;
         };
         /**
          * WikiSectionCitationIn
