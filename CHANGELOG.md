@@ -3,6 +3,16 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
+## @beakr/sdk 0.1.1 (2026-11-02)
+
+No public API changes.
+
+### Client changes
+
+- The first release published from GitHub Actions through npm trusted
+  publishing, so it carries a provenance statement linking it to this
+  repository and workflow. The code is the same as 0.1.0.
+
 ## @beakr/sdk 0.1.0 (2026-10-25)
 
 ### Changes
