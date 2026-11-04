@@ -28,6 +28,7 @@ export const REPLAYING_CREATES: readonly string[] = [
   "/v1/interview/links",
   "/v1/interview/sendables",
   "/v1/interview/sendables/{sendable_id}/links",
+  "/v1/knowledge/wiki/sources/{source_type}/{source_id}/revert",
   "/v1/knowledge/wiki/write",
   "/v1/labels",
   "/v1/labels/{label_id}/members",
