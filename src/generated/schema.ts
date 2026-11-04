@@ -2962,6 +2962,8 @@ export interface components {
             description?: string | null;
             /** @description The existing file this one duplicates, if any. */
             duplicate_of?: components["schemas"]["DuplicateArtifactRef"] | null;
+            /** @description Set when this file is a saved PDF or Word copy of a document the caller can open: the document to edit, which is then saved again. Null otherwise. */
+            exported_from?: components["schemas"]["ExportedFromOut"] | null;
             /**
              * Home Project Id
              * @description Id of the project that holds it.
@@ -3331,6 +3333,8 @@ export interface components {
             description?: string | null;
             /** @description The existing file this one duplicates, if any. */
             duplicate_of?: components["schemas"]["DuplicateArtifactRef"] | null;
+            /** @description Set when this file is a saved PDF or Word copy of a document the caller can open: the document to edit, which is then saved again. Null otherwise. */
+            exported_from?: components["schemas"]["ExportedFromOut"] | null;
             /**
              * Home Project Id
              * @description ID of the project where artifact lives (optional).
@@ -5020,6 +5024,33 @@ export interface components {
              * @description Size in bytes.
              */
             size_bytes: number;
+        };
+        /**
+         * ExportedFromOut
+         * @description The editable document a saved PDF or Word file was exported from.
+         */
+        ExportedFromOut: {
+            /**
+             * Canvas Id
+             * Format: uuid
+             * @description ID of the editable document the file was saved from.
+             */
+            canvas_id: string;
+            /**
+             * Template Id
+             * @description ID of the template the document was made from, if any.
+             */
+            template_id?: string | null;
+            /**
+             * Template Name
+             * @description Name of the template the document was made from, if any.
+             */
+            template_name?: string | null;
+            /**
+             * Title
+             * @description The editable document's title.
+             */
+            title: string;
         };
         /**
          * ExternalUserCreate
