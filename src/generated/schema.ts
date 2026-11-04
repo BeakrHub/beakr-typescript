@@ -1217,6 +1217,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/sources/{source_type}/{source_id}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Undo a source's compiled Knowledge contributions
+         * @description Undo a source's compiled Knowledge contributions.
+         *
+         *     For an uploaded file use source_type `artifact` and its version UUID as
+         *     source_id. Undo versions newest first to remove a whole file's contribution.
+         *     Requires `kb:write`; project-restricted credentials must supply an allowed
+         *     project_id. File bytes are not deleted. Later edits can prevent a complete
+         *     undo: inspect status, skipped, conflicts and proposals before deleting files.
+         *     Idempotency-Key retries replay the original outcome for 24 hours.
+         *     A `blocked` result can include applied changes; HTTP 200 is not proof that
+         *     every contribution was removed. An unknown source returns `noop`.
+         */
+        post: operations["revert_wiki_source_v1_knowledge_wiki_sources__source_type___source_id__revert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/write": {
         parameters: {
             query?: never;
@@ -12981,7 +13010,7 @@ export interface components {
             source_title?: string;
             /**
              * Source Type
-             * @description Kind of source, such as `web` (a web page, cited with `url`) or `conversation`.
+             * @description Kind of source, such as `web` (a web page, cited with `url`), `external_record` (a record in a system outside Beakr, cited with `url` and `meta.system`) or `conversation`.
              * @default
              */
             source_type?: string;
@@ -12993,7 +13022,7 @@ export interface components {
             stance?: string;
             /**
              * Url
-             * @description With `source_type: web`: the cited page's http or https address. Beakr stores the citation as you give it (title, url, the passage in `meta.excerpt`) and never fetches the page; the fragment and tracking parameters are dropped.
+             * @description With `source_type: web`: the cited page's http or https address. Beakr stores the citation as you give it (title, url, the passage in `meta.excerpt`) and never fetches the page; the fragment and tracking parameters are dropped. With `source_type: external_record`: the http or https link to a record in a system outside Beakr, with `meta.system` (the system's name), `meta.record_id` (the record's id there) and the words relied on in `meta.excerpt`. Beakr stores it as given and never opens the link.
              */
             url?: string | null;
         };
@@ -13034,6 +13063,83 @@ export interface components {
              */
             title?: string;
         };
+        /** WikiSourceRevertConflict */
+        WikiSourceRevertConflict: {
+            /**
+             * Change Id
+             * Format: uuid
+             * @description Id of the change.
+             */
+            change_id: string;
+            /**
+             * Commit Id
+             * Format: uuid
+             * @description Id of the commit.
+             */
+            commit_id: string;
+            /**
+             * Page Id
+             * @description Id of the page.
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id: string | null;
+            /**
+             * Reason
+             * @description Why, in a few words.
+             */
+            reason: string;
+        };
+        /** WikiSourceRevertResult */
+        WikiSourceRevertResult: {
+            /**
+             * Applied
+             * @description Number of inverse changes successfully applied.
+             */
+            applied: number;
+            /**
+             * Commit Ids
+             * @description Ids of the commits.
+             * @default []
+             */
+            commit_ids?: string[];
+            /**
+             * Commits Processed
+             * @description Number of source-associated commits considered by this undo operation.
+             */
+            commits_processed: number;
+            /**
+             * Conflict Details
+             * @description Changes requiring review, with the original commit and affected page. These pages have not been reverted; page_ids lists only successfully changed pages.
+             */
+            conflict_details?: components["schemas"]["WikiSourceRevertConflict"][];
+            /**
+             * Conflicts
+             * @description Number of source-associated commits whose undo reported conflicts; conflict_details lists the individual changes requiring review.
+             */
+            conflicts: number;
+            /**
+             * Page Ids
+             * @description Ids of the pages.
+             * @default []
+             */
+            page_ids?: string[];
+            /**
+             * Proposals
+             * @description The proposals.
+             */
+            proposals: string[];
+            /**
+             * Skipped
+             * @description How many were skipped.
+             * @default 0
+             */
+            skipped?: number;
+            /**
+             * Status
+             * @description Current status of the wiki source revert.
+             */
+            status: string;
+        };
         /** WikiToolOutcome */
         WikiToolOutcome: {
             /**
@@ -13064,7 +13170,7 @@ export interface components {
             };
             /**
              * Error Code
-             * @description Why a call was refused. On writes, `citation_not_citeable`: a citation (or a `{{token}}` in the prose) is not the caller's own conversation, a file it uploaded (at a place the file has), a web page by its http or https URL, or a source Knowledge already cites that it can read; `citation_needs_excerpt`: a conversation, agent_note or user_note citation without `source_title` and `meta.excerpt`; `invalid_source_ref`: a `source_ref` that resolves to nothing the caller can read.
+             * @description Why a call was refused. On writes, `citation_not_citeable`: a citation (or a `{{token}}` in the prose) is not the caller's own conversation, a file it uploaded (at a place the file has), a web page by its http or https URL, a record in a system outside Beakr (`external_record`, by its http or https URL, with `meta.system`), or a source Knowledge already cites that it can read; `citation_needs_excerpt`: a conversation, agent_note or user_note citation without `source_title` and `meta.excerpt`; `invalid_source_ref`: a `source_ref` that resolves to nothing the caller can read.
              * @default null
              */
             error_code?: string | null;
@@ -16580,6 +16686,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WikiSearchResult"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revert_wiki_source_v1_knowledge_wiki_sources__source_type___source_id__revert_post: {
+        parameters: {
+            query?: {
+                project_id?: string | null;
+            };
+            header?: never;
+            path: {
+                source_type: string;
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiSourceRevertResult"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
