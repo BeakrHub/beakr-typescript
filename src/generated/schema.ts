@@ -13010,7 +13010,7 @@ export interface components {
             source_title?: string;
             /**
              * Source Type
-             * @description Kind of source, such as `web` (a web page, cited with `url`) or `conversation`.
+             * @description Kind of source, such as `web` (a web page, cited with `url`), `external_record` (a record in a system outside Beakr, cited with `url` and `meta.system`) or `conversation`.
              * @default
              */
             source_type?: string;
@@ -13022,7 +13022,7 @@ export interface components {
             stance?: string;
             /**
              * Url
-             * @description With `source_type: web`: the cited page's http or https address. Beakr stores the citation as you give it (title, url, the passage in `meta.excerpt`) and never fetches the page; the fragment and tracking parameters are dropped.
+             * @description With `source_type: web`: the cited page's http or https address. Beakr stores the citation as you give it (title, url, the passage in `meta.excerpt`) and never fetches the page; the fragment and tracking parameters are dropped. With `source_type: external_record`: the http or https link to a record in a system outside Beakr, with `meta.system` (the system's name), `meta.record_id` (the record's id there) and the words relied on in `meta.excerpt`. Beakr stores it as given and never opens the link.
              */
             url?: string | null;
         };
@@ -13170,7 +13170,7 @@ export interface components {
             };
             /**
              * Error Code
-             * @description Why a call was refused. On writes, `citation_not_citeable`: a citation (or a `{{token}}` in the prose) is not the caller's own conversation, a file it uploaded (at a place the file has), a web page by its http or https URL, or a source Knowledge already cites that it can read; `citation_needs_excerpt`: a conversation, agent_note or user_note citation without `source_title` and `meta.excerpt`; `invalid_source_ref`: a `source_ref` that resolves to nothing the caller can read.
+             * @description Why a call was refused. On writes, `citation_not_citeable`: a citation (or a `{{token}}` in the prose) is not the caller's own conversation, a file it uploaded (at a place the file has), a web page by its http or https URL, a record in a system outside Beakr (`external_record`, by its http or https URL, with `meta.system`), or a source Knowledge already cites that it can read; `citation_needs_excerpt`: a conversation, agent_note or user_note citation without `source_title` and `meta.excerpt`; `invalid_source_ref`: a `source_ref` that resolves to nothing the caller can read.
              * @default null
              */
             error_code?: string | null;
