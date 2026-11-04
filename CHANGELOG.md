@@ -3,6 +3,17 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
+## @beakr/sdk 0.2.0 (2026-11-04)
+
+### Changes
+
+- File responses (`GET /v1/artifacts/{artifact_id}`, `GET /v1/artifacts` and the
+  other operations that return a file) carry
+  `exported_from` when the file is a saved PDF or Word copy of a document the
+  caller can open: the document's `canvas_id` and `title`, and the
+  `template_id` and `template_name` it was made from, when it was. Changes
+  belong in that document, which is then saved again. It is `null` for every
+  other file, and for a saved copy whose document the caller cannot open.
 ## @beakr/sdk 0.1.1 (2026-11-02)
 
 No public API changes.
