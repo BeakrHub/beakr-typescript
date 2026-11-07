@@ -1169,6 +1169,12 @@ export interface paths {
          *     proposal is refused with 403 ``person_review_required`` unless the key holds
          *     the ``proposals:accept`` scope. The proposal read says so in
          *     ``needs_person_to_accept``.
+         *
+         *     Accepting a proposal that is already accepted (by a person, or by the
+         *     filer's auto-approve) succeeds without applying anything again:
+         *     ``already_accepted: true`` with ``reviewed_at``, ``reviewed_by_name`` (the
+         *     person who accepted it; null when auto-approve did) and ``auto_approved``.
+         *     A dismissed or otherwise closed proposal answers 400 saying so.
          */
         post: operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"];
         delete?: never;
@@ -4332,6 +4338,12 @@ export interface components {
              */
             kind: string;
             /**
+             * Match
+             * @description How much of the query this conversation holds: strong (its words together as a phrase), moderate (every word), tangential (at least half) or weak.
+             * @default null
+             */
+            match?: string | null;
+            /**
              * Outputs
              * @description Outputs written in it (`artifact_id`, `title`, `type`, `generated_at`); empty for an imported session.
              * @default []
@@ -4395,12 +4407,24 @@ export interface components {
              */
             has_more: boolean;
             /**
+             * Match Strength
+             * @description The best match band among this page's results; absent when none is set.
+             * @default null
+             */
+            match_strength?: string | null;
+            /**
              * Next Cursor
              * @description Pass as `cursor` to read the next page; null on the last page.
              * @default null
              * @example null
              */
             next_cursor?: string | null;
+            /**
+             * Note
+             * @description Present when no result on this page is a strong match: these conversations may not be about the query.
+             * @default null
+             */
+            note?: string | null;
             /**
              * Query
              * @description The search text.
@@ -4682,7 +4706,7 @@ export interface components {
             line_start?: number | null;
             /**
              * Match
-             * @description `strong`, `moderate` or `weak`: how close the passage's meaning is to the query, on the embedding model's calibrated scale.
+             * @description `strong`, `moderate`, `tangential` or `weak`: how close the passage's meaning is to the query, on the embedding model's calibrated scale.
              * @default null
              */
             match?: string | null;
@@ -12629,6 +12653,12 @@ export interface components {
         /** WikiProposalOut */
         WikiProposalOut: {
             /**
+             * Auto Approved
+             * @description Decided proposals only: true when the filer's auto-approve setting accepted it rather than a person.
+             * @default null
+             */
+            auto_approved?: boolean | null;
+            /**
              * Client
              * @description The client that filed it, as it declared itself in `X-Beakr-Client` (e.g. `sdk-python/0.1.0`, `beakr-cli/0.4.0`); null when filed in Beakr itself. Read-only; the same value as `filed_by.client`.
              * @default null
@@ -12698,6 +12728,18 @@ export interface components {
              * @default null
              */
             proposal_type?: string | null;
+            /**
+             * Reviewed At
+             * @description Decided proposals only: when it was accepted, dismissed or closed.
+             * @default null
+             */
+            reviewed_at?: string | null;
+            /**
+             * Reviewed By Name
+             * @description Decided proposals only: the display name of the person who accepted or dismissed it; null when auto-approve accepted it or the person has no name.
+             * @default null
+             */
+            reviewed_by_name?: string | null;
             /**
              * Source
              * @description What staged it. `mcp` is any client that filed through `POST /v1/knowledge/wiki/write` -- an MCP server, the CLI or an SDK; `client` names which.
@@ -12878,7 +12920,7 @@ export interface components {
             page_type?: string | null;
             /**
              * Relevance
-             * @description How close this page is in meaning: strong, moderate or weak. Set only when no page matched the keywords and pages were ranked by meaning.
+             * @description How close this page is in meaning: strong, moderate, tangential or weak. Set only when no page matched the keywords and pages were ranked by meaning.
              * @default null
              */
             relevance?: string | null;
@@ -12946,7 +12988,7 @@ export interface components {
             has_more: boolean;
             /**
              * Match Strength
-             * @description When no page matched the keywords and pages were ranked by meaning: the best result's band, strong, moderate or weak. Absent for a keyword answer.
+             * @description When no page matched the keywords and pages were ranked by meaning: the best result's band, strong, moderate, tangential or weak. Absent for a keyword answer.
              * @default null
              */
             match_strength?: string | null;
@@ -12959,7 +13001,7 @@ export interface components {
             next_cursor?: string | null;
             /**
              * Note
-             * @description Present when even the best result is a weak match: the corpus may not cover the question. The same warning knowledge_base sections gives.
+             * @description Present when no result is a strong match: the corpus may not cover the question. The same warning knowledge_base sections gives.
              * @default null
              */
             note?: string | null;
@@ -13143,6 +13185,12 @@ export interface components {
         /** WikiToolOutcome */
         WikiToolOutcome: {
             /**
+             * Approval State
+             * @description Writes that staged a proposal only: what happens to it next. `pending`: it waits for someone to accept it (an agent may call accept_proposal when the user asks); `auto_apply_queued`: the caller's auto-approve queued it, and it can still end up pending if the setting changed or a check fails at accept time, so confirm with the proposal read; `needs_person`: the project requires a person to accept proposals, so an accept from an API key or token is refused.
+             * @default null
+             */
+            approval_state?: ("pending" | "auto_apply_queued" | "needs_person") | null;
+            /**
              * Auto Approve
              * @description Writes only: true when the caller's auto-approve setting will apply what this call staged (usually within seconds), false when it waits for review.
              * @default null
@@ -13189,6 +13237,12 @@ export interface components {
         };
         /** WikiWriteResult */
         WikiWriteResult: {
+            /**
+             * Approval State
+             * @description `outcome.approval_state`, at the top level, whenever a proposal was staged: `pending`, `auto_apply_queued` or `needs_person`.
+             * @default null
+             */
+            approval_state?: ("pending" | "auto_apply_queued" | "needs_person") | null;
             /**
              * Content
              * @description The wiki write's content.
@@ -15981,6 +16035,8 @@ export interface operations {
                     group_by?: string;
                     /** @description timeline: include estimated dates (default true). False keeps only day/month/year precision. */
                     include_approx?: boolean;
+                    /** @description timeline with page: also the pages under it (its documents and sub-records). Default false: that page only. */
+                    include_children?: boolean;
                     /** @description If true, timeline returns each section's full markdown content. Automatically enabled when timeline_query is set. */
                     include_content?: boolean;
                     /** @description rows: add each row's cited passage (at most 50 rows). */
@@ -17009,7 +17065,7 @@ export interface operations {
                     type_scope?: "global" | "org" | "project";
                     /** @description add_fact: the statement as the source gives it, qualifiers included. */
                     value?: string;
-                    /** @description add_fact / add_connection: when it happened or held: YYYY-MM-DD, YYYY-MM, YYYY-Qn or YYYY, '~' if approximate. */
+                    /** @description add_fact / add_connection: when it happened or held in the world: YYYY-MM-DD, YYYY-MM, YYYY-Qn or YYYY, '~' if approximate. Every dated row is a timeline event: leave it empty for a value with no date of its own (an id, a URL, a priority), and never use the day you write it down. */
                     when?: string;
                     /** @description When not to use this page type (action=page_type). */
                     when_not_to_use?: string;
