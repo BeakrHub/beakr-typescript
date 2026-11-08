@@ -137,6 +137,13 @@ export const OPERATIONS = {
   "runs.getRunStatus": { method: "GET", path: "/v1/runs/{run_id}" },
   "runs.cancelRun": { method: "POST", path: "/v1/runs/{run_id}/cancel" },
   "runs.streamRunEvents": { method: "GET", path: "/v1/runs/{run_id}/events" },
+  "sessions.listSessions": { method: "GET", path: "/v1/sessions" },
+  "sessions.createSession": { method: "POST", path: "/v1/sessions" },
+  "sessions.getSession": { method: "GET", path: "/v1/sessions/{session_id}" },
+  "sessions.updateSession": { method: "PATCH", path: "/v1/sessions/{session_id}" },
+  "sessions.endSession": { method: "POST", path: "/v1/sessions/{session_id}/end" },
+  "sessions.mintSessionToken": { method: "POST", path: "/v1/sessions/{session_id}/tokens" },
+  "sessions.currentSession": { method: "GET", path: "/v1/sessions/current" },
   "skills.listSkills": { method: "GET", path: "/v1/skills" },
   "skills.createSkill": { method: "POST", path: "/v1/skills" },
   "skills.getSkill": { method: "GET", path: "/v1/skills/{skill_id}" },
@@ -1115,6 +1122,59 @@ export class ServiceAccountsApi {
   }
 }
 
+/** Public operations tagged sessions. */
+export class SessionsApi {
+  constructor(private readonly transport: Transport) {}
+
+  /** GET /v1/sessions (List your sessions) */
+  listSessions(args?: { query?: NonNullable<operations["list_sessions_v1_sessions_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_sessions_v1_sessions_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/sessions", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/sessions, following its cursor. */
+  listSessionsAll(args?: { query?: NonNullable<operations["list_sessions_v1_sessions_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_sessions_v1_sessions_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/sessions", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** POST /v1/sessions (Start a session) */
+  createSession(args: { body: NonNullable<operations["create_session_v1_sessions_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["create_session_v1_sessions_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/sessions", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/sessions/{session_id} (Get a session) */
+  getSession(args: { path: operations["get_session_v1_sessions__session_id__get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_session_v1_sessions__session_id__get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/sessions/${enc(String(args.path.session_id))}`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PATCH /v1/sessions/{session_id} (Change a session's projects) */
+  updateSession(args: { path: operations["update_session_v1_sessions__session_id__patch"]["parameters"]["path"]; body: NonNullable<operations["update_session_v1_sessions__session_id__patch"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["update_session_v1_sessions__session_id__patch"]>> {
+    const request: RequestOptions = { method: "PATCH", path: `/v1/sessions/${enc(String(args.path.session_id))}`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/sessions/{session_id}/end (End a session) */
+  endSession(args: { path: operations["end_session_v1_sessions__session_id__end_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["end_session_v1_sessions__session_id__end_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/sessions/${enc(String(args.path.session_id))}/end`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/sessions/{session_id}/tokens (Mint a session token) */
+  mintSessionToken(args: { path: operations["mint_session_token_v1_sessions__session_id__tokens_post"]["parameters"]["path"]; body: NonNullable<operations["mint_session_token_v1_sessions__session_id__tokens_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["mint_session_token_v1_sessions__session_id__tokens_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/sessions/${enc(String(args.path.session_id))}/tokens`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/sessions/current (Get the current session) */
+  currentSession(options?: CallOptions): Promise<OperationResponse<operations["current_session_v1_sessions_current_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/sessions/current", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+}
+
 /** Public operations tagged skills. */
 export class SkillsApi {
   constructor(private readonly transport: Transport) {}
@@ -1317,6 +1377,7 @@ export class BeakrApi {
   readonly projects: ProjectsApi;
   readonly runs: RunsApi;
   readonly serviceAccounts: ServiceAccountsApi;
+  readonly sessions: SessionsApi;
   readonly skills: SkillsApi;
   readonly threads: ThreadsApi;
   readonly uploads: UploadsApi;
@@ -1339,6 +1400,7 @@ export class BeakrApi {
     this.projects = new ProjectsApi(transport);
     this.runs = new RunsApi(transport);
     this.serviceAccounts = new ServiceAccountsApi(transport);
+    this.sessions = new SessionsApi(transport);
     this.skills = new SkillsApi(transport);
     this.threads = new ThreadsApi(transport);
     this.uploads = new UploadsApi(transport);

@@ -105,6 +105,41 @@ export class PermissionDeniedError extends BeakrError {
  */
 export class PersonReviewRequiredError extends PermissionDeniedError {}
 
+/** A refusal about a session's projects; `pickerUrl` is where the person changes them. */
+abstract class SessionScopeError extends PermissionDeniedError {
+  get pickerUrl(): string | undefined {
+    const value = this.details["picker_url"];
+    return typeof value === "string" ? value : undefined;
+  }
+}
+
+/**
+ * 403 `session_needs_selection`: the person has not chosen this session's
+ * projects yet. Show them `pickerUrl`; the session works from the request after
+ * they choose.
+ */
+export class SessionNeedsSelectionError extends SessionScopeError {}
+
+/** 403 `session_write_scope`: the session may read this project but not write it. */
+export class SessionWriteScopeError extends SessionScopeError {
+  /** The projects the session may write. */
+  get writeProjectIds(): string[] {
+    const value = this.details["write_project_ids"];
+    return Array.isArray(value) ? value.map(String) : [];
+  }
+}
+
+/** 403 `session_widen_refused`: a session's own token can only drop projects, never add them. */
+export class SessionWidenRefusedError extends SessionScopeError {}
+
+/** 403 codes with their own error type. */
+const FORBIDDEN_TYPES: Record<string, typeof PermissionDeniedError> = {
+  person_review_required: PersonReviewRequiredError,
+  session_needs_selection: SessionNeedsSelectionError,
+  session_write_scope: SessionWriteScopeError,
+  session_widen_refused: SessionWidenRefusedError,
+};
+
 export class NotFoundError extends BeakrError {}
 
 /**
@@ -358,7 +393,7 @@ export function errorFromResponse(
     const requiredScope =
       (details["required_scope"] as string | undefined) ??
       (envelope["required_scope"] as string | undefined);
-    const Refusal = code === "person_review_required" ? PersonReviewRequiredError : PermissionDeniedError;
+    const Refusal = (code !== undefined ? FORBIDDEN_TYPES[code] : undefined) ?? PermissionDeniedError;
     return new Refusal(message, requiredScope === undefined ? common : { ...common, requiredScope });
   }
   if (status === 404) return new NotFoundError(message, common);

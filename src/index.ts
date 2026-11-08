@@ -72,6 +72,14 @@ export type {
   EndUserTokenPage,
   MintEndUserTokenOptions,
 } from "./resources/end-user-tokens.js";
+export type {
+  CreateSessionOptions,
+  ScopedSession,
+  Session,
+  SessionPage,
+  SessionToken,
+  UpdateSessionOptions,
+} from "./resources/sessions.js";
 export type { ExternalUser, ExternalUserPage } from "./resources/external-users.js";
 export type {
   IntegrationTool,
