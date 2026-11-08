@@ -10624,7 +10624,7 @@ export interface components {
             remember_folder: boolean;
             /**
              * Run Label
-             * @description The run label every write made with the session's token carries; `POST /v1/knowledge/runs/{run}/undo` with it reverts the session's Knowledge writes.
+             * @description The run label every write made with the session's token carries; undoing that run reverts the session's Knowledge writes.
              */
             run_label: string;
             /**
