@@ -3938,7 +3938,7 @@ export interface components {
         BulkUploadFileIn: {
             /**
              * Content Length
-             * @description File size in bytes
+             * @description File size in bytes. Required: it is signed into the file's upload URL, so S3 accepts exactly this many bytes, and a file without it is refused.
              */
             content_length?: number | null;
             /**
@@ -21169,7 +21169,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description The assembled file's size differs from the declared `content_length`, or exceeds the upload limit. The assembled object is deleted. */
+            /** @description The assembled file's size differs from the declared `content_length`, or exceeds the upload limit. The assembled object is deleted. The assembled file's content contradicts its name: it is a program, or its first bytes are not the type its extension (or `content_type`) declares. The assembled object is deleted. */
             422: {
                 headers: {
                     [name: string]: unknown;
