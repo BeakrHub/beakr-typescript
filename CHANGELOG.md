@@ -7,6 +7,10 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- **Research is quick by default.** `knowledge.research()` answers within 15
+  seconds from one search of Knowledge and documents unless called with
+  `{ quick: false }`, which runs the full researcher: up to 150 seconds, and it
+  also reads connected services.
 - `POST /v1/bulk/prepare` requires `content_length` for every file. The size is
   signed into the file's upload URL, so the upload must send exactly that many
   bytes. A file without a size is answered `400`.
