@@ -117,7 +117,11 @@ const ROWS_ARGUMENTS: Record<Exclude<keyof RowsOptions, "scope">, string> = {
 
 /** Options for {@link Knowledge.research}. */
 export interface ResearchOptions {
-  /** A short cited answer within 15 seconds from one search. */
+  /**
+   * Default true: a short cited answer within 15 seconds from one search of
+   * Knowledge and documents. `false` runs the full researcher (up to 150s),
+   * which also reads connected services.
+   */
   quick?: boolean;
 }
 
@@ -386,23 +390,25 @@ export class Knowledge extends Resource {
   }
 
   /**
-   * A cited answer from Knowledge and connected sources. Waits up to
-   * {@link RESEARCH_TIMEOUT_MS} (or the client's timeout, if longer): the engine
-   * allows research up to 150s. With `{ quick: true }` the engine answers within
-   * 15 seconds from one search of Knowledge and uploaded files (no connected
-   * sources); the answer's `engine` is `quick`, and `stopped_early` is true when
-   * it is the cited results without a written summary.
+   * A cited answer from Knowledge and documents, quick by default: the engine
+   * answers within 15 seconds from one search of Knowledge and uploaded files
+   * (no connected sources); the answer's `engine` is `quick`, and
+   * `stopped_early` is true when it is the cited results without a written
+   * summary. `{ quick: false }` runs the full researcher, which also reads
+   * connected sources; it waits up to {@link RESEARCH_TIMEOUT_MS} (or the
+   * client's timeout, if longer), since the engine allows it up to 150s.
    */
   research(query: string, projectId?: string, options: ResearchOptions = {}): Promise<ResearchResult> {
+    const quick = options.quick ?? true;
     return this.transport.request({
       method: "POST",
       path: "/v1/knowledge/research",
       body: {
         query,
         ...(projectId ? { project_id: projectId } : {}),
-        ...(options.quick ? { quick: true } : {}),
+        ...(quick ? { quick: true } : {}),
       },
-      minTimeoutMs: options.quick ? QUICK_RESEARCH_TIMEOUT_MS : RESEARCH_TIMEOUT_MS,
+      minTimeoutMs: quick ? QUICK_RESEARCH_TIMEOUT_MS : RESEARCH_TIMEOUT_MS,
     });
   }
 }
