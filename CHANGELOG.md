@@ -3,14 +3,25 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## @beakr/sdk 0.2.0 (2026-11-08)
+## @beakr/sdk 0.2.0 (2026-11-09)
 
 ### Changes
 
-- **Research is quick by default.** `knowledge.research()` answers within 15
-  seconds from one search of Knowledge and documents unless called with
-  `{ quick: false }`, which runs the full researcher: up to 150 seconds, and it
-  also reads connected services.
+- Chat run submission (`POST /v1/runs`) accepts `decision_id`
+  and `decision_version` to answer a specific pending question, rejecting stale
+  decision versions, and returns
+  `decision_state` when applicable. Message responses expose `injection_status`
+  (`sent` or `seen`) for follow-ups delivered to an active run. Pending-operation
+  responses also expose session and language details, a description, error,
+  last-poll time, and capacity-wait and overdue flags, with field descriptions
+  explaining how to interpret operation progress.
+- `POST /v1/knowledge/wiki/command` with `command: "query"` accepts `as_of`
+  (`AS OF 'YYYY-MM-DD'` or `AS OF CURRENT_DATE`) on `connections`: every
+  relation in effect that day, with relations that ended before it left out. On
+  `findings` it is refused with an error saying to filter findings by `when`.
+  For `command: "rows"`, `current_only` on `table: "findings"` is now refused the
+  same way (it matched nothing), as `as_of` already was. The `current_only` and
+  `as_of` descriptions name Connections.
 - `POST /v1/bulk/prepare` requires `content_length` for every file. The size is
   signed into the file's upload URL, so the upload must send exactly that many
   bytes. A file without a size is answered `400`.
