@@ -7647,6 +7647,11 @@ export interface components {
              */
             injected?: boolean;
             /**
+             * Injection Status
+             * @description Injection status: one of `sent`, `seen`.
+             */
+            injection_status?: ("sent" | "seen") | null;
+            /**
              * Is Ask User Response
              * @description Whether it is ask user response.
              * @default false
@@ -8642,48 +8647,85 @@ export interface components {
         PendingOperation: {
             /**
              * Attempt Count
-             * @description Number of attempt.
+             * @description Number of execution attempts recorded for this operation.
              * @default 0
              */
             attempt_count?: number;
             /**
+             * Capacity Wait
+             * @description Whether execution is waiting for available compute capacity.
+             * @default false
+             */
+            capacity_wait?: boolean;
+            /**
              * Deadline At
-             * @description Time of the deadline (ISO 8601, UTC).
+             * @description The expected deadline used to determine whether the operation is overdue.
              */
             deadline_at?: string | null;
             /**
+             * Description
+             * @description A short explanation of the work currently being performed.
+             */
+            description?: string | null;
+            /**
+             * Error
+             * @description A user-visible explanation of an operation failure, when available.
+             */
+            error?: string | null;
+            /**
              * Kind
-             * @description What kind of pending operation this is.
+             * @description The type of background work, such as sandbox execution or a remote job.
              */
             kind: string;
             /**
+             * Language
+             * @description The interpreter used to execute the submitted code, when applicable.
+             */
+            language?: string | null;
+            /**
              * Last Heartbeat At
-             * @description Time of the last heartbeat (ISO 8601, UTC).
+             * @description When the operation most recently reported that it was still alive.
              */
             last_heartbeat_at?: string | null;
             /**
+             * Last Polled At
+             * @description When the service most recently checked the external operation.
+             */
+            last_polled_at?: string | null;
+            /**
              * Operation Id
-             * @description Id of the operation.
+             * @description Stable identifier used to track this background operation across polls.
              */
             operation_id: string;
             /**
+             * Overdue
+             * @description Whether execution has passed its expected completion deadline.
+             * @default false
+             */
+            overdue?: boolean;
+            /**
+             * Session Id
+             * @description The managed execution session that owns this operation, when available.
+             */
+            session_id?: string | null;
+            /**
              * Started At
-             * @description When it started, or null if it has not.
+             * @description When the background operation began execution.
              */
             started_at?: string | null;
             /**
              * Status
-             * @description Current status of the pending operation.
+             * @description The current lifecycle state of the background operation.
              */
             status: string;
             /**
              * Stderr Tail
-             * @description Last lines of the operation's error output.
+             * @description A bounded excerpt of the most recent standard error output.
              */
             stderr_tail?: string | null;
             /**
              * Stdout Tail
-             * @description Last lines of the operation's output.
+             * @description A bounded excerpt of the most recent standard output.
              */
             stdout_tail?: string | null;
         };
@@ -9834,6 +9876,30 @@ export interface components {
              * @description The answer with each citation shown as the readable reference in parentheses (`(memo.pdf › p. 7)`, `(Page Title › Section)`); `sources` lists the cited documents in order of first use.
              */
             text: string;
+        };
+        /**
+         * RunFailureNotice
+         * @description The newest turn of a thread ended without an answer.
+         */
+        RunFailureNotice: {
+            /**
+             * Message
+             * @description The sentence to show the person.
+             */
+            message: string;
+            /**
+             * Reason
+             * @description `server_update` when a server update interrupted the run, `failed` for any other failure.
+             * @enum {string}
+             */
+            reason: "server_update" | "failed";
+            /**
+             * Run Id
+             * Format: uuid
+             * @description The run that failed.
+             * @example f3b7c9e1-0a2d-4c6e-8f1b-3d5e7a9c0b24
+             */
+            run_id: string;
         };
         /**
          * RunQuestion
@@ -11405,6 +11471,16 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /**
+             * Decision Id
+             * @description Id of the decision.
+             */
+            decision_id?: string | null;
+            /**
+             * Decision Version
+             * @description Version of the pending decision being answered; rejects stale answers.
+             */
+            decision_version?: number | null;
+            /**
              * Engine
              * @description Agent engine to run; null lets the server choose. Honored only if enabled for the organization.
              */
@@ -11479,6 +11555,11 @@ export interface components {
             profile_builder_meta?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Resume Run Id
+             * @description Id of the resume run.
+             */
+            resume_run_id?: string | null;
             /** @description The scope it applies to. */
             scope?: components["schemas"]["ScopeSelection-Input"] | null;
             /**
@@ -11524,6 +11605,13 @@ export interface components {
          *     }
          */
         StartRunResponse: {
+            /**
+             * Decision State
+             * @description Authoritative pending question and its ordered revision, used to recover the current decision after reconnecting.
+             */
+            decision_state?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Injected Into Run
              * @description True when no new run was started because the thread's run was still working: the message was delivered to that run as a follow-up. run_id and stream_url are that run's, and user_message_id is the delivered message.
@@ -11643,6 +11731,8 @@ export interface components {
              * @default true
              */
             is_owner?: boolean;
+            /** @description Set for the thread's owner when the newest turn failed without an answer (a server update interrupted it, or it saved no reply), so the chat can say so and offer a retry after a reload. */
+            last_run_failure?: components["schemas"]["RunFailureNotice"] | null;
             /**
              * Messages
              * @description The messages.
@@ -16320,7 +16410,7 @@ export interface operations {
                     after_source_id?: string;
                     /** @description Keyset cursor for ls, grep and sources: return only rows whose title sorts after this value. Pass the last title of the previous window to walk a full population. Required for any complete enumeration -- one window is never proof that nothing else matches. For sources, pass after_source_id alongside it: titles repeat, and a title-only cursor cannot reach past a run of files sharing one. */
                     after_title?: string;
-                    /** @description rows, facts: each card's value on this date. */
+                    /** @description rows: facts, each card's value per Attribute on this date; connections, the relations in effect that day. Not findings. */
                     as_of?: string;
                     /** @description rows: the field by name, alias or meaning; replies say which field. */
                     attribute?: string;
@@ -16335,7 +16425,7 @@ export interface operations {
                     content?: string;
                     /** @description grep only. Lines of context either side of each hit (default 1, max 10). Raise it for table rows, where the header naming the columns sits above the matching line. */
                     context_lines?: number;
-                    /** @description rows, facts: the latest When per entity and Attribute. */
+                    /** @description rows: facts, each card's current value per Attribute; connections, the relations not ended. Not findings (filter by start_date, end_date). */
                     current_only?: boolean;
                     /** @description timeline without timeline_query: next_cursor from the previous result; keep the same filters. query: the cursor a reply gives, sent with the same sql or spec. */
                     cursor?: string;
