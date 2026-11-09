@@ -2,7 +2,7 @@
   "sources": {
     "beakr-engine": {
       "repository": "BeakrHub/beakr-engine",
-      "commit": "941bc39c71397be8d4c33e0e9a8e1cd2afb2d82e",
+      "commit": "2cbe901322b956b48212d655319bbf45bfdadfa5",
       "uncommitted_changes": false,
       "files": {
         "docs/api/CHANGELOG.md": "sha256:c3f6415851bd90143d0ec94eee79373e8ca3f6156c16a6809f543976874233b1",
