@@ -119,6 +119,14 @@ export interface ClientOptions {
   /** Called with every rotated token pair; persist it, the old refresh token is dead. */
   onTokens?: (tokens: TokenPair) => void | Promise<void>;
   /**
+   * Renews `apiKey` when it is a short-lived token another credential mints (a
+   * session's `bk_st_` token, see `sessions.create`): called before
+   * `apiKeyExpiresAt` and on a 401. Answers the new token and its expiry.
+   */
+  renewApiKey?: () => Promise<{ token: string; expiresAt?: number }>;
+  /** When `apiKey` expires (epoch milliseconds), for `renewApiKey`. */
+  apiKeyExpiresAt?: number;
+  /**
    * Defaults to `BEAKR_BASE_URL`, then `BEAKR_API_URL` (the name the CLI and
    * the Python SDK also read, in the same order), then https://api.thebeakr.com.
    */
@@ -276,6 +284,8 @@ export class Transport {
   private readonly now: () => number;
   private refreshing: Promise<void> | undefined;
   private activeOrg: Promise<string> | undefined;
+  private readonly renewApiKey: ClientOptions["renewApiKey"];
+  private apiKeyExpiresAt: number | undefined;
 
   constructor(options: ClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? env("BEAKR_BASE_URL") ?? env("BEAKR_API_URL") ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
@@ -287,6 +297,8 @@ export class Transport {
     this.#tokens = options.tokens;
     this.#apiKey = options.tokens ? options.apiKey : this.resolveApiKey(options);
     this.onTokens = options.onTokens;
+    this.renewApiKey = options.renewApiKey;
+    this.apiKeyExpiresAt = options.apiKeyExpiresAt;
     this.#defaultHeaders = { ...(options.defaultHeaders ?? {}) };
     const globalFetch = (globalThis as { fetch?: FetchLike }).fetch;
     const fetchImpl = options.fetch ?? globalFetch?.bind(globalThis);
@@ -523,12 +535,35 @@ export class Transport {
   }
 
   private canRefresh(): boolean {
+    if (this.renewApiKey && !this.#tokens) return true;
     return Boolean(this.#tokens?.refreshToken && this.#tokens.tokenEndpoint);
   }
 
   private needsProactiveRefresh(): boolean {
-    const expiresAt = this.#tokens?.expiresAt;
+    const expiresAt = this.renewApiKey && !this.#tokens ? this.apiKeyExpiresAt : this.#tokens?.expiresAt;
     return this.canRefresh() && expiresAt !== undefined && Date.now() >= expiresAt - REFRESH_SKEW_MS;
+  }
+
+  /**
+   * The options a client sharing this one's connection settings starts from: a
+   * session's scoped client (`sessions.create`). Never carries the credential.
+   * @internal
+   */
+  sharedOptions(): ClientOptions {
+    const options: ClientOptions = {
+      baseUrl: this.baseUrl,
+      clientName: this.clientName,
+      timeoutMs: this.timeoutMs,
+      maxRetries: this.maxRetries,
+      defaultHeaders: { ...this.#defaultHeaders },
+      fetch: this.fetchImpl,
+      sleep: this.sleep,
+      now: this.now,
+      cliLogin: false,
+    };
+    if (this.agent !== undefined) options.agent = this.agent;
+    if (this.orgId !== undefined) options.orgId = this.orgId;
+    return options;
   }
 
   /** Rotate the token pair once, even when several requests notice at the same time. */
@@ -543,6 +578,12 @@ export class Transport {
 
   /** Refresh at the OAuth issuer's token endpoint (RFC 6749 section 6). */
   private async doRefresh(): Promise<void> {
+    if (this.renewApiKey && !this.#tokens) {
+      const renewed = await this.renewApiKey();
+      this.#apiKey = renewed.token;
+      this.apiKeyExpiresAt = renewed.expiresAt;
+      return;
+    }
     const previous = this.#tokens;
     if (!previous?.refreshToken || !previous.tokenEndpoint) {
       throw new AuthenticationError("No refresh token and token endpoint to refresh with.");

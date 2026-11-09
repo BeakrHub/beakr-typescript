@@ -30,6 +30,7 @@ import { Meta } from "./resources/meta.js";
 import { OrgAdmin } from "./resources/org-admin.js";
 import { Projects } from "./resources/projects.js";
 import { Runs } from "./resources/runs.js";
+import { Sessions } from "./resources/sessions.js";
 import { Skills } from "./resources/skills.js";
 import { Uploads } from "./resources/uploads.js";
 
@@ -51,6 +52,8 @@ export class Beakr {
   readonly externalUsers: ExternalUsers;
   /** Short-lived tokens you mint for the users of your own product. */
   readonly endUserTokens: EndUserTokens;
+  /** Agent sessions confined to the projects a person chooses: `sessions.create({ read, write })`. */
+  readonly sessions: Sessions<Beakr>;
   /** Named groups of people mapped to projects. */
   readonly labels: Labels;
   readonly knowledge: Knowledge;
@@ -81,6 +84,7 @@ export class Beakr {
     this.org = new OrgAdmin(this.transport);
     this.externalUsers = new ExternalUsers(this.transport);
     this.endUserTokens = new EndUserTokens(this.transport);
+    this.sessions = new Sessions<Beakr>(this.transport, (options) => new Beakr(options));
     this.labels = new Labels(this.transport);
     this.knowledge = new Knowledge(this.transport);
     this.conversations = new Conversations(this.transport);

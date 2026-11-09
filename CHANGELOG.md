@@ -7,6 +7,33 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Sessions (`/v1/sessions`): a person chooses which projects one agent session
+  may read and which it may write, and can change them while it runs. Start a
+  session with `POST /v1/sessions` (with `issue_token: true` for its first
+  token) and send its `bk_st_` token as `Authorization: Bearer <token>`. Every
+  request with the token is confined to the session's read projects, and every
+  write to its write projects, read again on each request:
+  - a session started without projects answers `403 session_needs_selection`,
+    with the `picker_url` where the person chooses them, until they do;
+  - a write to a project the session may read but not write answers
+    `403 session_write_scope`, naming the projects it may write;
+  - a session token can only drop projects from its own session
+    (`PATCH /v1/sessions/{session_id}`); naming a project it does not have
+    answers `403 session_widen_refused`. It cannot start sessions or mint tokens;
+  - `GET /v1/projects` with a session token lists only the session's read
+    projects, and `POST /v1/context` without `project_id` answers within them.
+  Every write a session token makes carries the session's `run_label`, so
+  undoing that run reverts the whole session. A token lasts an
+  hour by default (`ttl_seconds`, up to 12 hours); mint another with
+  `POST /v1/sessions/{session_id}/tokens` using the key that started the
+  session. The person can also ask the client to reuse a selection for the
+  folder it runs in (`remember_folder`). Available where the organization has
+  sessions enabled.
+- TypeScript: `beakr.sessions.create({ read, write })` starts a session and
+  returns a client confined to it, which mints a new token with your credential
+  before the old one expires. Refusals throw `SessionNeedsSelectionError` (with
+  `pickerUrl`), `SessionWriteScopeError` (with `writeProjectIds`) and
+  `SessionWidenRefusedError`.
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.

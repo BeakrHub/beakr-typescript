@@ -2332,6 +2332,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List your sessions
+         * @description The caller's sessions, newest first; a session token sees only its own.
+         */
+        get: operations["list_sessions_v1_sessions_get"];
+        put?: never;
+        /**
+         * Start a session
+         * @description Start a session for the signed-in person, optionally with its projects and a token.
+         */
+        post: operations["create_session_v1_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sessions/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the current session
+         * @description The session of the token making the request (a session token only).
+         */
+        get: operations["current_session_v1_sessions_current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a session
+         * @description One of the caller's sessions.
+         */
+        get: operations["get_session_v1_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a session's projects
+         * @description Choose or change the session's projects.
+         *
+         *     The person does this from the web app or with their own credential. A session
+         *     token may call it only to drop projects from its own session: naming a project
+         *     its session does not already have answers ``403 session_widen_refused``.
+         */
+        patch: operations["update_session_v1_sessions__session_id__patch"];
+        trace?: never;
+    };
+    "/v1/sessions/{session_id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End a session
+         * @description End the session: its tokens stop working. A session token may end its own.
+         */
+        post: operations["end_session_v1_sessions__session_id__end_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sessions/{session_id}/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mint a session token
+         * @description Mint a token for the session with the person's own credential (never a session token).
+         */
+        post: operations["mint_session_token_v1_sessions__session_id__tokens_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/skills": {
         parameters: {
             query?: never;
@@ -10413,6 +10525,220 @@ export interface components {
              * @description The permission scopes it grants.
              */
             scopes: string[];
+        };
+        /** SessionCreate */
+        SessionCreate: {
+            /**
+             * Client Name
+             * @description The client holding the session, shown to the person (`beakr mcp`, `beakr-cli`).
+             * @default api
+             */
+            client_name?: string;
+            /**
+             * Folder
+             * @description The folder the client runs in, shown on the picker; never read by Beakr.
+             */
+            folder?: string | null;
+            /**
+             * Issue Token
+             * @description Also mint a session token and return it in `token`.
+             * @default false
+             */
+            issue_token?: boolean;
+            /**
+             * Label
+             * @description A label the person recognizes, such as the agent and folder.
+             */
+            label?: string | null;
+            /**
+             * Read Project Ids
+             * @description Projects the session may read. Omit both lists to create a pending session the person completes at `picker_url`; every Knowledge, document and research call answers `403 session_needs_selection` until they do.
+             */
+            read_project_ids?: string[] | null;
+            /**
+             * Ttl Seconds
+             * @description Seconds until the token expires: 3600 by default, 43200 at most.
+             * @default 3600
+             */
+            ttl_seconds?: number;
+            /**
+             * Write Project Ids
+             * @description Projects the session may write; each must also be a read project.
+             */
+            write_project_ids?: string[] | null;
+        };
+        /** SessionOut */
+        SessionOut: {
+            /**
+             * Client Name
+             * @description The client holding the session.
+             */
+            client_name: string;
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the session was created (ISO 8601, UTC).
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at: string;
+            /**
+             * Ended At
+             * @description When the session ended; null while it runs.
+             */
+            ended_at: string | null;
+            /**
+             * Folder
+             * @description The folder the client runs in, as it reported it.
+             */
+            folder: string | null;
+            /**
+             * Id
+             * Format: uuid
+             * @description Session id.
+             */
+            id: string;
+            /**
+             * Label
+             * @description The session's label.
+             */
+            label: string | null;
+            /**
+             * Last Used At
+             * @description When a session token last made a request.
+             */
+            last_used_at: string | null;
+            /**
+             * Picker Url
+             * @description Where the person chooses and changes the projects.
+             */
+            picker_url: string;
+            /**
+             * Read Projects
+             * @description Projects the session may read.
+             */
+            read_projects: components["schemas"]["SessionProject"][];
+            /**
+             * Remember Folder
+             * @description The person asked the client to reuse this selection in `folder`.
+             */
+            remember_folder: boolean;
+            /**
+             * Run Label
+             * @description The run label every write made with the session's token carries; undoing that run reverts the session's Knowledge writes.
+             */
+            run_label: string;
+            /**
+             * Selected At
+             * @description When the person first chose its projects.
+             */
+            selected_at: string | null;
+            /**
+             * Status
+             * @description `pending` (no projects chosen yet), `active` or `ended`.
+             */
+            status: string;
+            /** @description The token minted with the session, when `issue_token` was set. */
+            token?: components["schemas"]["SessionToken"] | null;
+            /**
+             * Updated At
+             * Format: date-time
+             * @description When its projects or label last changed.
+             * @example 2026-10-03T09:15:42Z
+             */
+            updated_at: string;
+            /**
+             * Write Projects
+             * @description Projects the session may write.
+             */
+            write_projects: components["schemas"]["SessionProject"][];
+        };
+        /** SessionOutPage */
+        SessionOutPage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["SessionOut"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @default false
+             * @example false
+             */
+            has_more?: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
+        };
+        /** SessionProject */
+        SessionProject: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Project id.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Project name; null if the person can no longer see it.
+             */
+            name: string | null;
+        };
+        /** SessionToken */
+        SessionToken: {
+            /**
+             * Expires At
+             * Format: date-time
+             * @description When the token expires (ISO 8601, UTC).
+             * @example 2026-10-03T09:30:42Z
+             */
+            expires_at: string;
+            /**
+             * Token
+             * @description The session token (`bk_st_...`), shown only in this response. Send it as `Authorization: Bearer <token>`; mint another before it expires.
+             */
+            token: string;
+            /**
+             * Token Type
+             * @description Always `bearer`.
+             * @default bearer
+             */
+            token_type?: string;
+        };
+        /** SessionTokenCreate */
+        SessionTokenCreate: {
+            /**
+             * Ttl Seconds
+             * @description Seconds until the token expires: 3600 by default, 43200 at most.
+             * @default 3600
+             */
+            ttl_seconds?: number;
+        };
+        /** SessionUpdate */
+        SessionUpdate: {
+            /**
+             * Label
+             * @description A new label; empty clears it.
+             */
+            label?: string | null;
+            /**
+             * Read Project Ids
+             * @description The session's read projects, replacing the list. Dropping a read project drops it from write too.
+             */
+            read_project_ids?: string[] | null;
+            /**
+             * Remember Folder
+             * @description Ask the client to reuse this selection for sessions it starts in the same folder. The client keeps that binding; a session token cannot set this.
+             */
+            remember_folder?: boolean | null;
+            /**
+             * Write Project Ids
+             * @description The session's write projects, replacing the list; each must be a read project.
+             */
+            write_project_ids?: string[] | null;
         };
         /** SkillBundleOut */
         SkillBundleOut: {
@@ -20455,6 +20781,362 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": string;
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_sessions_v1_sessions_get: {
+        parameters: {
+            query?: {
+                /** @description Include ended sessions. */
+                include_ended?: boolean;
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOutPage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    create_session_v1_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    current_session_v1_sessions_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_session_v1_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    update_session_v1_sessions__session_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    end_session_v1_sessions__session_id__end_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    mint_session_token_v1_sessions__session_id__tokens_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionTokenCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionToken"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
