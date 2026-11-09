@@ -7647,11 +7647,6 @@ export interface components {
              */
             injected?: boolean;
             /**
-             * Injection Status
-             * @description Injection status: one of `sent`, `seen`.
-             */
-            injection_status?: ("sent" | "seen") | null;
-            /**
              * Is Ask User Response
              * @description Whether it is ask user response.
              * @default false
@@ -8647,85 +8642,48 @@ export interface components {
         PendingOperation: {
             /**
              * Attempt Count
-             * @description Number of execution attempts recorded for this operation.
+             * @description Number of attempt.
              * @default 0
              */
             attempt_count?: number;
             /**
-             * Capacity Wait
-             * @description Whether execution is waiting for available compute capacity.
-             * @default false
-             */
-            capacity_wait?: boolean;
-            /**
              * Deadline At
-             * @description The expected deadline used to determine whether the operation is overdue.
+             * @description Time of the deadline (ISO 8601, UTC).
              */
             deadline_at?: string | null;
             /**
-             * Description
-             * @description A short explanation of the work currently being performed.
-             */
-            description?: string | null;
-            /**
-             * Error
-             * @description A user-visible explanation of an operation failure, when available.
-             */
-            error?: string | null;
-            /**
              * Kind
-             * @description The type of background work, such as sandbox execution or a remote job.
+             * @description What kind of pending operation this is.
              */
             kind: string;
             /**
-             * Language
-             * @description The interpreter used to execute the submitted code, when applicable.
-             */
-            language?: string | null;
-            /**
              * Last Heartbeat At
-             * @description When the operation most recently reported that it was still alive.
+             * @description Time of the last heartbeat (ISO 8601, UTC).
              */
             last_heartbeat_at?: string | null;
             /**
-             * Last Polled At
-             * @description When the service most recently checked the external operation.
-             */
-            last_polled_at?: string | null;
-            /**
              * Operation Id
-             * @description Stable identifier used to track this background operation across polls.
+             * @description Id of the operation.
              */
             operation_id: string;
             /**
-             * Overdue
-             * @description Whether execution has passed its expected completion deadline.
-             * @default false
-             */
-            overdue?: boolean;
-            /**
-             * Session Id
-             * @description The managed execution session that owns this operation, when available.
-             */
-            session_id?: string | null;
-            /**
              * Started At
-             * @description When the background operation began execution.
+             * @description When it started, or null if it has not.
              */
             started_at?: string | null;
             /**
              * Status
-             * @description The current lifecycle state of the background operation.
+             * @description Current status of the pending operation.
              */
             status: string;
             /**
              * Stderr Tail
-             * @description A bounded excerpt of the most recent standard error output.
+             * @description Last lines of the operation's error output.
              */
             stderr_tail?: string | null;
             /**
              * Stdout Tail
-             * @description A bounded excerpt of the most recent standard output.
+             * @description Last lines of the operation's output.
              */
             stdout_tail?: string | null;
         };
@@ -11471,16 +11429,6 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /**
-             * Decision Id
-             * @description Id of the decision.
-             */
-            decision_id?: string | null;
-            /**
-             * Decision Version
-             * @description Version of the pending decision being answered; rejects stale answers.
-             */
-            decision_version?: number | null;
-            /**
              * Engine
              * @description Agent engine to run; null lets the server choose. Honored only if enabled for the organization.
              */
@@ -11555,11 +11503,6 @@ export interface components {
             profile_builder_meta?: {
                 [key: string]: unknown;
             } | null;
-            /**
-             * Resume Run Id
-             * @description Id of the resume run.
-             */
-            resume_run_id?: string | null;
             /** @description The scope it applies to. */
             scope?: components["schemas"]["ScopeSelection-Input"] | null;
             /**
@@ -11605,13 +11548,6 @@ export interface components {
          *     }
          */
         StartRunResponse: {
-            /**
-             * Decision State
-             * @description Authoritative pending question and its ordered revision, used to recover the current decision after reconnecting.
-             */
-            decision_state?: {
-                [key: string]: unknown;
-            } | null;
             /**
              * Injected Into Run
              * @description True when no new run was started because the thread's run was still working: the message was delivered to that run as a follow-up. run_id and stream_url are that run's, and user_message_id is the delivered message.
