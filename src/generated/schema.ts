@@ -9737,6 +9737,30 @@ export interface components {
             text: string;
         };
         /**
+         * RunFailureNotice
+         * @description The newest turn of a thread ended without an answer.
+         */
+        RunFailureNotice: {
+            /**
+             * Message
+             * @description The sentence to show the person.
+             */
+            message: string;
+            /**
+             * Reason
+             * @description `server_update` when a server update interrupted the run, `failed` for any other failure.
+             * @enum {string}
+             */
+            reason: "server_update" | "failed";
+            /**
+             * Run Id
+             * Format: uuid
+             * @description The run that failed.
+             * @example f3b7c9e1-0a2d-4c6e-8f1b-3d5e7a9c0b24
+             */
+            run_id: string;
+        };
+        /**
          * RunQuestion
          * @description What a run paused on a question is asking the person.
          */
@@ -11352,6 +11376,8 @@ export interface components {
              * @default true
              */
             is_owner?: boolean;
+            /** @description Set for the thread's owner when the newest turn failed without an answer (a server update interrupted it, or it saved no reply), so the chat can say so and offer a retry after a reload. */
+            last_run_failure?: components["schemas"]["RunFailureNotice"] | null;
             /**
              * Messages
              * @description The messages.
