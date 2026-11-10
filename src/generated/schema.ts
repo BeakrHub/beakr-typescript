@@ -6334,6 +6334,61 @@ export interface components {
             status_url: string;
         };
         /**
+         * KnowledgeAttribution
+         * @description Who and what wrote a Knowledge change: a person, their agent and session, or Beakr.
+         */
+        KnowledgeAttribution: {
+            /**
+             * Accepted By
+             * @description Who accepted the proposal, for one.
+             * @default null
+             */
+            accepted_by?: string | null;
+            /**
+             * Agent
+             * @description The agent as it declared itself (`X-Beakr-Agent`), e.g. `claude-code/2.1`.
+             * @default null
+             */
+            agent?: string | null;
+            /**
+             * Client
+             * @description The client the agent used (`X-Beakr-Client`), e.g. `beakr-mcp/0.4.0`.
+             * @default null
+             */
+            client?: string | null;
+            /**
+             * Kind
+             * @description Who wrote the words: `beakr` (a model or maintenance process Beakr ran), `agent` (a person's own agent through MCP, the CLI, an SDK or the API), `person` (a person in Beakr itself) or `system`.
+             */
+            kind: string;
+            /**
+             * Model
+             * @description For Beakr's own runs, the model alias it ran.
+             * @default null
+             */
+            model?: string | null;
+            /**
+             * Person
+             * @description The person behind it: who filed, uploaded or edited, or the owner of the connector a compile came from.
+             * @default null
+             */
+            person?: string | null;
+            /**
+             * Process
+             * @description For Beakr's maintenance, the process, e.g. `health_agent` or `growth_reorg`.
+             * @default null
+             */
+            process?: string | null;
+            /**
+             * Session
+             * @description The agent session: its own id (`X-Beakr-Session`), else the Beakr session a session token wrote as.
+             * @default null
+             */
+            session?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * KnowledgeCoverage
          * @description How much a Knowledge read covered (``kb_result_coverage``), on every read.
          */
@@ -13171,6 +13226,11 @@ export interface components {
         };
         /** WikiRevision */
         WikiRevision: {
+            /**
+             * @description Who and what wrote this revision.
+             * @default null
+             */
+            attribution?: components["schemas"]["KnowledgeAttribution"] | null;
             /**
              * Compiled By
              * @description Who or what wrote this revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`) or `system`.
