@@ -3,7 +3,7 @@
  * `projects.knowledgeProfile`, `setKnowledgeProfile`, `updateKnowledgeProfile`.
  */
 import { describe, expect, it } from "vitest";
-import { NotFoundError } from "../src/index.js";
+import { ConflictError, NotFoundError, ProjectProfileRequiredError } from "../src/index.js";
 import { client, json, mockFetch } from "./helpers.js";
 
 const path = (url: string) => new URL(url).pathname;
@@ -59,5 +59,60 @@ describe("projects Knowledge profile", () => {
     await beakr.projects.updateKnowledgeProfile("p1", { entity_types: ["batch"] });
     expect(calls[1]!.method).toBe("PATCH");
     expect(calls[1]!.body).toEqual({ entity_types: ["batch"] });
+  });
+
+  it("starts a setup run held to the profile, with no panel", async () => {
+    const { fetch, calls } = mockFetch([json({ run_id: "r1", thread_id: "t1" })]);
+    const { beakr } = client(fetch);
+    const run = await beakr.projects.startProfileSetup("p1", "Set it up.", { required: true });
+    expect(run.thread_id).toBe("t1");
+    expect(calls[0]!.method).toBe("POST");
+    expect(path(calls[0]!.url)).toBe("/v1/runs");
+    const body = calls[0]!.body as Record<string, unknown>;
+    expect(body["message"]).toBe("Set it up.");
+    expect(body["home_project_id"]).toBe("p1");
+    expect(body["scope"]).toEqual({ knowledge_graph: true, projects: [{ id: "p1" }] });
+    expect(body["profile_builder_meta"]).toEqual({
+      profile_scope: "project",
+      project_id: "p1",
+      required: true,
+      setup_only: true,
+      surface: "terminal",
+    });
+    expect(body).not.toHaveProperty("is_ask_user_response");
+    expect(typeof body["idempotency_key"]).toBe("string");
+  });
+
+  it("answers a question the setup run parked on, in its thread", async () => {
+    const { fetch, calls } = mockFetch([json({ run_id: "r2", thread_id: "t1" })]);
+    const { beakr } = client(fetch);
+    await beakr.projects.startProfileSetup("p1", "Lots", { threadId: "t1", answer: true });
+    const body = calls[0]!.body as Record<string, unknown>;
+    expect(body["thread_id"]).toBe("t1");
+    expect(body["is_ask_user_response"]).toBe(true);
+  });
+
+  it("throws ProjectProfileRequiredError for a project owing its profile", async () => {
+    const { fetch } = mockFetch([
+      json(
+        {
+          error: {
+            code: "project_profile_required",
+            message: "Project 'Atlas' needs a Knowledge profile.",
+            fix: "Set it up first.",
+            details: { project_id: "p1", project_name: "Atlas" },
+          },
+        },
+        409,
+      ),
+    ]);
+    const { beakr } = client(fetch);
+    const error = await beakr.projects
+      .setKnowledgeProfile("p1", { description: "x" })
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ProjectProfileRequiredError);
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as ProjectProfileRequiredError).projectId).toBe("p1");
+    expect((error as ProjectProfileRequiredError).projectName).toBe("Atlas");
   });
 });

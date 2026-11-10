@@ -158,6 +158,25 @@ export class ConflictError extends BeakrError {
   }
 }
 
+/**
+ * 409 `project_profile_required`: the project still owes its Knowledge
+ * profile. A project created while its organization requires one takes no
+ * files, connector sources or Knowledge until the profile has content. Set it
+ * with `projects.setKnowledgeProfile` or `projects.startProfileSetup`, then
+ * retry. Reads are never refused.
+ */
+export class ProjectProfileRequiredError extends ConflictError {
+  get projectId(): string | undefined {
+    const value = this.details["project_id"];
+    return typeof value === "string" && value ? value : undefined;
+  }
+
+  get projectName(): string | undefined {
+    const value = this.details["project_name"];
+    return typeof value === "string" && value ? value : undefined;
+  }
+}
+
 /** 400 or 422: the request was malformed or failed validation. */
 export class ValidationError extends BeakrError {}
 
@@ -397,7 +416,11 @@ export function errorFromResponse(
     return new Refusal(message, requiredScope === undefined ? common : { ...common, requiredScope });
   }
   if (status === 404) return new NotFoundError(message, common);
-  if (status === 409) return new ConflictError(message, common);
+  if (status === 409) {
+    return code === "project_profile_required"
+      ? new ProjectProfileRequiredError(message, common)
+      : new ConflictError(message, common);
+  }
   if (status === 429) {
     const retryAfter = parseRetryAfter(headers.get("retry-after"), nowMs);
     return new RateLimitError(message, retryAfter === undefined ? common : { ...common, retryAfter });

@@ -109,15 +109,17 @@ then `await beakr.jobs.wait(batch)` (or pass `wait: true`).
 
 ### Tell Knowledge what a project is about
 
-A project's Knowledge profile steers how Beakr compiles its files: what the
-project is for, the people, organizations and topics that matter, and the kinds
-of things to build pages for. Only the project's owners may set it.
+A project's Knowledge profile steers how Beakr compiles its files. Its most
+important part is the entity types: the kinds of things Knowledge builds pages
+for (batches, deviations, CAPAs, suppliers). It also holds what the project is
+for and the people, organizations and topics that matter. Only the project's
+owners may set it.
 
 ```ts
 await beakr.projects.setKnowledgeProfile(projectId, {
+  entity_types: ["batch", "deviation", "capa", "supplier"],
   description: "Batch records, deviations and CAPAs for the Basel site",
   goals: ["Track deviations to closure"],
-  entity_types: ["batch", "deviation", "capa", "supplier"],
   core_people: [{ name: "Priya Natarajan", role: "Batch owner" }],
 });
 await beakr.projects.updateKnowledgeProfile(projectId, { focus_areas: ["pH excursions"] });
@@ -126,6 +128,25 @@ const profile = await beakr.projects.knowledgeProfile(projectId);
 
 `knowledgeProfile` throws `NotFoundError` (`code === "knowledge_profile_not_found"`)
 while the project has none.
+
+Or let Beakr's agent set it up with you: it leads a conversation that settles
+the entity types first (with examples, attributes and relationships), then the
+rest, and saves the profile as it goes.
+
+```ts
+const run = await beakr.projects.startProfileSetup(projectId, "Set up this project's profile.");
+for await (const chunk of beakr.runs.streamText(run.run_id)) process.stdout.write(chunk);
+// Reply in the same thread (answer: true when the run parked on a question):
+await beakr.projects.startProfileSetup(projectId, "We track lots and deviations.", {
+  threadId: run.thread_id,
+});
+```
+
+When an organization requires a profile on every new project, a project
+without one takes no files, connector sources or Knowledge: those calls throw
+`ProjectProfileRequiredError` (409 `project_profile_required`, a
+`ConflictError`, with `projectId`) until the profile has content. Reads still
+work.
 
 ### Skills
 
@@ -307,7 +328,8 @@ envelope's `error.code`), `message` and `requestId`. Subclasses:
 `AuthenticationError` (401), `PermissionDeniedError` (403, with
 `requiredScope`; `PersonReviewRequiredError` for `person_review_required`,
 where only a person or a key holding `proposals:accept` may accept proposals
-or commit Knowledge), `NotFoundError`, `ConflictError`, `ValidationError`,
+or commit Knowledge), `NotFoundError`, `ConflictError`
+(`ProjectProfileRequiredError` for `project_profile_required`), `ValidationError`,
 `RateLimitError` (with `retryAfter`), `ServerError`, `APIConnectionError`,
 `KnowledgeCommandError` (a refused Knowledge command), `UnexpectedResponseError`
 (a success whose body is an HTML page where JSON was expected) and
