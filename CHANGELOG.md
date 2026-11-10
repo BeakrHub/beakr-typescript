@@ -3,7 +3,14 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## @beakr/sdk 0.2.0 (2026-11-09)
+## @beakr/sdk 0.2.0 (2026-11-10)
+
+### Client changes
+
+- **Research is quick by default.** `knowledge.research()` answers within 15
+  seconds from one search of Knowledge and documents unless called with
+  `{ quick: false }`, which runs the full researcher: up to 150 seconds, and it
+  also reads connected services.
 
 ### Changes
 
@@ -11,14 +18,6 @@ Each release lists the public API changes it supports, taken from the API change
   owner when the newest turn failed without an answer: `run_id`, a `reason`
   (`server_update` when a server update interrupted the run, `failed` otherwise)
   and a `message` to show. It is null otherwise.
-- Chat run submission (`POST /v1/runs`) accepts `decision_id`
-  and `decision_version` to answer a specific pending question, rejecting stale
-  decision versions, and returns
-  `decision_state` when applicable. Message responses expose `injection_status`
-  (`sent` or `seen`) for follow-ups delivered to an active run. Pending-operation
-  responses also expose session and language details, a description, error,
-  last-poll time, and capacity-wait and overdue flags, with field descriptions
-  explaining how to interpret operation progress.
 - `POST /v1/knowledge/wiki/command` with `command: "query"` accepts `as_of`
   (`AS OF 'YYYY-MM-DD'` or `AS OF CURRENT_DATE`) on `connections`: every
   relation in effect that day, with relations that ended before it left out. On
@@ -107,6 +106,7 @@ Each release lists the public API changes it supports, taken from the API change
   the knowledge base may not cover the question; each of its results carries
   `relevance`. A keyword answer carries none of these. The operation is limited
   to 120 requests a minute per caller.
+
 ## @beakr/sdk 0.1.1 (2026-11-02)
 
 No public API changes.
