@@ -4,6 +4,7 @@ import { Resource, enc } from "./base.js";
 import { waitForKnowledge, type KnowledgeWaitOptions } from "./knowledge-readiness.js";
 import { ModelRefusals } from "./model-refusals.js";
 import type { Transport } from "../core.js";
+import type { StartedRun } from "./runs.js";
 
 /** A project's Knowledge status (`GET /v1/projects/{project_id}/knowledge-summary`). */
 export type ProjectKnowledgeStatus = ResponseOf<"/v1/projects/{project_id}/knowledge-summary", "get">;
@@ -30,6 +31,18 @@ export type ProjectKnowledgeProfilePatch = BodyOf<
   "/v1/projects/{project_id}/knowledge-profile",
   "patch"
 >;
+
+/** Options for {@link Projects.startProfileSetup}. */
+export interface ProfileSetupOptions {
+  /** Continue this setup conversation instead of starting one. */
+  threadId?: string;
+  /** The message answers a question the run parked on. */
+  answer?: boolean;
+  /** The organization requires this profile before the project can be used. */
+  required?: boolean;
+  /** Deduplicates resends of the same start; generated when omitted. */
+  idempotencyKey?: string;
+}
 
 /** The filters and paging `GET /v1/projects` takes. */
 export interface ListProjectsQuery {
@@ -233,6 +246,49 @@ export class Projects extends Resource {
       method: "PUT",
       path: `/v1/projects/${enc(projectId)}/knowledge-profile`,
       body: cleanBody({ ...profile }),
+    });
+  }
+
+  /**
+   * Start, or continue, a profile-setup conversation with Beakr's agent.
+   *
+   * The agent leads: it settles the project's entity types first (the kinds of
+   * things Knowledge keeps pages for, with examples, attributes and
+   * relationships), then what the project is, its goals, people, organizations
+   * and topics, and saves the profile as it goes. The session is held to the
+   * profile. Returns `{run_id, thread_id, ...}`; follow it with `runs.stream`
+   * or `runs.streamText`. Reply in the same `threadId`; when the run parked on
+   * a question (`runs.get(runId).question`), reply with `answer: true`.
+   * `required` tells the agent the organization requires the profile before
+   * the project can be used. Only the project's owners may save its profile.
+   */
+  startProfileSetup(
+    projectId: string,
+    message: string,
+    options: ProfileSetupOptions = {},
+  ): Promise<StartedRun> {
+    return this.transport.request({
+      method: "POST",
+      path: "/v1/runs",
+      // The route returns the existing run for the same body key, so resends are safe.
+      serverDeduplicated: true,
+      body: cleanBody({
+        idempotency_key:
+          options.idempotencyKey ?? globalThis.crypto.randomUUID().replace(/-/g, ""),
+        message,
+        thread_id: options.threadId,
+        home_project_id: projectId,
+        scope: { knowledge_graph: true, projects: [{ id: projectId }] },
+        // A client with no profile panel, confined to the profile.
+        profile_builder_meta: {
+          profile_scope: "project",
+          project_id: projectId,
+          required: options.required ?? false,
+          setup_only: true,
+          surface: "terminal",
+        },
+        is_ask_user_response: options.answer ? true : undefined,
+      }),
     });
   }
 
