@@ -11,7 +11,9 @@ export { CAPABILITIES_TTL_MS, Capabilities, forgetCapabilities } from "./capabil
 export {
   QUICK_RESEARCH_TIMEOUT_MS,
   RESEARCH_TIMEOUT_MS,
+  crossProjectHold,
   resultText,
+  type CrossProjectHold,
   type KnowledgeResult,
   type KnowledgeWriteResult,
   type ProposalFiledBy,
@@ -72,12 +74,14 @@ export type {
   EndUserTokenPage,
   MintEndUserTokenOptions,
 } from "./resources/end-user-tokens.js";
+export { AgentSession } from "./resources/sessions.js";
 export type {
   CreateSessionOptions,
   ScopedSession,
   Session,
   SessionPage,
   SessionToken,
+  StartSessionOptions,
   UpdateSessionOptions,
 } from "./resources/sessions.js";
 export type { ExternalUser, ExternalUserPage } from "./resources/external-users.js";

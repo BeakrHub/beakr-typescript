@@ -3,6 +3,7 @@ import type { JsonObject } from "./types.js";
 import {
   INSPECT_CUSTOM,
   Transport,
+  sharedTransport,
   type ClientOptions,
   type QueryValue,
   type RequestOptions,
@@ -76,7 +77,7 @@ export class Beakr {
   protected readonly transport: Transport;
 
   constructor(options: ClientOptions = {}) {
-    this.transport = new Transport(options);
+    this.transport = sharedTransport(options) ?? new Transport(options);
     this.me = new Me(this.transport);
     this.meta = new Meta(this.transport);
     this.projects = new Projects(this.transport);

@@ -135,6 +135,14 @@ export interface ClientOptions {
   clientName?: string;
   /** Sent as `X-Beakr-Agent` (attribution only). */
   agent?: string;
+  /**
+   * Sent as `X-Beakr-Session`: the session this client's requests belong to (a
+   * conversation or thread id). Defaults to `BEAKR_SESSION`, else an id made
+   * once for this client, so everything one script does lands in one
+   * server-side session (auto-lock, the cross-project guard and the read trail
+   * apply to it as to an agent). `""` sends none.
+   */
+  session?: string;
   /** Sent as `X-Org-Id` to select an organization for session-like credentials. */
   orgId?: string;
   timeoutMs?: number;
@@ -194,6 +202,23 @@ function env(name: string): string | undefined {
   const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
   const value = proc?.env?.[name];
   return value === undefined || value === "" ? undefined : value;
+}
+
+const SHARED_TRANSPORT = Symbol("beakr.sharedTransport");
+
+/** Options that make a client on an existing transport (`Transport.withSession`). @internal */
+export function onTransport(transport: Transport): ClientOptions {
+  return { [SHARED_TRANSPORT]: transport } as ClientOptions;
+}
+
+/** The transport `onTransport` put in `options`, if any. @internal */
+export function sharedTransport(options: ClientOptions): Transport | undefined {
+  return (options as { [SHARED_TRANSPORT]?: Transport })[SHARED_TRANSPORT];
+}
+
+/** A fresh `X-Beakr-Session` id: `sdk-typescript-` and 32 random hex digits. */
+export function newSessionId(): string {
+  return `sdk-typescript-${globalThis.crypto.randomUUID().replace(/-/g, "")}`;
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -261,6 +286,7 @@ export class Transport {
   readonly baseUrl: string;
   readonly clientName: string;
   readonly agent: string | undefined;
+  readonly session: string | undefined;
   orgId: string | undefined;
   readonly timeoutMs: number;
   readonly maxRetries: number;
@@ -291,6 +317,8 @@ export class Transport {
     this.baseUrl = (options.baseUrl ?? env("BEAKR_BASE_URL") ?? env("BEAKR_API_URL") ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.clientName = options.clientName ?? `sdk-typescript/${VERSION}`;
     this.agent = options.agent;
+    const session = options.session ?? env("BEAKR_SESSION") ?? newSessionId();
+    this.session = session === "" ? undefined : session;
     this.orgId = options.orgId ?? env("BEAKR_ORG_ID");
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.maxRetries = Math.max(0, options.maxRetries ?? DEFAULT_MAX_RETRIES);
@@ -485,6 +513,7 @@ export class Transport {
       ...this.#defaultHeaders,
     };
     if (this.agent) headers["X-Beakr-Agent"] = this.agent;
+    if (this.session) headers["X-Beakr-Session"] = this.session;
     if (this.orgId) headers["X-Org-Id"] = this.orgId;
     if (options.authenticated !== false) Object.assign(headers, this.authHeader());
     if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
@@ -562,8 +591,36 @@ export class Transport {
       cliLogin: false,
     };
     if (this.agent !== undefined) options.agent = this.agent;
+    options.session = this.session ?? "";
     if (this.orgId !== undefined) options.orgId = this.orgId;
     return options;
+  }
+
+  /**
+   * This transport as one that sends `session` as `X-Beakr-Session`: the same
+   * credential (and its refresh), connection settings and organization, so a
+   * client built on it is the same caller in another session
+   * (`sessions.start`).
+   * @internal
+   */
+  withSession(session: string): Transport {
+    const withHeader = (options: RequestOptions): RequestOptions => ({
+      ...options,
+      headers: { "X-Beakr-Session": session, ...(options.headers ?? {}) },
+    });
+    return new Proxy(this, {
+      get(target, property) {
+        if (property === "session") return session;
+        if (property === "request") return (options: RequestOptions) => target.request(withHeader(options));
+        if (property === "raw") return (options: RequestOptions) => target.raw(withHeader(options));
+        if (property === "paginate") {
+          return (options: RequestOptions, pageSize?: number) => target.paginate(withHeader(options), pageSize);
+        }
+        const value: unknown = Reflect.get(target, property, target);
+        // Bound to the transport itself: its #private fields are not on the proxy.
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
   }
 
   /** Rotate the token pair once, even when several requests notice at the same time. */
