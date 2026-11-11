@@ -4,6 +4,8 @@ import { OrgScoped } from "./base.js";
 
 /** The organization's project isolation settings (`GET /v1/organizations/{org_id}/project-isolation`). */
 export type ProjectIsolationSettings = ResponseOf<"/v1/organizations/{org_id}/project-isolation", "get">;
+/** How long the organization keeps session reads (`GET /v1/organizations/{org_id}/read-trail`). */
+export type ReadTrailSettings = ResponseOf<"/v1/organizations/{org_id}/read-trail", "get">;
 /** The settings a {@link ProjectIsolation.update} call changes. */
 export type ProjectIsolationUpdate = BodyOf<"/v1/organizations/{org_id}/project-isolation", "put">;
 
@@ -30,6 +32,23 @@ export class ProjectIsolation extends OrgScoped {
       method: "PUT",
       path: `${await this.orgBase(orgId)}/project-isolation`,
       body: cleanBody({ ...settings }),
+    });
+  }
+
+  /**
+   * How long session reads are kept (`read_trail_retention_days`, 90 by
+   * default), whether the read trail is `available`, and `can_change`.
+   */
+  async readTrail(orgId?: string): Promise<ReadTrailSettings> {
+    return this.transport.request({ method: "GET", path: `${await this.orgBase(orgId)}/read-trail` });
+  }
+
+  /** Keep session reads this many days, 1 to 3650 (an organization admin acting as a person). */
+  async setReadTrailRetention(days: number, orgId?: string): Promise<ReadTrailSettings> {
+    return this.transport.request({
+      method: "PUT",
+      path: `${await this.orgBase(orgId)}/read-trail`,
+      body: { read_trail_retention_days: days },
     });
   }
 }

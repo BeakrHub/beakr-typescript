@@ -6,6 +6,14 @@ import { Resource, credentialClient, enc } from "./base.js";
 export type Session = ResponseOf<"/v1/sessions/{session_id}", "get">;
 export type SessionPage = ResponseOf<"/v1/sessions", "get">;
 export type SessionToken = ResponseOf<"/v1/sessions/{session_id}/tokens", "post">;
+/** One page of a session's read trail, newest first (`GET /v1/sessions/{session_id}/trail`). */
+export type SessionTrailPage = ResponseOf<"/v1/sessions/{session_id}/trail", "get">;
+/**
+ * One read a session made: when (`at`), what (`op`: `search`, `cat`, `rows`,
+ * `documents:<command>`, `read_file`, `research`...), the `projects` it
+ * touched and the `items` it returned (pages, files, connector items, messages).
+ */
+export type SessionRead = SessionTrailPage["data"][number];
 
 export interface CreateSessionOptions {
   /** Project ids the session may read. With neither list the session waits for the person to choose. */
@@ -76,6 +84,11 @@ export class AgentSession<C> {
   /** The session now: its lock state, write project and the projects it touched. */
   current(): Promise<Session> {
     return this.sessions.current();
+  }
+
+  /** One page of what the session read, newest first (`sessions.trail`). */
+  trail(query: { cursor?: string; limit?: number } = {}): Promise<SessionTrailPage> {
+    return this.sessions.trail(this.id, query);
   }
 
   /** End the session now. Its id is used up: requests with it throw `SessionEndedError`. */
@@ -227,6 +240,29 @@ export class Sessions<C = unknown> extends Resource {
   async end(sessionId?: string): Promise<Session> {
     const id = sessionId ?? String((await this.current()).id);
     return this.transport.request({ method: "POST", path: `/v1/sessions/${enc(id)}/end` });
+  }
+
+  /**
+   * One page of what a session read, newest first: each read's `op`, the
+   * `projects` it touched and the `items` it returned. Without `sessionId`, the
+   * session this client's requests run in. Readable by the session's person,
+   * organization admins, and owners or admins of a project it read (who see
+   * only the reads that touched their projects). Needs the read trail turned on
+   * (404 `feature_not_enabled` otherwise).
+   */
+  async trail(sessionId?: string, query: { cursor?: string; limit?: number } = {}): Promise<SessionTrailPage> {
+    const id = sessionId ?? String((await this.current()).id);
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/sessions/${enc(id)}/trail`,
+      query: { cursor: query.cursor, limit: query.limit },
+    });
+  }
+
+  /** Every read of a session's trail (`trail`), newest first, following cursors. */
+  async *iterTrail(sessionId?: string, pageSize?: number): AsyncGenerator<SessionRead> {
+    const id = sessionId ?? String((await this.current()).id);
+    yield* this.transport.paginate<SessionRead>({ method: "GET", path: `/v1/sessions/${enc(id)}/trail` }, pageSize);
   }
 
   /** Mint another token, with the credential that started the session. Not retried. */
