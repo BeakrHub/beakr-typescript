@@ -172,6 +172,38 @@ export function resultText(result: KnowledgeResult): string {
     .join("\n");
 }
 
+/** Why a staged write waits for a project's owner or admin (`crossProjectHold`). */
+export interface CrossProjectHold {
+  /** "Content from Pharma A (cited) and Pharma C (read in this session)." */
+  reason: string;
+  /** Where the content came from, each with `via` (`cited`, `read_in_session`). */
+  projects: { id: string; name: string; via?: string[] }[];
+  /** Who may accept it: `owner_or_admin` of `project`. */
+  approver: string;
+  /** The project it waits in. */
+  project: { id: string; name: string };
+}
+
+/**
+ * Why a staged write waits for a project's owner or admin; undefined when it
+ * does not. Where a project's cross-project guard is `hold`, a write that
+ * brings in content from another project (a cited source, or a project its
+ * session read) is staged as usual but held: only an owner or admin of the
+ * project, acting as a person, can accept it, and auto-approve leaves it. The
+ * write still succeeds, so this is a normal result, not an error. `result` is a
+ * write's response or a proposal.
+ */
+export function crossProjectHold(result: unknown): CrossProjectHold | undefined {
+  if (typeof result !== "object" || result === null) return undefined;
+  const record = result as Record<string, unknown>;
+  for (const candidate of [record, record["proposal"]]) {
+    if (typeof candidate !== "object" || candidate === null) continue;
+    const hold = (candidate as Record<string, unknown>)["cross_project_hold"];
+    if (typeof hold === "object" && hold !== null) return hold as CrossProjectHold;
+  }
+  return undefined;
+}
+
 function checked<R extends KnowledgeResult>(result: R, check: boolean, meta?: ResponseMeta): R {
   if (check && result.outcome?.status === "error") {
     // The door's outcome protocol (`beakr.wiki_tool_outcome.v1`) names the

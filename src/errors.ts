@@ -132,12 +132,121 @@ export class SessionWriteScopeError extends SessionScopeError {
 /** 403 `session_widen_refused`: a session's own token can only drop projects, never add them. */
 export class SessionWidenRefusedError extends SessionScopeError {}
 
+/**
+ * 403 `session_required`: this needs a session the request is not in.
+ *
+ * Two refusals share the code. Organization security settings, step-up and
+ * agent-review policy changes need a signed-in person (a browser session) and
+ * refuse API keys and tokens. And where the organization requires agents to
+ * write inside a session (`agent_writes_require_session`), a Knowledge or file
+ * write with an API key or token outside any session is refused: send
+ * `X-Beakr-Session` (every client does unless built with `session: ""`) or work
+ * in `sessions.start()`. Service accounts are exempt.
+ */
+export class SessionRequiredError extends PermissionDeniedError {}
+
+/** A project as a refusal names it: its id and name. */
+export interface NamedProject {
+  id: string;
+  name: string;
+  /** For a cross-project refusal: how the content came (`cited`, `read_in_session`). */
+  via?: string[];
+}
+
+function namedProjects(value: unknown): NamedProject[] {
+  return Array.isArray(value)
+    ? value.filter((p): p is NamedProject => typeof p === "object" && p !== null)
+    : [];
+}
+
+function namedProject(value: unknown): NamedProject | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as NamedProject)
+    : undefined;
+}
+
+/** A refusal from project isolation; the message names the projects by name. */
+abstract class ProjectIsolationError extends PermissionDeniedError {
+  get sessionId(): string | undefined {
+    const value = this.details["session_id"];
+    return typeof value === "string" && value ? value : undefined;
+  }
+}
+
+/**
+ * 403 `session_read_only`: the session read two projects, so it may no longer
+ * write. With auto-lock on, a session that reads a second project becomes
+ * read-only for the rest of its life; reads keep working. Start a new session
+ * (a new client, or `sessions.start()`) and work in one project.
+ */
+export class SessionReadOnlyError extends ProjectIsolationError {
+  /** The projects the session read. */
+  get touchedProjects(): NamedProject[] {
+    return namedProjects(this.details["touched_projects"]);
+  }
+
+  get projectNames(): string[] {
+    return this.touchedProjects.map((p) => String(p.name ?? p.id));
+  }
+}
+
+/**
+ * 403 `session_locked_to_project`: the session writes one project and this is
+ * another. With auto-lock on, the first project a session touches becomes its
+ * only write project. Start a new session to write the others.
+ */
+export class SessionLockedToProjectError extends ProjectIsolationError {
+  /** The project the session is locked to. */
+  get writeProject(): NamedProject | undefined {
+    return namedProject(this.details["write_project"]);
+  }
+
+  /** The projects this write tried. */
+  get refusedProjects(): NamedProject[] {
+    return namedProjects(this.details["refused_projects"]);
+  }
+}
+
+/**
+ * 403 `cross_project_write_refused`: the project does not take content from
+ * others. The write cites a source from another project, or its session read
+ * another project, and the target's cross-project guard is `refuse`.
+ */
+export class CrossProjectWriteRefusedError extends ProjectIsolationError {
+  /** The project written to. */
+  get project(): NamedProject | undefined {
+    return namedProject(this.details["project"]);
+  }
+
+  /** Where the content came from, each with `via` (`cited`, `read_in_session`). */
+  get otherProjects(): NamedProject[] {
+    return namedProjects(this.details["other_projects"]);
+  }
+
+  get projectNames(): string[] {
+    return this.otherProjects.map((p) => String(p.name ?? p.id));
+  }
+}
+
+/**
+ * 403 `cross_project_owner_required`: only an owner or admin of the project may
+ * do this. Its cross-project guard is `hold`: a proposal bringing in content
+ * from another project waits for an owner or admin, and a write that commits
+ * without a proposal is refused. Stage it as a proposal instead.
+ */
+export class CrossProjectOwnerRequiredError extends ProjectIsolationError {}
+
 /** 403 codes with their own error type. */
 const FORBIDDEN_TYPES: Record<string, typeof PermissionDeniedError> = {
   person_review_required: PersonReviewRequiredError,
+  session_required: SessionRequiredError,
   session_needs_selection: SessionNeedsSelectionError,
   session_write_scope: SessionWriteScopeError,
   session_widen_refused: SessionWidenRefusedError,
+  session_read_only: SessionReadOnlyError,
+  session_locked_to_project: SessionLockedToProjectError,
+  cross_project_write_refused: CrossProjectWriteRefusedError,
+  cross_project_owner_required: CrossProjectOwnerRequiredError,
 };
 
 export class NotFoundError extends BeakrError {}
@@ -176,6 +285,13 @@ export class ProjectProfileRequiredError extends ConflictError {
     return typeof value === "string" && value ? value : undefined;
   }
 }
+
+/**
+ * 409 `session_ended`: the session this client's `X-Beakr-Session` names has
+ * ended. A session id is used once: after its session ends, the same id never
+ * starts another. Make a new client (it makes a new id) or use `sessions.start()`.
+ */
+export class SessionEndedError extends ConflictError {}
 
 /** 400 or 422: the request was malformed or failed validation. */
 export class ValidationError extends BeakrError {}
@@ -417,9 +533,9 @@ export function errorFromResponse(
   }
   if (status === 404) return new NotFoundError(message, common);
   if (status === 409) {
-    return code === "project_profile_required"
-      ? new ProjectProfileRequiredError(message, common)
-      : new ConflictError(message, common);
+    if (code === "project_profile_required") return new ProjectProfileRequiredError(message, common);
+    if (code === "session_ended") return new SessionEndedError(message, common);
+    return new ConflictError(message, common);
   }
   if (status === 429) {
     const retryAfter = parseRetryAfter(headers.get("retry-after"), nowMs);

@@ -3,6 +3,7 @@ import type { JsonObject } from "./types.js";
 import {
   INSPECT_CUSTOM,
   Transport,
+  sharedTransport,
   type ClientOptions,
   type QueryValue,
   type RequestOptions,
@@ -28,6 +29,7 @@ import { Me } from "./resources/me.js";
 import { Members } from "./resources/members.js";
 import { Meta } from "./resources/meta.js";
 import { OrgAdmin } from "./resources/org-admin.js";
+import { ProjectIsolation } from "./resources/project-isolation.js";
 import { Projects } from "./resources/projects.js";
 import { Runs } from "./resources/runs.js";
 import { Sessions } from "./resources/sessions.js";
@@ -54,6 +56,8 @@ export class Beakr {
   readonly endUserTokens: EndUserTokens;
   /** Agent sessions confined to the projects a person chooses: `sessions.create({ read, write })`. */
   readonly sessions: Sessions<Beakr>;
+  /** How sessions keep projects apart: auto-lock, writes outside a session, the cross-project guard. */
+  readonly projectIsolation: ProjectIsolation;
   /** Named groups of people mapped to projects. */
   readonly labels: Labels;
   readonly knowledge: Knowledge;
@@ -76,7 +80,7 @@ export class Beakr {
   protected readonly transport: Transport;
 
   constructor(options: ClientOptions = {}) {
-    this.transport = new Transport(options);
+    this.transport = sharedTransport(options) ?? new Transport(options);
     this.me = new Me(this.transport);
     this.meta = new Meta(this.transport);
     this.projects = new Projects(this.transport);
@@ -85,6 +89,7 @@ export class Beakr {
     this.externalUsers = new ExternalUsers(this.transport);
     this.endUserTokens = new EndUserTokens(this.transport);
     this.sessions = new Sessions<Beakr>(this.transport, (options) => new Beakr(options));
+    this.projectIsolation = new ProjectIsolation(this.transport);
     this.labels = new Labels(this.transport);
     this.knowledge = new Knowledge(this.transport);
     this.conversations = new Conversations(this.transport);

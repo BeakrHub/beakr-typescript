@@ -1,5 +1,5 @@
-import { cleanBody, type ClientOptions } from "../core.js";
-import { UnexpectedResponseError } from "../errors.js";
+import { cleanBody, newSessionId, onTransport, type ClientOptions } from "../core.js";
+import { NotFoundError, UnexpectedResponseError, ValidationError } from "../errors.js";
 import type { ResponseOf } from "../types.js";
 import { Resource, credentialClient, enc } from "./base.js";
 
@@ -42,7 +42,47 @@ export interface ScopedSession<C> {
   pickerUrl: string;
 }
 
+export interface StartSessionOptions {
+  /** A label the person recognizes, such as the job's name. */
+  label?: string;
+  /** The client shown to the person; defaults to this SDK's name. */
+  clientName?: string;
+}
+
 type MakeClient<C> = (options: ClientOptions) => C;
+
+/**
+ * A session joined by `X-Beakr-Session`, and a client that sends its id
+ * (`sessions.start`). `session` is the server's record of it (`mode`,
+ * `lock_state`, `write_project`, `touched_projects`...) as it was when it
+ * started; it is undefined on a server without sessions per agent
+ * conversation, where the id only labels the writes. `current()` reads it again.
+ */
+export class AgentSession<C> {
+  constructor(
+    /** The `X-Beakr-Session` id `client` sends. */
+    readonly agentSessionId: string,
+    /** The same caller as the client that started it, in this session. */
+    readonly client: C,
+    readonly session: Session | undefined,
+    private readonly sessions: Sessions<C>,
+  ) {}
+
+  /** The session's id on the server (undefined where the server keeps none). */
+  get id(): string | undefined {
+    return this.session ? String(this.session.id) : undefined;
+  }
+
+  /** The session now: its lock state, write project and the projects it touched. */
+  current(): Promise<Session> {
+    return this.sessions.current();
+  }
+
+  /** End the session now. Its id is used up: requests with it throw `SessionEndedError`. */
+  async end(): Promise<Session | undefined> {
+    return this.id === undefined ? undefined : this.sessions.end(this.id);
+  }
+}
 
 function expiresAtMs(value: unknown): number | undefined {
   const parsed = typeof value === "string" ? Date.parse(value) : Number.NaN;
@@ -89,6 +129,54 @@ export class Sessions<C = unknown> extends Resource {
     return this.scope(session, token, options.ttlSeconds);
   }
 
+  /**
+   * A fresh session for a block of work: makes a new `X-Beakr-Session` id,
+   * starts that session on the server (`POST /v1/sessions` with
+   * `agent_session`) and returns `client`, the same caller sending the id.
+   * End it with `end()`, or use `within`, which ends it for you. On a server
+   * without sessions per agent conversation nothing is started and `client`
+   * only labels its writes with the id.
+   */
+  async start(options: StartSessionOptions = {}): Promise<AgentSession<C>> {
+    const agentSessionId = await newSessionId();
+    const transport = this.transport.withSession(agentSessionId);
+    let session: Session | undefined;
+    try {
+      session = await transport.request<Session>({
+        method: "POST",
+        path: "/v1/sessions",
+        body: cleanBody({
+          agent_session: agentSessionId,
+          label: options.label,
+          client_name: credentialClient(options.clientName, this.transport.clientName),
+        }),
+      });
+    } catch (error) {
+      // A server without sessions (404), or without sessions per conversation
+      // (422 feature_not_enabled), starts none; the client still sends the id,
+      // which labels its writes as one session.
+      const notStarted =
+        error instanceof NotFoundError || (error instanceof ValidationError && error.code === "feature_not_enabled");
+      if (!notStarted) throw error;
+    }
+    const sessions = new Sessions<C>(transport, this.makeClient);
+    return new AgentSession(agentSessionId, this.makeClient(onTransport(transport)), session, sessions);
+  }
+
+  /**
+   * Run `work` in a fresh session (`start`) and end the session when it
+   * settles, even when it throws:
+   * `await beakr.sessions.within({ label: "import" }, async (s) => s.client.knowledge.write(...))`.
+   */
+  async within<T>(options: StartSessionOptions, work: (session: AgentSession<C>) => Promise<T>): Promise<T> {
+    const session = await this.start(options);
+    try {
+      return await work(session);
+    } finally {
+      await session.end();
+    }
+  }
+
   /** One page of your sessions, newest first; a scoped client sees only its own. */
   list(query: { includeEnded?: boolean; cursor?: string; limit?: number } = {}): Promise<SessionPage> {
     return this.transport.request({
@@ -102,7 +190,12 @@ export class Sessions<C = unknown> extends Resource {
     return this.transport.request({ method: "GET", path: `/v1/sessions/${enc(sessionId)}` });
   }
 
-  /** The session of the client making the request (a scoped client only). */
+  /**
+   * The session this client's requests run in: a scoped client's, or the one
+   * its `X-Beakr-Session` joins. With auto-lock, `lock_state` (`open`,
+   * `locked`, `read_only`), `write_project` and `touched_projects` say what it
+   * may still write.
+   */
   current(): Promise<Session> {
     return this.transport.request({ method: "GET", path: "/v1/sessions/current" });
   }
@@ -125,9 +218,15 @@ export class Sessions<C = unknown> extends Resource {
     });
   }
 
-  /** End the session; its tokens stop working at once. */
-  end(sessionId: string): Promise<Session> {
-    return this.transport.request({ method: "POST", path: `/v1/sessions/${enc(sessionId)}/end` });
+  /**
+   * End the session; its tokens stop working at once. Without `sessionId`,
+   * ends the session this client's requests run in (`current`). An
+   * `X-Beakr-Session` id is used once: after its session ends, this client's
+   * requests throw `SessionEndedError`; make a new client or use `start`.
+   */
+  async end(sessionId?: string): Promise<Session> {
+    const id = sessionId ?? String((await this.current()).id);
+    return this.transport.request({ method: "POST", path: `/v1/sessions/${enc(id)}/end` });
   }
 
   /** Mint another token, with the credential that started the session. Not retried. */
