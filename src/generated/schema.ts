@@ -1005,6 +1005,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/ingestion-events/{event_id}/trail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an ingestion event's read trail
+         * @description Get an ingestion event's read trail.
+         *
+         *     What was read before it. For an event made in a session, or one applying a proposal staged in one:
+         *     the session's reads before it, grouped by project.
+         */
+        get: operations["ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/pages": {
         parameters: {
             query?: never;
@@ -1079,6 +1102,29 @@ export interface paths {
          *     ``total`` counts every revision of the page, not just this page of them.
          */
         get: operations["get_wiki_page_revisions_v1_knowledge_wiki_pages__page_id__revisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a revision's read trail
+         * @description Get a revision's read trail.
+         *
+         *     What was read before a page revision, through the revision's ingestion event: the reads of the session that made
+         *     it (or staged the proposal it applied), grouped by project.
+         */
+        get: operations["revision_trail_v1_knowledge_wiki_pages__page_id__revisions__revision__trail_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1197,6 +1243,29 @@ export interface paths {
          * @description Dismiss a wiki proposal.
          */
         post: operations["dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/trail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a proposal's read trail
+         * @description Get a proposal's read trail.
+         *
+         *     What was read before it: the reads its session made before it was staged, grouped by project, with
+         *     reads of other projects flagged `cross_project`.
+         */
+        get: operations["proposal_trail_v1_knowledge_wiki_proposals__proposal_id__trail_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1818,6 +1887,34 @@ export interface paths {
          *     Only the fields sent change.
          */
         put: operations["set_project_isolation_v1_organizations__org_id__project_isolation_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/organizations/{org_id}/read-trail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the read trail settings
+         * @description Get the read trail settings.
+         *
+         *     How long a session's reads are kept, and whether the read trail is on.
+         */
+        get: operations["get_read_trail_settings_v1_organizations__org_id__read_trail_get"];
+        /**
+         * Change read trail retention
+         * @description Change read trail retention.
+         *
+         *     How long a session's reads are kept. Reads older than this are deleted within the hour.
+         */
+        put: operations["set_read_trail_settings_v1_organizations__org_id__read_trail_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -2497,6 +2594,30 @@ export interface paths {
          * @description Mint a token for the session with the person's own credential (never a session token).
          */
         post: operations["mint_session_token_v1_sessions__session_id__tokens_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sessions/{session_id}/trail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a session's reads
+         * @description List a session's reads.
+         *
+         *     Newest first. The session's person and org admins see every read; an owner
+         *     or admin of a project the session read sees the reads that touched their
+         *     projects.
+         */
+        get: operations["session_trail_v1_sessions__session_id__trail_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9935,6 +10056,32 @@ export interface components {
              */
             user_name?: string | null;
         };
+        /** ReadTrailSettingsOut */
+        ReadTrailSettingsOut: {
+            /**
+             * Available
+             * @description Whether the read trail is turned on.
+             */
+            available: boolean;
+            /**
+             * Can Change
+             * @description Whether the caller may change it: an org admin acting as a person.
+             */
+            can_change: boolean;
+            /**
+             * Read Trail Retention Days
+             * @description How many days a session's reads are kept (default 90).
+             */
+            read_trail_retention_days: number;
+        };
+        /** ReadTrailSettingsUpdate */
+        ReadTrailSettingsUpdate: {
+            /**
+             * Read Trail Retention Days
+             * @description Days to keep a session's reads.
+             */
+            read_trail_retention_days: number;
+        };
         /** ResearchCompleteness */
         ResearchCompleteness: {
             /**
@@ -11093,6 +11240,88 @@ export interface components {
              * @description Project name; null if the person can no longer see it.
              */
             name: string | null;
+        };
+        /** SessionReadOut */
+        SessionReadOut: {
+            /**
+             * Agent
+             * @description The agent that sent it (X-Beakr-Agent).
+             */
+            agent?: string | null;
+            /**
+             * At
+             * Format: date-time
+             * @description When.
+             */
+            at: string;
+            /**
+             * Client
+             * @description The client that sent it (X-Beakr-Client).
+             */
+            client?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             * @description Read id.
+             */
+            id: string;
+            /**
+             * Items
+             * @description What it read, by reference (never contents); at most 100.
+             */
+            items?: components["schemas"]["TrailItem"][];
+            /**
+             * Op
+             * @description What the read was: a Knowledge read command (`search`, `sections`, `cat`, `rows`, `graph`, `sources`, `grep`, `ls` or another read command, verbatim), `documents:<command>` (for example `documents:search`), `read_file` or `research` (one row per research run, listing every source it read or cited).
+             */
+            op: string;
+            /**
+             * Projects
+             * @description The Beakr projects the read touched: those it was addressed to and those its results came from. Empty when it reached only connected services or the web.
+             */
+            projects?: components["schemas"]["TrailProject"][];
+            /**
+             * Redacted
+             * @description True when it touched a project you cannot read: its summary and the titles of items outside your projects are null.
+             * @default false
+             */
+            redacted?: boolean;
+            /**
+             * Request Id
+             * @description The request's id (X-Request-ID).
+             */
+            request_id?: string | null;
+            /**
+             * Session Id
+             * @description The session that read.
+             */
+            session_id: string;
+            /**
+             * Summary
+             * @description A short summary of the query or arguments (at most 200 characters); null when redacted.
+             */
+            summary?: string | null;
+        };
+        /** SessionReadOutPage */
+        SessionReadOutPage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["SessionReadOut"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @default false
+             * @example false
+             */
+            has_more?: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
         };
         /** SessionToken */
         SessionToken: {
@@ -12298,6 +12527,92 @@ export interface components {
              * @description The tool's name.
              */
             name: string;
+        };
+        /** TrailGroup */
+        TrailGroup: {
+            /**
+             * Cross Project
+             * @description True when this is a project other than the write's project.
+             */
+            cross_project: boolean;
+            /**
+             * External
+             * @description True for the group of reads outside Beakr projects.
+             */
+            external: boolean;
+            /** @description The project; null for reads of connected services and the web. */
+            project?: components["schemas"]["TrailProject"] | null;
+            /**
+             * Reads
+             * @description Its reads, newest first, with only its items.
+             */
+            reads?: components["schemas"]["SessionReadOut"][];
+        };
+        /** TrailItem */
+        TrailItem: {
+            /**
+             * Id
+             * @description Its id: a page, file or interview id, a connector item's id, or a web source's address.
+             */
+            id?: string | null;
+            /**
+             * Kind
+             * @description What was read.
+             * @enum {string}
+             */
+            kind: "page" | "file" | "connector_item" | "message" | "interview" | "web";
+            /**
+             * Project Id
+             * @description The Beakr project it belongs to; null for connector items, messages and web sources.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id?: string | null;
+            /**
+             * Service
+             * @description For a connector item, its service, such as `external:slack`; else null.
+             */
+            service?: string | null;
+            /**
+             * Title
+             * @description Its title; null when redacted (a project you cannot read).
+             */
+            title?: string | null;
+        };
+        /** TrailProject */
+        TrailProject: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Project id.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Project name.
+             */
+            name?: string | null;
+        };
+        /** TrailWrite */
+        TrailWrite: {
+            /**
+             * At
+             * @description When it was made.
+             */
+            at?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             * @description Its id.
+             */
+            id: string;
+            /**
+             * Kind
+             * @description The write.
+             * @enum {string}
+             */
+            kind: "proposal" | "ingestion_event" | "revision";
+            /** @description The project it writes into. */
+            project?: components["schemas"]["TrailProject"] | null;
         };
         /** UploadCompletePart */
         UploadCompletePart: {
@@ -14087,6 +14402,43 @@ export interface components {
              * @description That step's title, as the workflow names it.
              */
             step_title?: string | null;
+        };
+        /** WriteTrailOut */
+        WriteTrailOut: {
+            /**
+             * Cross Project
+             * @description True when the session read another project before this write.
+             */
+            cross_project: boolean;
+            /**
+             * Groups
+             * @description The session's reads before the write, by project: the write's project first, then other projects in the order first read, then reads outside Beakr projects. A read that touched several projects is in each of their groups.
+             */
+            groups?: components["schemas"]["TrailGroup"][];
+            /**
+             * Reads Total
+             * @description How many reads the session made before the write.
+             * @default 0
+             */
+            reads_total?: number;
+            /**
+             * Recorded
+             * @description False when it was not made in a session with the read trail on: there is no trail, and `groups` is empty.
+             */
+            recorded: boolean;
+            /**
+             * Session Id
+             * @description The session that made it.
+             */
+            session_id?: string | null;
+            /**
+             * Truncated
+             * @description True when only the newest 500 of those reads are grouped here.
+             * @default false
+             */
+            truncated?: boolean;
+            /** @description The write: a proposal, ingestion event or page revision, its project and when it was made. */
+            write: components["schemas"]["TrailWrite"];
         };
         /** ProjectOverrideUpdate */
         beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate: {
@@ -16930,6 +17282,55 @@ export interface operations {
             };
         };
     };
+    ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WriteTrailOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     list_wiki_pages_v1_knowledge_wiki_pages_get: {
         parameters: {
             query?: {
@@ -17123,6 +17524,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WikiRevisions"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    revision_trail_v1_knowledge_wiki_pages__page_id__revisions__revision__trail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                page_id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WriteTrailOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
@@ -17446,6 +17897,55 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    proposal_trail_v1_knowledge_wiki_proposals__proposal_id__trail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WriteTrailOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
@@ -19770,6 +20270,108 @@ export interface operations {
             };
         };
     };
+    get_read_trail_settings_v1_organizations__org_id__read_trail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadTrailSettingsOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    set_read_trail_settings_v1_organizations__org_id__read_trail_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadTrailSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadTrailSettingsOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     list_service_accounts_v1_organizations__org_id__service_accounts_get: {
         parameters: {
             query?: {
@@ -21777,6 +22379,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionToken"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    session_trail_v1_sessions__session_id__trail_get: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionReadOutPage"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

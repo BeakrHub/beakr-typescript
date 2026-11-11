@@ -154,6 +154,16 @@ export type WikiProposal = ResponseOf<"/v1/knowledge/wiki/proposals/{proposal_id
 /** A page of proposals: `{data, next_cursor, has_more}`. */
 export type WikiProposalPage = ResponseOf<"/v1/knowledge/wiki/proposals", "get">;
 
+/**
+ * What a write's session read before it (`proposals.trail`,
+ * `pages.revisionTrail`, `ingestionEventTrail`): `groups` of reads, the
+ * write's own project first, then other projects in the order they were
+ * read, then outside services; `cross_project` when any came from another
+ * project. `recorded` is false when the write had no session or the trail was
+ * off.
+ */
+export type WriteTrail = ResponseOf<"/v1/knowledge/wiki/proposals/{proposal_id}/trail", "get">;
+
 /** One proposal as a page of {@link WikiProposalPage} lists it. */
 export type ListedWikiProposal = WikiProposalPage["data"][number];
 
@@ -279,10 +289,31 @@ class Proposals extends Resource {
   dismiss(proposalId: string): Promise<unknown> {
     return this.transport.request({ method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(proposalId)}/dismiss` });
   }
+
+  /**
+   * What the session that staged the proposal read before it ({@link WriteTrail}).
+   * A write's response names its proposal in `proposal_id`. Readable by the
+   * person whose session wrote it, owners or admins of its project and
+   * organization admins (403 `read_trail_forbidden` for anyone else).
+   */
+  trail(proposalId: string): Promise<WriteTrail> {
+    return this.transport.request({ method: "GET", path: `/v1/knowledge/wiki/proposals/${enc(proposalId)}/trail` });
+  }
 }
 
 /** Knowledge pages over REST, as structured records. */
 class Pages extends Resource {
+  /**
+   * What the session behind one revision of a page read before writing it
+   * ({@link WriteTrail}); `revision` is its number in the page's revisions.
+   */
+  revisionTrail(pageId: string, revision: number): Promise<WriteTrail> {
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/knowledge/wiki/pages/${enc(pageId)}/revisions/${enc(String(revision))}/trail`,
+    });
+  }
+
   /**
    * Every source that fed a page, as public source records: filename,
    * provider, `location` (the original's URL or path, or `file_id` for Beakr's
@@ -308,6 +339,14 @@ class Pages extends Resource {
 export class Knowledge extends Resource {
   readonly proposals = new Proposals(this.transport);
   readonly pages = new Pages(this.transport);
+
+  /** What the session behind a Knowledge ingestion event read before it ({@link WriteTrail}). */
+  ingestionEventTrail(eventId: string): Promise<WriteTrail> {
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/knowledge/wiki/ingestion-events/${enc(eventId)}/trail`,
+    });
+  }
 
   async command(command: string, args: JsonObject = {}, options: DoorOptions = {}): Promise<KnowledgeResult> {
     const body: JsonObject = { ...args, command };

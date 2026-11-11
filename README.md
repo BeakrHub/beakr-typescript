@@ -382,6 +382,23 @@ await beakr.sessions.within({ label: "nightly import" }, async (s) => {
 `sessions.create({ read, write })` still starts a session whose projects a
 person chooses, with its own token.
 
+Where the read trail is on (`session_read_trail`), Beakr records what each
+session read: `beakr.sessions.trail()` is one page of the current session's
+reads, newest first (`trail(sessionId)` for another, `iterTrail(sessionId)` for
+all of them), each with its `op`, the `projects` it touched and the `items` it
+returned. A write's trail says what its session read before it, grouped by
+project (its own first, other projects flagged `cross_project`):
+
+```ts
+const trail = await beakr.knowledge.proposals.trail(staged.proposal_id!);
+for (const group of trail.groups ?? []) console.log(group.project, group.cross_project, group.reads?.length);
+```
+
+`knowledge.ingestionEventTrail(eventId)` and
+`knowledge.pages.revisionTrail(pageId, revision)` do the same for an ingestion
+event and a page revision, and `projectIsolation.readTrail()` /
+`setReadTrailRetention(days)` read and set how long reads are kept.
+
 ## Errors
 
 Every failure is a `BeakrError` with `status`, `code` (from the error

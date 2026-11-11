@@ -15,6 +15,7 @@ export {
   resultText,
   type CrossProjectHold,
   type KnowledgeResult,
+  type WriteTrail,
   type KnowledgeWriteResult,
   type ProposalFiledBy,
   type StagedProposal,
@@ -81,6 +82,8 @@ export type {
   Session,
   SessionPage,
   SessionToken,
+  SessionRead,
+  SessionTrailPage,
   StartSessionOptions,
   UpdateSessionOptions,
 } from "./resources/sessions.js";
@@ -128,7 +131,11 @@ export {
   type AlreadyUploaded,
   type KnowledgeWaitOptions,
 } from "./resources/knowledge-readiness.js";
-export type { ProjectIsolationSettings, ProjectIsolationUpdate } from "./resources/project-isolation.js";
+export type {
+  ProjectIsolationSettings,
+  ProjectIsolationUpdate,
+  ReadTrailSettings,
+} from "./resources/project-isolation.js";
 export type {
   CrossProjectGuard,
   KnowledgeFailedFile,

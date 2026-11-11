@@ -59,9 +59,11 @@ export const OPERATIONS = {
   "knowledge.documents": { method: "POST", path: "/v1/knowledge/documents" },
   "knowledge.research": { method: "POST", path: "/v1/knowledge/research" },
   "knowledge.runWikiCommand": { method: "POST", path: "/v1/knowledge/wiki/command" },
+  "knowledge.ingestionEventTrail": { method: "GET", path: "/v1/knowledge/wiki/ingestion-events/{event_id}/trail" },
   "knowledge.listWikiPages": { method: "GET", path: "/v1/knowledge/wiki/pages" },
   "knowledge.getWikiPage": { method: "GET", path: "/v1/knowledge/wiki/pages/{page_id}" },
   "knowledge.getWikiPageRevisions": { method: "GET", path: "/v1/knowledge/wiki/pages/{page_id}/revisions" },
+  "knowledge.revisionTrail": { method: "GET", path: "/v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail" },
   "knowledge.getWikiPageSources": { method: "GET", path: "/v1/knowledge/wiki/pages/{page_id}/sources" },
   "knowledge.getWikiPageByTitle": { method: "GET", path: "/v1/knowledge/wiki/pages/by-title" },
   "knowledge.listProposals": { method: "GET", path: "/v1/knowledge/wiki/proposals" },
@@ -69,6 +71,7 @@ export const OPERATIONS = {
   "knowledge.getProposal": { method: "GET", path: "/v1/knowledge/wiki/proposals/{proposal_id}" },
   "knowledge.acceptProposal": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/accept" },
   "knowledge.dismissProposal": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/dismiss" },
+  "knowledge.proposalTrail": { method: "GET", path: "/v1/knowledge/wiki/proposals/{proposal_id}/trail" },
   "knowledge.searchWikiPages": { method: "GET", path: "/v1/knowledge/wiki/search" },
   "knowledge.revertWikiSource": { method: "POST", path: "/v1/knowledge/wiki/sources/{source_type}/{source_id}/revert" },
   "knowledge.runWikiWrite": { method: "POST", path: "/v1/knowledge/wiki/write" },
@@ -109,6 +112,8 @@ export const OPERATIONS = {
   "organizations.removeMember": { method: "DELETE", path: "/v1/organizations/{org_id}/members/{user_id}" },
   "organizations.getProjectIsolation": { method: "GET", path: "/v1/organizations/{org_id}/project-isolation" },
   "organizations.setProjectIsolation": { method: "PUT", path: "/v1/organizations/{org_id}/project-isolation" },
+  "organizations.getReadTrailSettings": { method: "GET", path: "/v1/organizations/{org_id}/read-trail" },
+  "organizations.setReadTrailSettings": { method: "PUT", path: "/v1/organizations/{org_id}/read-trail" },
   "serviceAccounts.listServiceAccounts": { method: "GET", path: "/v1/organizations/{org_id}/service-accounts" },
   "serviceAccounts.createServiceAccount": { method: "POST", path: "/v1/organizations/{org_id}/service-accounts" },
   "serviceAccounts.disableServiceAccount": { method: "POST", path: "/v1/organizations/{org_id}/service-accounts/{account_id}/disable" },
@@ -147,6 +152,7 @@ export const OPERATIONS = {
   "sessions.updateSession": { method: "PATCH", path: "/v1/sessions/{session_id}" },
   "sessions.endSession": { method: "POST", path: "/v1/sessions/{session_id}/end" },
   "sessions.mintSessionToken": { method: "POST", path: "/v1/sessions/{session_id}/tokens" },
+  "sessions.sessionTrail": { method: "GET", path: "/v1/sessions/{session_id}/trail" },
   "sessions.currentSession": { method: "GET", path: "/v1/sessions/current" },
   "skills.listSkills": { method: "GET", path: "/v1/skills" },
   "skills.createSkill": { method: "POST", path: "/v1/skills" },
@@ -627,6 +633,12 @@ export class KnowledgeApi {
     return this.transport.request(request);
   }
 
+  /** GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail (Get an ingestion event's read trail) */
+  ingestionEventTrail(args: { path: operations["ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/knowledge/wiki/ingestion-events/${enc(String(args.path.event_id))}/trail`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
   /** GET /v1/knowledge/wiki/pages (List Knowledge pages) */
   listWikiPages(args?: { query?: NonNullable<operations["list_wiki_pages_v1_knowledge_wiki_pages_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_wiki_pages_v1_knowledge_wiki_pages_get"]>> {
     const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/pages", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
@@ -655,6 +667,12 @@ export class KnowledgeApi {
   getWikiPageRevisionsAll(args: { path: operations["get_wiki_page_revisions_v1_knowledge_wiki_pages__page_id__revisions_get"]["parameters"]["path"]; query?: NonNullable<operations["get_wiki_page_revisions_v1_knowledge_wiki_pages__page_id__revisions_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["get_wiki_page_revisions_v1_knowledge_wiki_pages__page_id__revisions_get"]>> {
     const request: RequestOptions = { method: "GET", path: `/v1/knowledge/wiki/pages/${enc(String(args.path.page_id))}/revisions`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail (Get a revision's read trail) */
+  revisionTrail(args: { path: operations["revision_trail_v1_knowledge_wiki_pages__page_id__revisions__revision__trail_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["revision_trail_v1_knowledge_wiki_pages__page_id__revisions__revision__trail_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/knowledge/wiki/pages/${enc(String(args.path.page_id))}/revisions/${enc(String(args.path.revision))}/trail`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
   }
 
   /** GET /v1/knowledge/wiki/pages/{page_id}/sources (List a page's sources) */
@@ -708,6 +726,12 @@ export class KnowledgeApi {
   /** POST /v1/knowledge/wiki/proposals/{proposal_id}/dismiss (Dismiss a Knowledge proposal) */
   dismissProposal(args: { path: operations["dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/dismiss`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/knowledge/wiki/proposals/{proposal_id}/trail (Get a proposal's read trail) */
+  proposalTrail(args: { path: operations["proposal_trail_v1_knowledge_wiki_proposals__proposal_id__trail_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["proposal_trail_v1_knowledge_wiki_proposals__proposal_id__trail_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/trail`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
@@ -909,6 +933,18 @@ export class OrganizationsApi {
   /** PUT /v1/organizations/{org_id}/project-isolation (Change the project isolation settings) */
   setProjectIsolation(args: { path: operations["set_project_isolation_v1_organizations__org_id__project_isolation_put"]["parameters"]["path"]; body: NonNullable<operations["set_project_isolation_v1_organizations__org_id__project_isolation_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["set_project_isolation_v1_organizations__org_id__project_isolation_put"]>> {
     const request: RequestOptions = { method: "PUT", path: `/v1/organizations/${enc(String(args.path.org_id))}/project-isolation`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/organizations/{org_id}/read-trail (Get the read trail settings) */
+  getReadTrailSettings(args: { path: operations["get_read_trail_settings_v1_organizations__org_id__read_trail_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_read_trail_settings_v1_organizations__org_id__read_trail_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/organizations/${enc(String(args.path.org_id))}/read-trail`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PUT /v1/organizations/{org_id}/read-trail (Change read trail retention) */
+  setReadTrailSettings(args: { path: operations["set_read_trail_settings_v1_organizations__org_id__read_trail_put"]["parameters"]["path"]; body: NonNullable<operations["set_read_trail_settings_v1_organizations__org_id__read_trail_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["set_read_trail_settings_v1_organizations__org_id__read_trail_put"]>> {
+    const request: RequestOptions = { method: "PUT", path: `/v1/organizations/${enc(String(args.path.org_id))}/read-trail`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 }
@@ -1194,6 +1230,18 @@ export class SessionsApi {
   mintSessionToken(args: { path: operations["mint_session_token_v1_sessions__session_id__tokens_post"]["parameters"]["path"]; body: NonNullable<operations["mint_session_token_v1_sessions__session_id__tokens_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["mint_session_token_v1_sessions__session_id__tokens_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/sessions/${enc(String(args.path.session_id))}/tokens`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
+  }
+
+  /** GET /v1/sessions/{session_id}/trail (List a session's reads) */
+  sessionTrail(args: { path: operations["session_trail_v1_sessions__session_id__trail_get"]["parameters"]["path"]; query?: NonNullable<operations["session_trail_v1_sessions__session_id__trail_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["session_trail_v1_sessions__session_id__trail_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/sessions/${enc(String(args.path.session_id))}/trail`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/sessions/{session_id}/trail, following its cursor. */
+  sessionTrailAll(args: { path: operations["session_trail_v1_sessions__session_id__trail_get"]["parameters"]["path"]; query?: NonNullable<operations["session_trail_v1_sessions__session_id__trail_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["session_trail_v1_sessions__session_id__trail_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/sessions/${enc(String(args.path.session_id))}/trail`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
   }
 
   /** GET /v1/sessions/current (Get the current session) */
