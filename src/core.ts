@@ -218,7 +218,16 @@ export function sharedTransport(options: ClientOptions): Transport | undefined {
 
 /** A fresh `X-Beakr-Session` id: `sdk-typescript-` and 32 random hex digits. */
 export function newSessionId(): string {
-  return `sdk-typescript-${globalThis.crypto.randomUUID().replace(/-/g, "")}`;
+  const bytes = new Uint8Array(16);
+  const crypto = (globalThis as { crypto?: { getRandomValues?: (array: Uint8Array) => Uint8Array } }).crypto;
+  if (crypto?.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    // Node 18 has no Web Crypto global outside a REPL. The id is not a secret,
+    // it only has to differ between clients.
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return `sdk-typescript-${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
