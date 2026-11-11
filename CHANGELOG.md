@@ -53,7 +53,10 @@ Each release lists the public API changes it supports, taken from the API change
   else `BEAKR_SESSION`, else an id the client makes once
   (`sdk-typescript-<32 hex>`), so one client is one session and auto-lock, the
   cross-project guard and `agent_writes_require_session` apply to a script as
-  to an agent (`session: ""` sends none). `beakr.sessions.within({ label }, work)` runs
+  to an agent. Meant for `auto_lock` organizations: in `picker` mode such a
+  session waits for the person to choose its projects, so pass
+  `session: false` there to send none. The id comes from Web Crypto, or
+  `node:crypto` on Node 18. `beakr.sessions.within({ label }, work)` runs
   work in a fresh session and ends it (`sessions.start()` returns one to end
   yourself); `sessions.current()` shows its `lock_state`, and
   `sessions.end()` without an id ends the current one. Refusals throw

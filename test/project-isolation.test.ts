@@ -53,6 +53,7 @@ function refusal(status: number, code: string, message: string, extras: Record<s
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe("the X-Beakr-Session id", () => {
@@ -70,13 +71,24 @@ describe("the X-Beakr-Session id", () => {
     expect(calls[2]!.headers["x-beakr-session"]).not.toBe(first);
   });
 
-  it("is the caller's `session`, else BEAKR_SESSION; an empty one sends none", async () => {
+  it("is the caller's `session`, else BEAKR_SESSION; false or empty sends none", async () => {
     vi.stubEnv("BEAKR_SESSION", "env-session");
-    const { fetch, calls } = mockFetch([json({}), json({}), json({})]);
+    const { fetch, calls } = mockFetch([json({}), json({}), json({}), json({})]);
     await client(fetch).beakr.me.get();
     await client(fetch, { session: "cc-123" }).beakr.me.get();
+    // A picker-mode organization's scripts opt out: a header-joined session
+    // there waits for the person to choose its projects.
+    await client(fetch, { session: false }).beakr.me.get();
     await client(fetch, { session: "" }).beakr.me.get();
-    expect(calls.map((c) => c.headers["x-beakr-session"])).toEqual(["env-session", "cc-123", undefined]);
+    expect(calls.map((c) => c.headers["x-beakr-session"])).toEqual(["env-session", "cc-123", undefined, undefined]);
+  });
+
+  it("is made from node:crypto where there is no Web Crypto global (Node 18)", async () => {
+    vi.stubEnv("BEAKR_SESSION", "");
+    vi.stubGlobal("crypto", undefined);
+    const { fetch, calls } = mockFetch([json({})]);
+    await client(fetch).beakr.me.get();
+    expect(calls[0]!.headers["x-beakr-session"]).toMatch(/^sdk-typescript-[0-9a-f]{32}$/);
   });
 
   it("is kept by a session's scoped client", async () => {

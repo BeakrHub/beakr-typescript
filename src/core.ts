@@ -34,7 +34,7 @@ import {
   readCliSavedKey,
 } from "./cli-login.js";
 import { type CliTokenOutcome, runCliToken } from "./cli-token.js";
-import { isNodeRuntime, nodeBuiltinSync } from "./node-builtins.js";
+import { isNodeRuntime, nodeBuiltin, nodeBuiltinSync } from "./node-builtins.js";
 import {
   normalizeOrigin,
   readServiceAccountFile,
@@ -140,9 +140,11 @@ export interface ClientOptions {
    * conversation or thread id). Defaults to `BEAKR_SESSION`, else an id made
    * once for this client, so everything one script does lands in one
    * server-side session (auto-lock and the cross-project guard apply to it as
-   * to an agent). `""` sends none.
+   * to an agent). Meant for organizations in `auto_lock` mode: in `picker`
+   * mode such a session waits for the person to choose its projects, so pass
+   * `false` (or `""`) to send none.
    */
-  session?: string;
+  session?: string | false;
   /** Sent as `X-Org-Id` to select an organization for session-like credentials. */
   orgId?: string;
   timeoutMs?: number;
@@ -216,18 +218,27 @@ export function sharedTransport(options: ClientOptions): Transport | undefined {
   return (options as { [SHARED_TRANSPORT]?: Transport })[SHARED_TRANSPORT];
 }
 
-/** A fresh `X-Beakr-Session` id: `sdk-typescript-` and 32 random hex digits. */
-export function newSessionId(): string {
-  const bytes = new Uint8Array(16);
-  const crypto = (globalThis as { crypto?: { getRandomValues?: (array: Uint8Array) => Uint8Array } }).crypto;
-  if (crypto?.getRandomValues) {
-    crypto.getRandomValues(bytes);
-  } else {
-    // Node 18 has no Web Crypto global outside a REPL. The id is not a secret,
-    // it only has to differ between clients.
-    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-  }
+type NodeCrypto = { randomBytes(size: number): Uint8Array };
+
+function sessionIdFrom(bytes: Uint8Array): string {
   return `sdk-typescript-${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/**
+ * A fresh `X-Beakr-Session` id, `sdk-typescript-` and 32 random hex digits,
+ * from Web Crypto, else `node:crypto` when it can be loaded synchronously;
+ * undefined when neither can (Node 18's ES modules: see `newSessionId`).
+ */
+function newSessionIdSync(): string | undefined {
+  const crypto = (globalThis as { crypto?: { getRandomValues?: (array: Uint8Array) => Uint8Array } }).crypto;
+  if (crypto?.getRandomValues) return sessionIdFrom(crypto.getRandomValues(new Uint8Array(16)));
+  const node = nodeBuiltinSync<NodeCrypto>("node:crypto");
+  return node ? sessionIdFrom(node.randomBytes(16)) : undefined;
+}
+
+/** A fresh `X-Beakr-Session` id; on Node 18, from `node:crypto` loaded first. */
+export async function newSessionId(): Promise<string> {
+  return newSessionIdSync() ?? sessionIdFrom((await nodeBuiltin<NodeCrypto>("node:crypto")).randomBytes(16));
 }
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -295,7 +306,9 @@ export class Transport {
   readonly baseUrl: string;
   readonly clientName: string;
   readonly agent: string | undefined;
-  readonly session: string | undefined;
+  #session: string | undefined;
+  /** Making this client's session id, when it could not be made synchronously (Node 18). */
+  private sessionPending: Promise<void> | undefined;
   orgId: string | undefined;
   readonly timeoutMs: number;
   readonly maxRetries: number;
@@ -326,8 +339,17 @@ export class Transport {
     this.baseUrl = (options.baseUrl ?? env("BEAKR_BASE_URL") ?? env("BEAKR_API_URL") ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.clientName = options.clientName ?? `sdk-typescript/${VERSION}`;
     this.agent = options.agent;
-    const session = options.session ?? env("BEAKR_SESSION") ?? newSessionId();
-    this.session = session === "" ? undefined : session;
+    const session = options.session ?? env("BEAKR_SESSION");
+    if (session === undefined) {
+      this.#session = newSessionIdSync();
+      if (this.#session === undefined) {
+        this.sessionPending = newSessionId().then((id) => {
+          this.#session = id;
+        });
+      }
+    } else {
+      this.#session = session === false || session === "" ? undefined : session;
+    }
     this.orgId = options.orgId ?? env("BEAKR_ORG_ID");
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.maxRetries = Math.max(0, options.maxRetries ?? DEFAULT_MAX_RETRIES);
@@ -582,6 +604,11 @@ export class Transport {
     return this.canRefresh() && expiresAt !== undefined && Date.now() >= expiresAt - REFRESH_SKEW_MS;
   }
 
+  /** The `X-Beakr-Session` id this client sends, if any. */
+  get session(): string | undefined {
+    return this.#session;
+  }
+
   /**
    * The options a client sharing this one's connection settings starts from: a
    * session's scoped client (`sessions.create`). Never carries the credential.
@@ -600,7 +627,7 @@ export class Transport {
       cliLogin: false,
     };
     if (this.agent !== undefined) options.agent = this.agent;
-    options.session = this.session ?? "";
+    options.session = this.#session ?? false;
     if (this.orgId !== undefined) options.orgId = this.orgId;
     return options;
   }
@@ -669,6 +696,7 @@ export class Transport {
   }
 
   private async send<T>(options: RequestOptions, { allowRefresh }: { allowRefresh: boolean }): Promise<T> {
+    await this.sessionPending;
     if (allowRefresh && options.authenticated !== false && this.needsProactiveRefresh()) {
       await this.refreshTokens();
     }
@@ -849,6 +877,7 @@ export class Transport {
    * No retries; a 401 is refreshed once when tokens allow. Non-2xx rejects.
    */
   async raw(options: RequestOptions): Promise<Response> {
+    await this.sessionPending;
     if (options.authenticated !== false && this.needsProactiveRefresh()) await this.refreshTokens();
     await this.prepareCredential(options);
     for (let refreshed = false; ; refreshed = true) {

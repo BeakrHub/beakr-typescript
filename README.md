@@ -325,11 +325,18 @@ contract is always assumed served: the document cannot speak for it.
 
 Every client sends an `X-Beakr-Session` id on every request: `session`, else
 `BEAKR_SESSION`, else an id the client makes once (`sdk-typescript-<32 hex>`),
-so two clients never share one. `session: ""` sends none. Where the server
-keeps a session per agent conversation (`server_agent_sessions`), a person's
-API key that sends the id runs inside that person's session for it, started on
-first use. **One client is one session**: auto-lock and the cross-project guard
-apply to a script exactly as to an agent.
+so two clients never share one. Where the server keeps a session per agent
+conversation (`server_agent_sessions`), a person's API key that sends the id
+runs inside that person's session for it, started on first use. **One client
+is one session**: auto-lock and the cross-project guard apply to a script
+exactly as to an agent.
+
+This is meant for organizations whose `session_mode` is `auto_lock`. In
+`picker` mode a session started this way is pending: project reads and writes
+throw `SessionNeedsSelectionError` until the person chooses its projects at its
+`picker_url`. A script for a picker-mode organization should pass
+`new Beakr({ session: false })` (or `session: ""`), which sends no id, or
+start a session with chosen projects through `beakr.sessions.create({ read, write })`.
 
 - With auto-lock (`session_auto_lock`), the first project a session reads or
   writes becomes its only write project; once it reads a second project it is

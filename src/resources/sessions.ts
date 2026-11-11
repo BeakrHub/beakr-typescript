@@ -138,7 +138,7 @@ export class Sessions<C = unknown> extends Resource {
    * only labels its writes with the id.
    */
   async start(options: StartSessionOptions = {}): Promise<AgentSession<C>> {
-    const agentSessionId = newSessionId();
+    const agentSessionId = await newSessionId();
     const transport = this.transport.withSession(agentSessionId);
     let session: Session | undefined;
     try {
