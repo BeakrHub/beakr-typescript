@@ -1013,10 +1013,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get what was read before an ingestion event
-         * @description Get what was read before an ingestion event.
+         * Get an ingestion event's read trail
+         * @description Get an ingestion event's read trail.
          *
-         *     For an event made in a session, or one applying a proposal staged in one:
+         *     What was read before it. For an event made in a session, or one applying a proposal staged in one:
          *     the session's reads before it, grouped by project.
          */
         get: operations["ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get"];
@@ -1118,10 +1118,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get what was read before a page revision
-         * @description Get what was read before a page revision.
+         * Get a revision's read trail
+         * @description Get a revision's read trail.
          *
-         *     Through the revision's ingestion event: the reads of the session that made
+         *     What was read before a page revision, through the revision's ingestion event: the reads of the session that made
          *     it (or staged the proposal it applied), grouped by project.
          */
         get: operations["revision_trail_v1_knowledge_wiki_pages__page_id__revisions__revision__trail_get"];
@@ -1257,10 +1257,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get what was read before a proposal
-         * @description Get what was read before a proposal.
+         * Get a proposal's read trail
+         * @description Get a proposal's read trail.
          *
-         *     The reads its session made before it was staged, grouped by project, with
+         *     What was read before it: the reads its session made before it was staged, grouped by project, with
          *     reads of other projects flagged `cross_project`.
          */
         get: operations["proposal_trail_v1_knowledge_wiki_proposals__proposal_id__trail_get"];
@@ -1909,10 +1909,10 @@ export interface paths {
          */
         get: operations["get_read_trail_settings_v1_organizations__org_id__read_trail_get"];
         /**
-         * Change how long a session's reads are kept
-         * @description Change how long a session's reads are kept.
+         * Change read trail retention
+         * @description Change read trail retention.
          *
-         *     Reads older than this are deleted within the hour.
+         *     How long a session's reads are kept. Reads older than this are deleted within the hour.
          */
         put: operations["set_read_trail_settings_v1_organizations__org_id__read_trail_put"];
         post?: never;
@@ -14398,7 +14398,7 @@ export interface components {
              * @default false
              */
             truncated?: boolean;
-            /** @description Write. */
+            /** @description The write: a proposal, ingestion event or page revision, its project and when it was made. */
             write: components["schemas"]["TrailWrite"];
         };
         /** ProjectOverrideUpdate */

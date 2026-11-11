@@ -633,7 +633,7 @@ export class KnowledgeApi {
     return this.transport.request(request);
   }
 
-  /** GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail (Get what was read before an ingestion event) */
+  /** GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail (Get an ingestion event's read trail) */
   ingestionEventTrail(args: { path: operations["ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get"]>> {
     const request: RequestOptions = { method: "GET", path: `/v1/knowledge/wiki/ingestion-events/${enc(String(args.path.event_id))}/trail`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
@@ -669,7 +669,7 @@ export class KnowledgeApi {
     return this.transport.paginate(request, options?.pageSize);
   }
 
-  /** GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail (Get what was read before a page revision) */
+  /** GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail (Get a revision's read trail) */
   revisionTrail(args: { path: operations["revision_trail_v1_knowledge_wiki_pages__page_id__revisions__revision__trail_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["revision_trail_v1_knowledge_wiki_pages__page_id__revisions__revision__trail_get"]>> {
     const request: RequestOptions = { method: "GET", path: `/v1/knowledge/wiki/pages/${enc(String(args.path.page_id))}/revisions/${enc(String(args.path.revision))}/trail`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
@@ -729,7 +729,7 @@ export class KnowledgeApi {
     return this.transport.request(request);
   }
 
-  /** GET /v1/knowledge/wiki/proposals/{proposal_id}/trail (Get what was read before a proposal) */
+  /** GET /v1/knowledge/wiki/proposals/{proposal_id}/trail (Get a proposal's read trail) */
   proposalTrail(args: { path: operations["proposal_trail_v1_knowledge_wiki_proposals__proposal_id__trail_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["proposal_trail_v1_knowledge_wiki_proposals__proposal_id__trail_get"]>> {
     const request: RequestOptions = { method: "GET", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/trail`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
@@ -942,7 +942,7 @@ export class OrganizationsApi {
     return this.transport.request(request);
   }
 
-  /** PUT /v1/organizations/{org_id}/read-trail (Change how long a session's reads are kept) */
+  /** PUT /v1/organizations/{org_id}/read-trail (Change read trail retention) */
   setReadTrailSettings(args: { path: operations["set_read_trail_settings_v1_organizations__org_id__read_trail_put"]["parameters"]["path"]; body: NonNullable<operations["set_read_trail_settings_v1_organizations__org_id__read_trail_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["set_read_trail_settings_v1_organizations__org_id__read_trail_put"]>> {
     const request: RequestOptions = { method: "PUT", path: `/v1/organizations/${enc(String(args.path.org_id))}/read-trail`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
