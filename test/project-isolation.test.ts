@@ -238,24 +238,29 @@ describe("a held write", () => {
   it("is a normal result that says why it waits", async () => {
     const hold = {
       reason: "Content from Pharma A (cited).",
-      projects: [{ ...PHARMA_A, via: ["cited"] }],
+      projects: [{ ...PHARMA_A, via: ["cited"], cited: [{ title: "memo.pdf", source_type: "artifact" }] }],
       approver: "owner_or_admin",
       project: PHARMA_B,
     };
+    // The write response's proposal carries the hold; a proposal read adds
+    // whether this caller may accept it.
+    const readHold = { ...hold, can_accept: false };
     const { fetch } = mockFetch([
       json({
         content: [{ type: "text", text: "Staged." }],
         outcome: { status: "ok", approval_state: "pending" },
         proposal_id: "p1",
-        proposal: { id: "p1", cross_project_hold: hold },
+        proposal: { id: "p1", cross_project_hold: hold, needs_project_admin_to_accept: true },
       }),
-      json({ id: "p1", cross_project_hold: hold, needs_project_admin_to_accept: true }),
+      json({ id: "p1", cross_project_hold: readHold, needs_project_admin_to_accept: true }),
     ]);
     const { beakr } = client(fetch);
     const result = await beakr.knowledge.write("add_fact", { rationale: "r" });
     const proposal = await beakr.knowledge.proposals.get("p1");
     expect(crossProjectHold(result)).toEqual(hold);
-    expect(crossProjectHold(proposal)).toEqual(hold);
+    // Typed on the write response itself, too.
+    expect(result.proposal?.needs_project_admin_to_accept).toBe(true);
+    expect(crossProjectHold(proposal)?.can_accept).toBe(false);
     expect(crossProjectHold({ id: "p2", cross_project_hold: null })).toBeUndefined();
     expect(crossProjectHold(undefined)).toBeUndefined();
   });

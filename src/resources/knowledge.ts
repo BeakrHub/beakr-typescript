@@ -172,17 +172,13 @@ export function resultText(result: KnowledgeResult): string {
     .join("\n");
 }
 
-/** Why a staged write waits for a project's owner or admin (`crossProjectHold`). */
-export interface CrossProjectHold {
-  /** "Content from Pharma A (cited) and Pharma C (read in this session)." */
-  reason: string;
-  /** Where the content came from, each with `via` (`cited`, `read_in_session`). */
-  projects: { id: string; name: string; via?: string[] }[];
-  /** Who may accept it: `owner_or_admin` of `project`. */
-  approver: string;
-  /** The project it waits in. */
-  project: { id: string; name: string };
-}
+/**
+ * Why a staged write waits for a project's owner or admin (`crossProjectHold`):
+ * the `reason`, the `projects` its content came from (each with `via` and the
+ * sources `cited` from it), the `project` it waits in and, on proposal reads,
+ * `can_accept` for the caller.
+ */
+export type CrossProjectHold = components["schemas"]["CrossProjectHold"];
 
 /**
  * Why a staged write waits for a project's owner or admin; undefined when it
@@ -191,7 +187,8 @@ export interface CrossProjectHold {
  * session read) is staged as usual but held: only an owner or admin of the
  * project, acting as a person, can accept it, and auto-approve leaves it. The
  * write still succeeds, so this is a normal result, not an error. `result` is a
- * write's response or a proposal.
+ * write's response (its `proposal` carries the hold) or a proposal, whose
+ * `can_accept` says whether the caller may accept it.
  */
 export function crossProjectHold(result: unknown): CrossProjectHold | undefined {
   if (typeof result !== "object" || result === null) return undefined;
