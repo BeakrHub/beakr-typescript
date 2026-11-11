@@ -9,11 +9,11 @@ Each release lists the public API changes it supports, taken from the API change
 
 - Project isolation, for organizations whose projects must not write into one
   another (each part is available where the organization has it turned on;
-  `GET /v1/project-isolation` returns which parts are on, under `available`):
-  - Settings: `GET /v1/project-isolation` returns the organization's
+  `GET /v1/organizations/{org_id}/project-isolation` returns which parts are on, under `available`):
+  - Settings: `GET /v1/organizations/{org_id}/project-isolation` returns the organization's
     `session_mode` (`picker` or `auto_lock`), `auto_lock_counts_search_results`,
     `agent_writes_require_session` and `cross_project_guard` (`allow`, `hold` or
-    `refuse`). `PUT /v1/project-isolation` changes them; it needs an
+    `refuse`). `PUT /v1/organizations/{org_id}/project-isolation` changes them; it needs an
     organization admin signed in, or their key with `proposals:accept`, and
     answers `404 feature_not_enabled` for a part that is not turned on.
     `GET` and `PUT /v1/projects/{project_id}/cross-project-guard` read and set

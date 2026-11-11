@@ -1797,6 +1797,34 @@ export interface paths {
         patch: operations["update_member_role_route_v1_organizations__org_id__members__user_id__patch"];
         trace?: never;
     };
+    "/v1/organizations/{org_id}/project-isolation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the project isolation settings
+         * @description Get the project isolation settings.
+         *
+         *     The organization's settings, and which of the features are turned on for it.
+         */
+        get: operations["get_project_isolation_v1_organizations__org_id__project_isolation_get"];
+        /**
+         * Change the project isolation settings
+         * @description Change the project isolation settings.
+         *
+         *     Only the fields sent change.
+         */
+        put: operations["set_project_isolation_v1_organizations__org_id__project_isolation_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/organizations/{org_id}/service-accounts": {
         parameters: {
             query?: never;
@@ -1855,30 +1883,6 @@ export interface paths {
          * @description Mint a scoped key owned by the service account. Shown once.
          */
         post: operations["mint_service_account_key_v1_organizations__org_id__service_accounts__account_id__keys_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/project-isolation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * The organization's project isolation settings and which features are on
-         * @description The organization's project isolation settings and which features are on.
-         */
-        get: operations["get_project_isolation_v1_project_isolation_get"];
-        /**
-         * Change the organization's settings (only the fields sent)
-         * @description Change the organization's settings (only the fields sent).
-         */
-        put: operations["set_project_isolation_v1_project_isolation_put"];
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1945,13 +1949,17 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The project's cross-project guard: its own, the organization's, and the one that applies
-         * @description The project's cross-project guard: its own, the organization's, and the one that applies.
+         * Get a project's cross-project guard
+         * @description Get a project's cross-project guard.
+         *
+         *     Its own setting, the organization's, and the one that applies.
          */
         get: operations["get_cross_project_guard_v1_projects__project_id__cross_project_guard_get"];
         /**
-         * Give the project its own guard, or clear it (null) to follow the organization's
-         * @description Give the project its own guard, or clear it (null) to follow the organization's.
+         * Set a project's cross-project guard
+         * @description Set a project's cross-project guard.
+         *
+         *     Its own guard, or null to follow the organization's.
          */
         put: operations["set_cross_project_guard_v1_projects__project_id__cross_project_guard_put"];
         post?: never;
@@ -19621,6 +19629,108 @@ export interface operations {
             };
         };
     };
+    get_project_isolation_v1_organizations__org_id__project_isolation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectIsolationOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    set_project_isolation_v1_organizations__org_id__project_isolation_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                org_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectIsolationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectIsolationOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     list_service_accounts_v1_organizations__org_id__service_accounts_get: {
         parameters: {
             query?: {
@@ -19807,104 +19917,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
-                };
-            };
-            /** @description Validation error: `error.details.errors` lists every failing field. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description The request was refused; `error.code` says why. */
-            "4XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
-            "5XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    get_project_isolation_v1_project_isolation_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProjectIsolationOut"];
-                };
-            };
-            /** @description Validation error: `error.details.errors` lists every failing field. */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description The request was refused; `error.code` says why. */
-            "4XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
-            "5XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    set_project_isolation_v1_project_isolation_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProjectIsolationUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProjectIsolationOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

@@ -107,12 +107,12 @@ export const OPERATIONS = {
   "organizations.addMember": { method: "POST", path: "/v1/organizations/{org_id}/members" },
   "organizations.updateMemberRole": { method: "PATCH", path: "/v1/organizations/{org_id}/members/{user_id}" },
   "organizations.removeMember": { method: "DELETE", path: "/v1/organizations/{org_id}/members/{user_id}" },
+  "organizations.getProjectIsolation": { method: "GET", path: "/v1/organizations/{org_id}/project-isolation" },
+  "organizations.setProjectIsolation": { method: "PUT", path: "/v1/organizations/{org_id}/project-isolation" },
   "serviceAccounts.listServiceAccounts": { method: "GET", path: "/v1/organizations/{org_id}/service-accounts" },
   "serviceAccounts.createServiceAccount": { method: "POST", path: "/v1/organizations/{org_id}/service-accounts" },
   "serviceAccounts.disableServiceAccount": { method: "POST", path: "/v1/organizations/{org_id}/service-accounts/{account_id}/disable" },
   "serviceAccounts.mintServiceAccountKey": { method: "POST", path: "/v1/organizations/{org_id}/service-accounts/{account_id}/keys" },
-  "organizations.getProjectIsolation": { method: "GET", path: "/v1/project-isolation" },
-  "organizations.setProjectIsolation": { method: "PUT", path: "/v1/project-isolation" },
   "projects.listProjects": { method: "GET", path: "/v1/projects" },
   "projects.createProject": { method: "POST", path: "/v1/projects" },
   "projects.getProject": { method: "GET", path: "/v1/projects/{project_id}" },
@@ -900,15 +900,15 @@ export class OrganizationsApi {
     return this.transport.request(request);
   }
 
-  /** GET /v1/project-isolation (The organization's project isolation settings and which features are on) */
-  getProjectIsolation(options?: CallOptions): Promise<OperationResponse<operations["get_project_isolation_v1_project_isolation_get"]>> {
-    const request: RequestOptions = { method: "GET", path: "/v1/project-isolation", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+  /** GET /v1/organizations/{org_id}/project-isolation (Get the project isolation settings) */
+  getProjectIsolation(args: { path: operations["get_project_isolation_v1_organizations__org_id__project_isolation_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_project_isolation_v1_organizations__org_id__project_isolation_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/organizations/${enc(String(args.path.org_id))}/project-isolation`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
-  /** PUT /v1/project-isolation (Change the organization's settings (only the fields sent)) */
-  setProjectIsolation(args: { body: NonNullable<operations["set_project_isolation_v1_project_isolation_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["set_project_isolation_v1_project_isolation_put"]>> {
-    const request: RequestOptions = { method: "PUT", path: "/v1/project-isolation", body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+  /** PUT /v1/organizations/{org_id}/project-isolation (Change the project isolation settings) */
+  setProjectIsolation(args: { path: operations["set_project_isolation_v1_organizations__org_id__project_isolation_put"]["parameters"]["path"]; body: NonNullable<operations["set_project_isolation_v1_organizations__org_id__project_isolation_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["set_project_isolation_v1_organizations__org_id__project_isolation_put"]>> {
+    const request: RequestOptions = { method: "PUT", path: `/v1/organizations/${enc(String(args.path.org_id))}/project-isolation`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 }
@@ -953,13 +953,13 @@ export class ProjectsApi {
     return this.transport.request(request);
   }
 
-  /** GET /v1/projects/{project_id}/cross-project-guard (The project's cross-project guard: its own, the organization's, and the one that applies) */
+  /** GET /v1/projects/{project_id}/cross-project-guard (Get a project's cross-project guard) */
   getCrossProjectGuard(args: { path: operations["get_cross_project_guard_v1_projects__project_id__cross_project_guard_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_cross_project_guard_v1_projects__project_id__cross_project_guard_get"]>> {
     const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/cross-project-guard`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
-  /** PUT /v1/projects/{project_id}/cross-project-guard (Give the project its own guard, or clear it (null) to follow the organization's) */
+  /** PUT /v1/projects/{project_id}/cross-project-guard (Set a project's cross-project guard) */
   setCrossProjectGuard(args: { path: operations["set_cross_project_guard_v1_projects__project_id__cross_project_guard_put"]["parameters"]["path"]; body: NonNullable<operations["set_cross_project_guard_v1_projects__project_id__cross_project_guard_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["set_cross_project_guard_v1_projects__project_id__cross_project_guard_put"]>> {
     const request: RequestOptions = { method: "PUT", path: `/v1/projects/${enc(String(args.path.project_id))}/cross-project-guard`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
