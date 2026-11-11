@@ -128,7 +128,9 @@ export {
   type AlreadyUploaded,
   type KnowledgeWaitOptions,
 } from "./resources/knowledge-readiness.js";
+export type { ProjectIsolationSettings, ProjectIsolationUpdate } from "./resources/project-isolation.js";
 export type {
+  CrossProjectGuard,
   KnowledgeFailedFile,
   KnowledgeRetryResult,
   ProjectKnowledgeStatus,

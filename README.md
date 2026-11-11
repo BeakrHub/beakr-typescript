@@ -321,6 +321,60 @@ if (!caps.serves("GET", "/v1/integrations")) {
 no document is assumed to serve everything, and a route outside the documented
 contract is always assumed served: the document cannot speak for it.
 
+### Sessions and project isolation
+
+Every client sends an `X-Beakr-Session` id on every request: `session`, else
+`BEAKR_SESSION`, else an id the client makes once (`sdk-typescript-<32 hex>`),
+so two clients never share one. `session: ""` sends none. Where the server
+keeps a session per agent conversation (`server_agent_sessions`), a person's
+API key that sends the id runs inside that person's session for it, started on
+first use. **One client is one session**: auto-lock, the cross-project guard
+and the read trail apply to a script exactly as to an agent.
+
+- With auto-lock (`session_auto_lock`), the first project a session reads or
+  writes becomes its only write project; once it reads a second project it is
+  read-only for good. A write then throws `SessionReadOnlyError`
+  (`touchedProjects`, `projectNames`) or `SessionLockedToProjectError`
+  (`writeProject`, `refusedProjects`). Work in one project per session: start a
+  new one for the next project.
+- A session id is used once. After its session ends (`beakr.sessions.end()`),
+  the client's requests throw `SessionEndedError`; make a new client.
+- Where agents must write inside a session (`agent_writes_require_session`), a
+  write with no session throws `SessionRequiredError`. Service accounts are
+  exempt, and the server ignores their `X-Beakr-Session` (sending it is
+  harmless). OAuth access tokens (`bk_at_`, the CLI's sign-in) do not join a
+  session by header in this release.
+- A project's cross-project guard decides what happens to a write bringing in
+  content from another project (cited, or read earlier in the session):
+  `refuse` throws `CrossProjectWriteRefusedError` (`project`, `otherProjects`);
+  `hold` stages it as usual and resolves normally, and `crossProjectHold(result)`
+  says why it waits and that only an owner or admin of the project can accept
+  it (`CrossProjectOwnerRequiredError` for anyone else).
+
+```ts
+import { crossProjectHold } from "@beakr/sdk";
+
+console.log(await beakr.sessions.current()); // mode, lock_state, write_project, touched_projects
+
+// A fresh session for a block of work, ended when the work settles.
+await beakr.sessions.within({ label: "nightly import" }, async (s) => {
+  const staged = await s.client.knowledge.write(
+    "add_fact",
+    { page: "Stripe", attribute: "renewal", value: "2027-01-31", rationale: "Order form" },
+    { scope: "Pharma A" },
+  );
+  const hold = crossProjectHold(staged);
+  if (hold) console.log(hold.reason); // waits for an owner or admin of hold.project
+  console.log((await s.current()).lock_state);
+});
+```
+
+`sessions.start()` returns the same session without ending it; call its
+`end()`. On a server without sessions per conversation, nothing is started
+(`s.session` is undefined) and the id only labels the writes.
+`sessions.create({ read, write })` still starts a session whose projects a
+person chooses, with its own token.
+
 ## Errors
 
 Every failure is a `BeakrError` with `status`, `code` (from the error
@@ -328,8 +382,10 @@ envelope's `error.code`), `message` and `requestId`. Subclasses:
 `AuthenticationError` (401), `PermissionDeniedError` (403, with
 `requiredScope`; `PersonReviewRequiredError` for `person_review_required`,
 where only a person or a key holding `proposals:accept` may accept proposals
-or commit Knowledge), `NotFoundError`, `ConflictError`
-(`ProjectProfileRequiredError` for `project_profile_required`), `ValidationError`,
+or commit Knowledge; `SessionRequiredError` for `session_required`; and the
+session and cross-project refusals under "Sessions and project isolation"),
+`NotFoundError`, `ConflictError` (`ProjectProfileRequiredError` for
+`project_profile_required`, `SessionEndedError` for `session_ended`), `ValidationError`,
 `RateLimitError` (with `retryAfter`), `ServerError`, `APIConnectionError`,
 `KnowledgeCommandError` (a refused Knowledge command), `UnexpectedResponseError`
 (a success whose body is an HTML page where JSON was expected) and

@@ -30,7 +30,7 @@ function session(extra: Record<string, unknown> = {}) {
     id: "s1",
     status: "active",
     mode: "auto_lock",
-    agent_session_id: "conv-1",
+    agent_session: "conv-1",
     lock_state: "open",
     write_project: null,
     touched_projects: [],
@@ -107,7 +107,7 @@ describe("sessions.start", () => {
     expect(s.client).toBeInstanceOf(Beakr);
     const fresh = s.agentSessionId;
     expect(fresh).toMatch(/^sdk-typescript-[0-9a-f]{32}$/);
-    expect(calls[0]!.body).toEqual({ agent_session_id: fresh, label: "nightly import", client_name: "sdk-typescript" });
+    expect(calls[0]!.body).toEqual({ agent_session: fresh, label: "nightly import", client_name: "sdk-typescript" });
     expect(s.id).toBe("s1");
     await s.client.me.get();
     await beakr.me.get();
@@ -243,5 +243,23 @@ describe("a held write", () => {
     expect(crossProjectHold(proposal)).toEqual(hold);
     expect(crossProjectHold({ id: "p2", cross_project_hold: null })).toBeUndefined();
     expect(crossProjectHold(undefined)).toBeUndefined();
+  });
+});
+
+describe("settings", () => {
+  it("send only what changes; a null guard follows the organization", async () => {
+    const guard = { project_id: "pb", project_name: "Pharma B", override: null, org_default: "hold", effective: "hold", can_change: true, available: true };
+    const { fetch, calls } = mockFetch([json({ session_mode: "auto_lock" }), json(guard), json(guard), json(guard)]);
+    const { beakr } = client(fetch);
+    await beakr.projectIsolation.update({ session_mode: "auto_lock" });
+    expect((await beakr.projects.crossProjectGuard("pb")).effective).toBe("hold");
+    await beakr.projects.setCrossProjectGuard("pb", null);
+    await beakr.projects.setCrossProjectGuard("pb", "refuse");
+    expect(calls.map((c) => [c.method, new URL(c.url).pathname, c.body])).toEqual([
+      ["PUT", "/v1/project-isolation", { session_mode: "auto_lock" }],
+      ["GET", "/v1/projects/pb/cross-project-guard", undefined],
+      ["PUT", "/v1/projects/pb/cross-project-guard", { override: null }],
+      ["PUT", "/v1/projects/pb/cross-project-guard", { override: "refuse" }],
+    ]);
   });
 });

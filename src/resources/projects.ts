@@ -32,6 +32,9 @@ export type ProjectKnowledgeProfilePatch = BodyOf<
   "patch"
 >;
 
+/** A project's cross-project guard (`GET /v1/projects/{project_id}/cross-project-guard`). */
+export type CrossProjectGuard = ResponseOf<"/v1/projects/{project_id}/cross-project-guard", "get">;
+
 /** Options for {@link Projects.startProfileSetup}. */
 export interface ProfileSetupOptions {
   /** Continue this setup conversation instead of starting one. */
@@ -122,6 +125,27 @@ export class Projects extends Resource {
       method: "PATCH",
       path: `/v1/projects/${enc(projectId)}`,
       body: cleanBody(body as Record<string, unknown>),
+    });
+  }
+
+  /**
+   * What the project does with writes that bring in content from other
+   * projects: `effective` is `allow`, `hold` (an owner or admin accepts them)
+   * or `refuse`, the project's `override` else the organization's `org_default`.
+   */
+  crossProjectGuard(projectId: string): Promise<CrossProjectGuard> {
+    return this.transport.request({ method: "GET", path: `/v1/projects/${enc(projectId)}/cross-project-guard` });
+  }
+
+  /**
+   * Set the project's own guard (`allow`, `hold`, `refuse`); `null` follows the
+   * organization's. An owner or admin of the project acting as a person may.
+   */
+  setCrossProjectGuard(projectId: string, override: "allow" | "hold" | "refuse" | null): Promise<CrossProjectGuard> {
+    return this.transport.request({
+      method: "PUT",
+      path: `/v1/projects/${enc(projectId)}/cross-project-guard`,
+      body: { override },
     });
   }
 

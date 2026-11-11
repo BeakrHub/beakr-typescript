@@ -1861,6 +1861,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/project-isolation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The organization's project isolation settings and which features are on
+         * @description The organization's project isolation settings and which features are on.
+         */
+        get: operations["get_project_isolation_v1_project_isolation_get"];
+        /**
+         * Change the organization's settings (only the fields sent)
+         * @description Change the organization's settings (only the fields sent).
+         */
+        put: operations["set_project_isolation_v1_project_isolation_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects": {
         parameters: {
             query?: never;
@@ -1911,6 +1935,30 @@ export interface paths {
          * @description Change a project's name, description, status or tags; fields left out are kept. Project admins and owners only.
          */
         patch: operations["update_project_route_v1_projects__project_id__patch"];
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/cross-project-guard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The project's cross-project guard: its own, the organization's, and the one that applies
+         * @description The project's cross-project guard: its own, the organization's, and the one that applies.
+         */
+        get: operations["get_cross_project_guard_v1_projects__project_id__cross_project_guard_get"];
+        /**
+         * Give the project its own guard, or clear it (null) to follow the organization's
+         * @description Give the project its own guard, or clear it (null) to follow the organization's.
+         */
+        put: operations["set_cross_project_guard_v1_projects__project_id__cross_project_guard_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/projects/{project_id}/invite": {
@@ -2348,6 +2396,9 @@ export interface paths {
         /**
          * Start a session
          * @description Start a session for the signed-in person, optionally with its projects and a token.
+         *
+         *     With ``agent_session``, the person's active session for that agent
+         *     conversation is returned (and a token minted for it if asked), or started.
          */
         post: operations["create_session_v1_sessions_post"];
         delete?: never;
@@ -4686,6 +4737,121 @@ export interface components {
              * @description The link token. Shown on the first response only; absent from an idempotent replay.
              */
             token?: string | null;
+        };
+        /** CrossProjectGuardOut */
+        CrossProjectGuardOut: {
+            /**
+             * Available
+             * @description Whether the cross-project guard is turned on.
+             */
+            available: boolean;
+            /**
+             * Can Change
+             * @description Whether the caller may change it: an owner or admin of the project acting as a person.
+             */
+            can_change: boolean;
+            /**
+             * Effective
+             * @description The guard that applies: the project's, else the org's.
+             * @enum {string}
+             */
+            effective: "allow" | "hold" | "refuse";
+            /**
+             * Org Default
+             * @description The organization's guard.
+             * @enum {string}
+             */
+            org_default: "allow" | "hold" | "refuse";
+            /**
+             * Override
+             * @description The project's own guard; null follows the organization's.
+             */
+            override: ("allow" | "hold" | "refuse") | null;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description Project id.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /**
+             * Project Name
+             * @description Project name.
+             */
+            project_name: string | null;
+        };
+        /** CrossProjectGuardUpdate */
+        CrossProjectGuardUpdate: {
+            /**
+             * Override
+             * @description `allow`, `hold` or `refuse`; null clears it, so the project follows the organization.
+             */
+            override: ("allow" | "hold" | "refuse") | null;
+        };
+        /** CrossProjectHold */
+        CrossProjectHold: {
+            /**
+             * Approver
+             * @description Who may accept it: an owner or admin of `project`.
+             * @default owner_or_admin
+             */
+            approver?: string;
+            /**
+             * @description The project it writes into, whose owner or admin may accept it.
+             * @default null
+             */
+            project?: components["schemas"]["CrossProjectHoldTarget"] | null;
+            /**
+             * Projects
+             * @description The other projects whose content it brings in.
+             */
+            projects?: components["schemas"]["CrossProjectHoldProject"][];
+            /**
+             * Reason
+             * @description Why it is held, naming the projects: `Content from Pharma A (cited).`
+             */
+            reason: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** CrossProjectHoldProject */
+        CrossProjectHoldProject: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Unique id of this cross project hold project.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Name of the cross project hold project.
+             * @default null
+             */
+            name?: string | null;
+            /**
+             * Via
+             * @description How its content came in: `cited` (a source of it is cited), `moved` (moved or copied in) or `read_in_session` (the session that wrote this had read it).
+             */
+            via?: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        /** CrossProjectHoldTarget */
+        CrossProjectHoldTarget: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Unique id of this cross project hold target.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Name of the cross project hold target.
+             * @default null
+             */
+            name?: string | null;
+        } & {
+            [key: string]: unknown;
         };
         /** DocumentsCoverage */
         DocumentsCoverage: {
@@ -8891,6 +9057,84 @@ export interface components {
              */
             tags?: string[];
         };
+        /** ProjectIsolationAvailable */
+        ProjectIsolationAvailable: {
+            /**
+             * Agent Writes Require Session
+             * @description `agent_writes_require_session` may be set.
+             */
+            agent_writes_require_session: boolean;
+            /**
+             * Cross Project Guard
+             * @description `cross_project_guard` and project overrides may be set.
+             */
+            cross_project_guard: boolean;
+            /**
+             * Server Agent Sessions
+             * @description Agent sessions joined by X-Beakr-Session or agent_session_id.
+             */
+            server_agent_sessions: boolean;
+            /**
+             * Session Auto Lock
+             * @description `session_mode` may be set.
+             */
+            session_auto_lock: boolean;
+        };
+        /** ProjectIsolationOut */
+        ProjectIsolationOut: {
+            /**
+             * Agent Writes Require Session
+             * @description Refuse Knowledge and file writes made with a person's API key or token outside a session (403 session_required). The web app and service accounts are exempt.
+             */
+            agent_writes_require_session: boolean;
+            /**
+             * Auto Lock Counts Search Results
+             * @description In auto_lock, whether the projects an unscoped search's results come from count as read (true, strict) or only projects a request names (false).
+             */
+            auto_lock_counts_search_results: boolean;
+            /** @description Which of these features are turned on for the organization. */
+            available: components["schemas"]["ProjectIsolationAvailable"];
+            /**
+             * Can Change
+             * @description Whether the caller may change these: an org admin acting as a person.
+             */
+            can_change: boolean;
+            /**
+             * Cross Project Guard
+             * @description The organization's default for writes into a project that cite a source from another project, or come from a session that read another project: `allow`, `hold` (only an owner or admin of the project may accept them) or `refuse`.
+             * @enum {string}
+             */
+            cross_project_guard: "allow" | "hold" | "refuse";
+            /**
+             * Session Mode
+             * @description `picker`: the person chooses each agent session's projects. `auto_lock`: the server decides: the first project a session reads or writes becomes its read-write project, and reading a second makes it read-only for the rest of its life.
+             * @enum {string}
+             */
+            session_mode: "picker" | "auto_lock";
+        };
+        /** ProjectIsolationUpdate */
+        ProjectIsolationUpdate: {
+            /**
+             * Agent Writes Require Session
+             * @description Refuse Knowledge and file writes made with a person's API key or token outside a session (403 session_required). The web app and service accounts are exempt.
+             */
+            agent_writes_require_session?: boolean | null;
+            /**
+             * Auto Lock Counts Search Results
+             * @description In auto_lock, whether the projects an unscoped search's results come from count as read (true, strict) or only projects a request names (false).
+             */
+            auto_lock_counts_search_results?: boolean | null;
+            /**
+             * Cross Project Guard
+             * @description The organization's default for writes into a project that cite a source from another project, or come from a session that read another project: `allow`, `hold` (only an owner or admin of the project may accept them) or `refuse`.
+             */
+            cross_project_guard?: ("allow" | "hold" | "refuse") | null;
+            /**
+             * Session Mode
+             * @description `picker`: the person chooses each agent session's projects. `auto_lock`: the server decides: the first project a session reads or writes becomes its read-write project, and reading a second makes it read-only for the rest of its life.
+             */
+            session_mode?: ("picker" | "auto_lock") | null;
+        };
         /**
          * ProjectKnowledgeActivity
          * @description Whether a project's Knowledge is still being built, and how many files failed.
@@ -9418,6 +9662,16 @@ export interface components {
              * @example 2026-10-01T14:32:08Z
              */
             created_at: string;
+            /**
+             * Cross Project Guard
+             * @description Cross project guard: one of `allow`, `hold`, `refuse`.
+             */
+            cross_project_guard?: ("allow" | "hold" | "refuse") | null;
+            /**
+             * Cross Project Guard Override
+             * @description Cross project guard override: one of `allow`, `hold`, `refuse`.
+             */
+            cross_project_guard_override?: ("allow" | "hold" | "refuse") | null;
             /**
              * Description
              * @description Optional project description.
@@ -10608,6 +10862,11 @@ export interface components {
         /** SessionCreate */
         SessionCreate: {
             /**
+             * Agent Session
+             * @description The agent conversation this session is for (what the client sends as `X-Beakr-Session`). Returns the person's active session for it, or starts one; an id whose session has ended answers `409 session_ended`. Needs `server_agent_sessions`.
+             */
+            agent_session?: string | null;
+            /**
              * Client Name
              * @description The client holding the session, shown to the person (`beakr mcp`, `beakr-cli`).
              * @default api
@@ -10649,6 +10908,11 @@ export interface components {
         /** SessionOut */
         SessionOut: {
             /**
+             * Agent Session
+             * @description The agent conversation id (`X-Beakr-Session`) it was started for.
+             */
+            agent_session?: string | null;
+            /**
              * Client Name
              * @description The client holding the session.
              */
@@ -10687,10 +10951,31 @@ export interface components {
              */
             last_used_at: string | null;
             /**
+             * Lock State
+             * @description `auto_lock` only: `open` (no project yet), `locked` (reads and writes `write_project`) or `read_only` (read two projects; writes are refused). Null in picker mode.
+             */
+            lock_state?: string | null;
+            /**
+             * Mode
+             * @description `picker` (the person chooses the projects) or `auto_lock` (the first project the session reads or writes becomes its project; reading a second makes it read-only).
+             * @default picker
+             */
+            mode?: string;
+            /**
              * Picker Url
              * @description Where the person chooses and changes the projects.
              */
             picker_url: string;
+            /**
+             * Read Only At
+             * @description When it became read-only.
+             */
+            read_only_at?: string | null;
+            /**
+             * Read Only Reason
+             * @description Why it is read-only, naming the projects it read.
+             */
+            read_only_reason?: string | null;
             /**
              * Read Projects
              * @description Projects the session may read.
@@ -10719,12 +11004,19 @@ export interface components {
             /** @description The token minted with the session, when `issue_token` was set. */
             token?: components["schemas"]["SessionToken"] | null;
             /**
+             * Touched Projects
+             * @description Every project the session has read or written, in order (tracked under auto-lock or the cross-project guard).
+             */
+            touched_projects?: components["schemas"]["SessionProject"][];
+            /**
              * Updated At
              * Format: date-time
              * @description When its projects or label last changed.
              * @example 2026-10-03T09:15:42Z
              */
             updated_at: string;
+            /** @description `auto_lock` only: the project it reads and writes, while locked. */
+            write_project?: components["schemas"]["SessionProject"] | null;
             /**
              * Write Projects
              * @description Projects the session may write.
@@ -13085,6 +13377,11 @@ export interface components {
              */
             created_at: string;
             /**
+             * @description Set when the project's cross-project guard holds this proposal: it brings in content from another project, so only an owner or admin of its project, acting as a person, may accept it (anyone else: 403 cross_project_owner_required). It is never auto-approved.
+             * @default null
+             */
+            cross_project_hold?: components["schemas"]["CrossProjectHold"] | null;
+            /**
              * @description Who filed this proposal and through which API client or agent.
              * @default null
              */
@@ -13101,6 +13398,12 @@ export interface components {
              * @default false
              */
             needs_person_to_accept?: boolean;
+            /**
+             * Needs Project Admin To Accept
+             * @description True when `cross_project_hold` is set.
+             * @default false
+             */
+            needs_project_admin_to_accept?: boolean;
             /**
              * Page Id
              * @description Id of the page.
@@ -19535,6 +19838,104 @@ export interface operations {
             };
         };
     };
+    get_project_isolation_v1_project_isolation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectIsolationOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    set_project_isolation_v1_project_isolation_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectIsolationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectIsolationOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     list_projects_route_v1_projects_get: {
         parameters: {
             query?: {
@@ -19763,6 +20164,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_cross_project_guard_v1_projects__project_id__cross_project_guard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrossProjectGuardOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    set_cross_project_guard_v1_projects__project_id__cross_project_guard_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrossProjectGuardUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrossProjectGuardOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

@@ -132,7 +132,7 @@ export class Sessions<C = unknown> extends Resource {
   /**
    * A fresh session for a block of work: makes a new `X-Beakr-Session` id,
    * starts that session on the server (`POST /v1/sessions` with
-   * `agent_session_id`) and returns `client`, the same caller sending the id.
+   * `agent_session`) and returns `client`, the same caller sending the id.
    * End it with `end()`, or use `within`, which ends it for you. On a server
    * without sessions per agent conversation nothing is started and `client`
    * only labels its writes with the id.
@@ -146,7 +146,7 @@ export class Sessions<C = unknown> extends Resource {
         method: "POST",
         path: "/v1/sessions",
         body: cleanBody({
-          agent_session_id: agentSessionId,
+          agent_session: agentSessionId,
           label: options.label,
           client_name: credentialClient(options.clientName, this.transport.clientName),
         }),

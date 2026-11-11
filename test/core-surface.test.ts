@@ -31,6 +31,7 @@ const CORE_RESOURCES = [
   "members",
   "meta",
   "org",
+  "projectIsolation",
   "projects",
   "runs",
   "sessions",

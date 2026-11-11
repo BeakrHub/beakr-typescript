@@ -111,11 +111,15 @@ export const OPERATIONS = {
   "serviceAccounts.createServiceAccount": { method: "POST", path: "/v1/organizations/{org_id}/service-accounts" },
   "serviceAccounts.disableServiceAccount": { method: "POST", path: "/v1/organizations/{org_id}/service-accounts/{account_id}/disable" },
   "serviceAccounts.mintServiceAccountKey": { method: "POST", path: "/v1/organizations/{org_id}/service-accounts/{account_id}/keys" },
+  "organizations.getProjectIsolation": { method: "GET", path: "/v1/project-isolation" },
+  "organizations.setProjectIsolation": { method: "PUT", path: "/v1/project-isolation" },
   "projects.listProjects": { method: "GET", path: "/v1/projects" },
   "projects.createProject": { method: "POST", path: "/v1/projects" },
   "projects.getProject": { method: "GET", path: "/v1/projects/{project_id}" },
   "projects.updateProject": { method: "PATCH", path: "/v1/projects/{project_id}" },
   "projects.deleteProject": { method: "DELETE", path: "/v1/projects/{project_id}" },
+  "projects.getCrossProjectGuard": { method: "GET", path: "/v1/projects/{project_id}/cross-project-guard" },
+  "projects.setCrossProjectGuard": { method: "PUT", path: "/v1/projects/{project_id}/cross-project-guard" },
   "projects.createProjectMembershipInvitation": { method: "POST", path: "/v1/projects/{project_id}/invite" },
   "projects.getProjectKnowledgeProfile": { method: "GET", path: "/v1/projects/{project_id}/knowledge-profile" },
   "projects.putProjectKnowledgeProfile": { method: "PUT", path: "/v1/projects/{project_id}/knowledge-profile" },
@@ -895,6 +899,18 @@ export class OrganizationsApi {
     const request: RequestOptions = { method: "DELETE", path: `/v1/organizations/${enc(String(args.path.org_id))}/members/${enc(String(args.path.user_id))}`, responseType: "none", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
+
+  /** GET /v1/project-isolation (The organization's project isolation settings and which features are on) */
+  getProjectIsolation(options?: CallOptions): Promise<OperationResponse<operations["get_project_isolation_v1_project_isolation_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/project-isolation", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PUT /v1/project-isolation (Change the organization's settings (only the fields sent)) */
+  setProjectIsolation(args: { body: NonNullable<operations["set_project_isolation_v1_project_isolation_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["set_project_isolation_v1_project_isolation_put"]>> {
+    const request: RequestOptions = { method: "PUT", path: "/v1/project-isolation", body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
 }
 
 /** Public operations tagged projects. */
@@ -934,6 +950,18 @@ export class ProjectsApi {
   /** DELETE /v1/projects/{project_id} (Delete a project) */
   deleteProject(args: { path: operations["delete_project_route_v1_projects__project_id__delete"]["parameters"]["path"] }, options?: CallOptions): Promise<void> {
     const request: RequestOptions = { method: "DELETE", path: `/v1/projects/${enc(String(args.path.project_id))}`, responseType: "none", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/projects/{project_id}/cross-project-guard (The project's cross-project guard: its own, the organization's, and the one that applies) */
+  getCrossProjectGuard(args: { path: operations["get_cross_project_guard_v1_projects__project_id__cross_project_guard_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_cross_project_guard_v1_projects__project_id__cross_project_guard_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/cross-project-guard`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PUT /v1/projects/{project_id}/cross-project-guard (Give the project its own guard, or clear it (null) to follow the organization's) */
+  setCrossProjectGuard(args: { path: operations["set_cross_project_guard_v1_projects__project_id__cross_project_guard_put"]["parameters"]["path"]; body: NonNullable<operations["set_cross_project_guard_v1_projects__project_id__cross_project_guard_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["set_cross_project_guard_v1_projects__project_id__cross_project_guard_put"]>> {
+    const request: RequestOptions = { method: "PUT", path: `/v1/projects/${enc(String(args.path.project_id))}/cross-project-guard`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
