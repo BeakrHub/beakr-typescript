@@ -48,8 +48,15 @@ Each release lists the public API changes it supports, taken from the API change
     projects) and `needs_project_admin_to_accept: true`: only an owner or admin
     of the project, signed in or with a `proposals:accept` key, may accept it,
     anyone else gets `403 cross_project_owner_required`, and it is never
-    auto-approved. A write that commits without a proposal is allowed under
-    `hold` only for an owner or admin of the project.
+    auto-approved. Each project in the hold lists the sources `cited` from it,
+    and on proposal reads `can_accept` says whether the caller may accept it.
+    The write response's `proposal` carries the same `cross_project_hold` and
+    `needs_project_admin_to_accept`. A write that commits without a proposal is
+    allowed under `hold` only for an owner or admin of the project.
+  - Reading a project's name or metadata (`GET /v1/projects`,
+    `GET /v1/projects/{project_id}`) never counts as reading it.
+    `POST /v1/artifacts/{artifact_id}/knowledge` and its `/approve` accept a
+    session token or `X-Beakr-Session`, confined to the session's projects.
 - TypeScript: every client sends `X-Beakr-Session` on every request: `session`,
   else `BEAKR_SESSION`, else an id the client makes once
   (`sdk-typescript-<32 hex>`), so one client is one session and auto-lock, the

@@ -4926,6 +4926,12 @@ export interface components {
              */
             approver?: string;
             /**
+             * Can Accept
+             * @description On proposal reads: whether the caller may accept it (a person who is an owner or admin of `project`). Null where it is not computed.
+             * @default null
+             */
+            can_accept?: boolean | null;
+            /**
              * @description The project it writes into, whose owner or admin may accept it.
              * @default null
              */
@@ -4943,8 +4949,30 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** CrossProjectHoldCitation */
+        CrossProjectHoldCitation: {
+            /**
+             * Source Type
+             * @description Its kind: `artifact`, `wiki`, `unit`...
+             * @default null
+             */
+            source_type?: string | null;
+            /**
+             * Title
+             * @description The cited source's title, as cited.
+             * @default null
+             */
+            title?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** CrossProjectHoldProject */
         CrossProjectHoldProject: {
+            /**
+             * Cited
+             * @description The cited sources that come from this project (at most 10).
+             */
+            cited?: components["schemas"]["CrossProjectHoldCitation"][];
             /**
              * Id
              * Format: uuid
@@ -11965,6 +11993,11 @@ export interface components {
              */
             content_hash?: string | null;
             /**
+             * @description Set when the project's cross-project guard holds this proposal: only an owner or admin of its project may accept it, and it is never auto-approved.
+             * @default null
+             */
+            cross_project_hold?: components["schemas"]["CrossProjectHold"] | null;
+            /**
              * @description Who filed the proposal and through which API client or agent.
              * @default null
              */
@@ -11975,6 +12008,12 @@ export interface components {
              * @description The staged proposal's id, for the proposals routes.
              */
             id: string;
+            /**
+             * Needs Project Admin To Accept
+             * @description True when `cross_project_hold` is set.
+             * @default false
+             */
+            needs_project_admin_to_accept?: boolean;
         };
         /**
          * StartRunRequest
