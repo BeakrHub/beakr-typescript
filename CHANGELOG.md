@@ -68,6 +68,40 @@ Each release lists the public API changes it supports, taken from the API change
   says why a held write waits. `beakr.projectIsolation` (`get`, `update`) and
   `projects.crossProjectGuard` / `setCrossProjectGuard` read and change the
   settings.
+- Session read trail: what an agent session read before it wrote (available
+  where the organization has it turned on; otherwise these operations answer
+  `404 feature_not_enabled`). Each read a session makes is recorded by
+  reference, never by content: Knowledge reads, documents commands, file reads
+  (`op` `read_file`) and research (one `research` read per run, listing every
+  source it read or cited). A read lists the projects it touched and its
+  `items` (pages, files and interviews with their project; items in connected
+  services with `project_id: null` and `service`, such as `external:slack`),
+  with a summary of the query of at most 200 characters.
+  - `GET /v1/sessions/{session_id}/trail` lists a session's reads, newest
+    first. The session's person and organization admins see every read; an
+    owner or admin of a project the session read sees the reads of their
+    projects.
+  - `GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`,
+    `GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail` and
+    `GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail` return
+    the reads the session made before that write, in `groups` by project: the
+    write's project first, then other projects (`cross_project: true`), then
+    reads outside Beakr projects (`external: true`). `recorded: false` means
+    the write was not made in a session with the read trail on. The person
+    whose session made it, an owner or admin of its project and organization
+    admins may read it; anyone else gets `403 read_trail_forbidden`. A read of
+    a project the caller cannot read comes back `redacted`, without its
+    summary or those items' titles.
+  - `GET /v1/organizations/{org_id}/read-trail` returns
+    `read_trail_retention_days` (default 90); `PUT` changes it (1 to 3650
+    days), which needs an organization admin signed in, or their key with
+    `proposals:accept`. Reads older than that are deleted within the hour.
+- TypeScript: `beakr.sessions.trail()` is one page of the current session's
+  reads (`trail(sessionId)` for another, `iterTrail(sessionId)` for every
+  read), and a session from `sessions.start` has `s.trail()`. A write's trail:
+  `knowledge.proposals.trail(proposalId)`, `knowledge.ingestionEventTrail(eventId)`
+  and `knowledge.pages.revisionTrail(pageId, revision)`. Retention:
+  `projectIsolation.readTrail()` and `setReadTrailRetention(days)`.
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:
   who and what wrote it. `kind` is `beakr` (a model or maintenance process
