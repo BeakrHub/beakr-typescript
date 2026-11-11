@@ -4778,13 +4778,13 @@ export interface components {
             /**
              * Project Id
              * Format: uuid
-             * @description Project id.
+             * @description The project this guard applies to.
              * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
              */
             project_id: string;
             /**
              * Project Name
-             * @description Project name.
+             * @description That project's name, as its members see it.
              */
             project_name: string | null;
         };
