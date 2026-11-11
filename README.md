@@ -328,8 +328,8 @@ Every client sends an `X-Beakr-Session` id on every request: `session`, else
 so two clients never share one. `session: ""` sends none. Where the server
 keeps a session per agent conversation (`server_agent_sessions`), a person's
 API key that sends the id runs inside that person's session for it, started on
-first use. **One client is one session**: auto-lock, the cross-project guard
-and the read trail apply to a script exactly as to an agent.
+first use. **One client is one session**: auto-lock and the cross-project guard
+apply to a script exactly as to an agent.
 
 - With auto-lock (`session_auto_lock`), the first project a session reads or
   writes becomes its only write project; once it reads a second project it is

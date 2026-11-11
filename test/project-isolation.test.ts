@@ -1,8 +1,8 @@
 /**
  * Project isolation: one server-side session per client, its helpers and
  * refusals. Every client sends an `X-Beakr-Session` id; the server keys a
- * person's session on it, so auto-lock, the cross-project guard and the read
- * trail apply to an SDK script as to an agent. `sessions.start` opens a fresh
+ * person's session on it, so auto-lock and the cross-project guard apply to
+ * an SDK script as to an agent. `sessions.start` opens a fresh
  * one for a block of work. The Python SDK's tests/test_project_isolation.py
  * pins the same behaviour.
  */
@@ -133,8 +133,11 @@ describe("sessions.start", () => {
     expect(new URL(calls[1]!.url).pathname).toBe("/v1/sessions/s1/end");
   });
 
-  it("only labels the writes on a server without sessions per conversation", async () => {
-    const { fetch, calls } = mockFetch([refusal(422, "feature_not_enabled", "Not enabled."), json({})]);
+  it.each([
+    [422, "feature_not_enabled"],
+    [404, "not_found"],
+  ])("only labels the writes on a server without sessions per conversation (%i %s)", async (status, code) => {
+    const { fetch, calls } = mockFetch([refusal(status, code, "Not enabled."), json({})]);
     const { beakr } = client(fetch);
     const result = await beakr.sessions.within({}, async (s) => {
       expect(s.session).toBeUndefined();

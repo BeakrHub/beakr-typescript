@@ -1,5 +1,5 @@
 import { cleanBody, newSessionId, onTransport, type ClientOptions } from "../core.js";
-import { UnexpectedResponseError, ValidationError } from "../errors.js";
+import { NotFoundError, UnexpectedResponseError, ValidationError } from "../errors.js";
 import type { ResponseOf } from "../types.js";
 import { Resource, credentialClient, enc } from "./base.js";
 
@@ -152,9 +152,12 @@ export class Sessions<C = unknown> extends Resource {
         }),
       });
     } catch (error) {
-      // A server without sessions per conversation refuses the id; the client
-      // still sends it, which labels its writes as one session.
-      if (!(error instanceof ValidationError && error.code === "feature_not_enabled")) throw error;
+      // A server without sessions (404), or without sessions per conversation
+      // (422 feature_not_enabled), starts none; the client still sends the id,
+      // which labels its writes as one session.
+      const notStarted =
+        error instanceof NotFoundError || (error instanceof ValidationError && error.code === "feature_not_enabled");
+      if (!notStarted) throw error;
     }
     const sessions = new Sessions<C>(transport, this.makeClient);
     return new AgentSession(agentSessionId, this.makeClient(onTransport(transport)), session, sessions);

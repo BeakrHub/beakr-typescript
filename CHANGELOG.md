@@ -7,6 +7,63 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Project isolation, for organizations whose projects must not write into one
+  another (each part is available where the organization has it turned on;
+  `GET /v1/project-isolation` returns which parts are on, under `available`):
+  - Settings: `GET /v1/project-isolation` returns the organization's
+    `session_mode` (`picker` or `auto_lock`), `auto_lock_counts_search_results`,
+    `agent_writes_require_session` and `cross_project_guard` (`allow`, `hold` or
+    `refuse`). `PUT /v1/project-isolation` changes them; it needs an
+    organization admin signed in, or their key with `proposals:accept`, and
+    answers `404 feature_not_enabled` for a part that is not turned on.
+    `GET` and `PUT /v1/projects/{project_id}/cross-project-guard` read and set
+    one project's own guard (`override`; `null` follows the organization), which
+    needs an owner or admin of the project. Project responses
+    (`GET /v1/projects`, `GET /v1/projects/{project_id}`) carry
+    `cross_project_guard` and `cross_project_guard_override`.
+  - One session per agent conversation: a request with a person's API key and
+    `X-Beakr-Session: <conversation id>`, and no session token, runs inside that
+    person's session for the conversation, started on its first request, so an
+    MCP server, its subagents and CLI calls in one conversation share it.
+    `POST /v1/sessions` with `agent_session` returns that session, or starts it.
+    A conversation id whose session has ended answers `409 session_ended`.
+  - Auto-lock: in `auto_lock` the first project a session reads or writes
+    becomes its project. Writing another project answers
+    `403 session_locked_to_project`; once it reads a second project the session
+    is read-only, and every write answers `403 session_read_only`, naming the
+    projects it read. Reads keep working. An unscoped search counts the
+    projects its results come from while `auto_lock_counts_search_results` is
+    true. Choosing an auto-lock session's projects answers
+    `session_mode_auto_lock`. Session responses carry `mode`, `agent_session`,
+    `lock_state` (`open`, `locked` or `read_only`), `write_project`,
+    `touched_projects`, `read_only_at` and `read_only_reason`.
+  - With `agent_writes_require_session`, a Knowledge or file write made with a
+    person's API key or token outside a session answers `403 session_required`,
+    with a `fix` saying how to start one. Service-account keys are exempt.
+  - Cross-project guard: a write into a project that cites a source from another
+    project, moves or copies content from one, or comes from a session that read
+    one, answers `403 cross_project_write_refused` under `refuse`. Under `hold`
+    the proposal is staged with `cross_project_hold` (its `reason` names the
+    projects) and `needs_project_admin_to_accept: true`: only an owner or admin
+    of the project, signed in or with a `proposals:accept` key, may accept it,
+    anyone else gets `403 cross_project_owner_required`, and it is never
+    auto-approved. A write that commits without a proposal is allowed under
+    `hold` only for an owner or admin of the project.
+- TypeScript: every client sends `X-Beakr-Session` on every request: `session`,
+  else `BEAKR_SESSION`, else an id the client makes once
+  (`sdk-typescript-<32 hex>`), so one client is one session and auto-lock, the
+  cross-project guard and `agent_writes_require_session` apply to a script as
+  to an agent (`session: ""` sends none). `beakr.sessions.within({ label }, work)` runs
+  work in a fresh session and ends it (`sessions.start()` returns one to end
+  yourself); `sessions.current()` shows its `lock_state`, and
+  `sessions.end()` without an id ends the current one. Refusals throw
+  `SessionReadOnlyError` (`touchedProjects`), `SessionLockedToProjectError`
+  (`writeProject`, `refusedProjects`), `CrossProjectWriteRefusedError`
+  (`project`, `otherProjects`), `CrossProjectOwnerRequiredError`,
+  `SessionEndedError` and `SessionRequiredError`; `crossProjectHold(result)`
+  says why a held write waits. `beakr.projectIsolation` (`get`, `update`) and
+  `projects.crossProjectGuard` / `setCrossProjectGuard` read and change the
+  settings.
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:
   who and what wrote it. `kind` is `beakr` (a model or maintenance process

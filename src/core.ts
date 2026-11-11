@@ -139,8 +139,8 @@ export interface ClientOptions {
    * Sent as `X-Beakr-Session`: the session this client's requests belong to (a
    * conversation or thread id). Defaults to `BEAKR_SESSION`, else an id made
    * once for this client, so everything one script does lands in one
-   * server-side session (auto-lock, the cross-project guard and the read trail
-   * apply to it as to an agent). `""` sends none.
+   * server-side session (auto-lock and the cross-project guard apply to it as
+   * to an agent). `""` sends none.
    */
   session?: string;
   /** Sent as `X-Org-Id` to select an organization for session-like credentials. */
