@@ -75,6 +75,11 @@ Each release lists the public API changes it supports, taken from the API change
   says why a held write waits. `beakr.projectIsolation` (`get`, `update`) and
   `projects.crossProjectGuard` / `setCrossProjectGuard` read and change the
   settings.
+- A call in a session that must name a project and names none (research, a
+  document search, an upload or folder without a project) answers
+  `403 session_project_required` (it used to be `insufficient_scope`) and throws
+  `SessionProjectRequiredError` (`sessionId`): pass one of the session's projects and repeat the call
+  for each project you need.
 - Session read trail: what an agent session read before it wrote (available
   where the organization has it turned on; otherwise these operations answer
   `404 feature_not_enabled`). Each read a session makes is recorded by
