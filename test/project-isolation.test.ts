@@ -16,6 +16,7 @@ import {
   PermissionDeniedError,
   SessionEndedError,
   SessionLockedToProjectError,
+  SessionProjectRequiredError,
   SessionReadOnlyError,
   SessionRequiredError,
   crossProjectHold,
@@ -210,6 +211,18 @@ describe("refusals", () => {
     expect(error).toBeInstanceOf(SessionLockedToProjectError);
     expect(error.writeProject).toEqual(PHARMA_A);
     expect(error.refusedProjects).toEqual([PHARMA_B]);
+  });
+
+  it("a call in a session that names no project is a SessionProjectRequiredError", async () => {
+    const error = (await refused(
+      refusal(403, "session_project_required", "Research in a session must name a project (`project_id`).", {
+        session_id: "s1",
+      }),
+    )) as SessionProjectRequiredError;
+    expect(error).toBeInstanceOf(SessionProjectRequiredError);
+    expect(error).toBeInstanceOf(PermissionDeniedError);
+    expect(error.sessionId).toBe("s1");
+    expect(error.code).toBe("session_project_required");
   });
 
   it("a write outside a session is a SessionRequiredError", async () => {
