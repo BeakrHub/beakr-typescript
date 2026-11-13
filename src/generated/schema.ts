@@ -416,7 +416,7 @@ export interface paths {
         put?: never;
         /**
          * Get context for an agent session
-         * @description What an agent should start a session with, in one call: the organization's, project's and caller's profiles, the caller's memories, relevant past conversations (with `question`), what changed since the agent's last session (or `since`), and the skills and entities that matter. `format` is `markdown` (default), `json`, `claude_md` or `agents_md`; `budget_chars` caps the size, earlier blocks winning. `client` names the agent (`claude-code`, `codex`).
+         * @description What an agent should start a session with, in one call: the organization's, project's and caller's profiles, the caller's memories, relevant past conversations (with `question`), what changed since the agent's last session (or `since`), and the skills and entities that matter. `format` is `markdown` (default), `json`, `claude_md` or `agents_md`; `budget_chars` caps the size. When it cannot hold everything, the organization and project come first, then what `question` selects, then the profile, with activity and past conversations last, and `truncated` is true. `client` names the agent (`claude-code`, `codex`).
          */
         post: operations["agent_context_v1_context_post"];
         delete?: never;
@@ -2530,6 +2530,12 @@ export interface components {
              * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
              */
             project_id?: string | null;
+            /**
+             * Truncated
+             * @description True when `budget_chars` shortened a block or left one out: a larger budget, or a `question` or `project_id` to focus it, returns more of what matters.
+             * @default false
+             */
+            truncated?: boolean;
         };
         /**
          * AgentReviewPolicyBody
@@ -5397,7 +5403,7 @@ export interface components {
             has_more: boolean;
             /**
              * Next Offset
-             * @description Without a unit: the offset that continues this read
+             * @description The offset that continues this read with the same reference: through the file without a unit, or through the rest of the unit's page or sheet with one
              */
             next_offset?: number | null;
             /**
@@ -6264,11 +6270,31 @@ export interface components {
              */
             complete?: boolean | null;
             /**
+             * Continue With
+             * @description On a reply cut to its response budget: the arguments that continue it. For `cat`, the whole call's arguments (`page` as the page id, `lines` as the page line range not shown yet, `scope` when the call gave one); for a listing, the arguments to change in the same call. Null when nothing remains.
+             * @default null
+             */
+            continue_with?: {
+                [key: string]: unknown;
+            } | null;
+            /**
              * Limit
              * @description The most items to return.
              * @default null
              */
             limit?: number | null;
+            /**
+             * Lines Shown
+             * @description A cut `cat`: the page lines shown whole, `first-last`; null when none is.
+             * @default null
+             */
+            lines_shown?: string | null;
+            /**
+             * Lines Total
+             * @description A cut `cat`: the page lines the call asked for, `first-last`.
+             * @default null
+             */
+            lines_total?: string | null;
             /**
              * Next Cursor
              * @description Opaque cursor for the next chronological timeline window without timeline_query; repeat the same filters with it.
@@ -6295,6 +6321,12 @@ export interface components {
              */
             returned?: number | null;
             /**
+             * Revision
+             * @description A cut `cat`: the page revision that was read.
+             * @default null
+             */
+            revision?: number | null;
+            /**
              * Scan Complete
              * @description True only when an unqueried chronological timeline scan reached the end of the requested scope and filters. Semantic queries are always non-exhaustive.
              * @default null
@@ -6309,6 +6341,18 @@ export interface components {
             /** @description The scope it applies to. */
             scope: components["schemas"]["KnowledgeScope"];
             /**
+             * Sections Not Shown
+             * @description A cut `cat`: the ids of the sections that start after the cut.
+             * @default null
+             */
+            sections_not_shown?: string[] | null;
+            /**
+             * Shown Chars
+             * @description A cut `cat`: characters of text shown, against `total_chars`.
+             * @default null
+             */
+            shown_chars?: number | null;
+            /**
              * Status
              * @description success, empty or error.
              */
@@ -6319,6 +6363,12 @@ export interface components {
              * @default null
              */
             total?: number | null;
+            /**
+             * Total Chars
+             * @description A cut `cat`: characters the uncut text holds.
+             * @default null
+             */
+            total_chars?: number | null;
             /**
              * Truncated
              * @description Reported by compact/full source-sidecar Knowledge reads when their response budget omits text; true means text was truncated. Other reads may omit this field.
