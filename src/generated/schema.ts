@@ -1872,7 +1872,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a project
-         * @description Delete a project, and everything homed in it, permanently. There is no trash and no undo. Needs a project admin. While the organization requires step-up MFA (the default), a person at a browser verifies a fresh second factor first, and keys and tokens are refused with `403 session_required`.
+         * @description Delete a project, and everything homed in it, permanently. There is no trash and no undo. Needs a project admin. Project deletion does not require step-up MFA. Keys and tokens must have the required scopes and project permissions, and are refused with `403 session_required` when the organization requires enterprise SSO.
          */
         delete: operations["delete_project_route_v1_projects__project_id__delete"];
         options?: never;
