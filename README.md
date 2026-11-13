@@ -321,29 +321,52 @@ if (!caps.serves("GET", "/v1/integrations")) {
 no document is assumed to serve everything, and a route outside the documented
 contract is always assumed served: the document cannot speak for it.
 
-### Sessions and project isolation
+### Sessions and project boundaries
 
 Every client sends an `X-Beakr-Session` id on every request: `session`, else
 `BEAKR_SESSION`, else an id the client makes once (`sdk-typescript-<32 hex>`),
 so two clients never share one. Where the server keeps a session per agent
 conversation (`server_agent_sessions`), a person's API key that sends the id
 runs inside that person's session for it, started on first use. **One client
-is one session**: auto-lock and the cross-project guard apply to a script
-exactly as to an agent.
+is one session**: project boundaries apply to a script exactly as to an agent.
 
-This is meant for organizations whose `session_mode` is `auto_lock`. In
-`picker` mode a session started this way is pending: project reads and writes
-throw `SessionNeedsSelectionError` until the person chooses its projects at its
-`picker_url`. A script for a picker-mode organization should pass
-`new Beakr({ session: false })` (or `session: ""`), which sends no id, or
-start a session with chosen projects through `beakr.sessions.create({ read, write })`.
+Each project has a `boundary` (where the organization has Project boundaries
+on; `null` otherwise): `content_out` (`allowed`, or `locked`: once a session
+touches the project it may write only there) and `content_in` (`allowed`,
+`owner_approves`: writes bringing in other projects' content wait for its
+owners, or `blocked`: they are refused), with the `preset` it matches
+(`internal`, `siloed`, `leadership` or `custom`) and a plain-words `summary`.
 
-- With auto-lock (`session_auto_lock`), the first project a session reads or
-  writes becomes its only write project; once it reads a second project it is
-  read-only for good. A write then throws `SessionReadOnlyError`
-  (`touchedProjects`, `projectNames`) or `SessionLockedToProjectError`
-  (`writeProject`, `refusedProjects`). Work in one project per session: start a
-  new one for the next project.
+A session works one of three ways (`mode`):
+
+- `automatic` (nothing declared, where the organization's `session_mode` is
+  `automatic`): it starts open and the server tracks what it touches. Touching a
+  locked project locks its writes to that project (`SessionLockedToProjectError`:
+  `writeProject`, `refusedProjects`); a second makes it read-only for good
+  (`SessionReadOnlyError`: `touchedProjects`).
+- `picked`: `read`/`write` lists declared at the start (`sessions.create({ read,
+  write })` or `sessions.start({ read, write })`), checked against the
+  boundaries. A choice that breaks one throws `SessionSelectionInvalidError`,
+  whose `reasons` give every failing rule; `sessions.options({ read, write })`
+  says which projects can be added first.
+- `read_everything` (`readEverything: true`): every project the person can read,
+  locked ones included, and no writes.
+
+A declaration applies only while the session has touched nothing
+(`SessionAlreadyStartedError` after). Where the organization's `session_mode` is
+`must_pick`, an undeclared session is pending: project reads and writes throw
+`SessionNeedsSelectionError` until it is declared or the person chooses at its
+`picker_url`. `sessions.status()` says where the current session can still
+write, and why not elsewhere.
+
+- A write to a project whose `content_in` is `blocked`, from a session that read
+  another project or citing another project's content, throws
+  `CrossProjectWriteRefusedError` (`project`, `otherProjects`). With
+  `owner_approves` it is staged as usual and resolves normally, and
+  `crossProjectHold(result)` says why it waits and that only an owner or admin of
+  the project can accept it (`CrossProjectOwnerRequiredError` for anyone else).
+- A write that cites or copies a locked project's content into another project
+  throws `ProjectContentLockedError`, for people too.
 - A session id is used once. After its session ends (`beakr.sessions.end()`),
   the client's requests throw `SessionEndedError`; make a new client.
 - Where agents must write inside a session (`agent_writes_require_session`), a
@@ -351,36 +374,50 @@ start a session with chosen projects through `beakr.sessions.create({ read, writ
   exempt, and the server ignores their `X-Beakr-Session` (sending it is
   harmless). OAuth access tokens (`bk_at_`, the CLI's sign-in) do not join a
   session by header in this release.
-- A project's cross-project guard decides what happens to a write bringing in
-  content from another project (cited, or read earlier in the session):
-  `refuse` throws `CrossProjectWriteRefusedError` (`project`, `otherProjects`);
-  `hold` stages it as usual and resolves normally, and `crossProjectHold(result)`
-  says why it waits and that only an owner or admin of the project can accept
-  it (`CrossProjectOwnerRequiredError` for anyone else).
 
 ```ts
 import { crossProjectHold } from "@beakr/sdk";
 
-console.log(await beakr.sessions.current()); // mode, lock_state, write_project, touched_projects
+const options = await beakr.sessions.options({ read: [partnerA], write: [chemistry] });
+if (!options.valid) console.log(options.reasons.map((r) => r.message));
 
-// A fresh session for a block of work, ended when the work settles.
-await beakr.sessions.within({ label: "nightly import" }, async (s) => {
+// A fresh picked session for a block of work, ended when the work settles.
+await beakr.sessions.within({ label: "nightly import", write: [partnerA] }, async (s) => {
+  console.log(s.session?.summary); // "Picked session: reads Partner A; writes Partner A."
   const staged = await s.client.knowledge.write(
     "add_fact",
     { page: "Stripe", attribute: "renewal", value: "2027-01-31", rationale: "Order form" },
-    { scope: "Pharma A" },
+    { scope: "Partner A" },
   );
   const hold = crossProjectHold(staged);
   if (hold) console.log(hold.reason); // waits for an owner or admin of hold.project
-  console.log((await s.current()).lock_state);
+  console.log((await s.status()).write); // projects it may write, and refused ones with why
 });
 ```
+
+A project's boundary is set by an owner or admin of it, or an organization
+admin, acting as a person; the organization's settings by an organization admin:
+
+```ts
+await beakr.projects.setBoundary(partnerA, { preset: "siloed" }); // or internal, leadership
+await beakr.projects.setBoundary(leadership, { contentIn: "owner_approves" });
+await beakr.projectIsolation.update({
+  session_mode: "must_pick", // or "automatic"
+  default_boundary: { content_out: "allowed", content_in: "allowed" },
+  minimum_boundary: { content_out: "locked" }, // null clears it
+});
+```
+
+A boundary below the organization's minimum throws `BoundaryBelowMinimumError`
+(`minimum`). The settings project boundaries replaced (`cross_project_guard`,
+`auto_lock_counts_search_results`, session modes `picker` and `auto_lock`) throw
+`SettingRetiredError`; `projects.crossProjectGuard` and `setCrossProjectGuard`
+keep working for one release as the boundary's `content_in`.
 
 `sessions.start()` returns the same session without ending it; call its
 `end()`. On a server without sessions per conversation, nothing is started
 (`s.session` is undefined) and the id only labels the writes.
-`sessions.create({ read, write })` still starts a session whose projects a
-person chooses, with its own token.
+`sessions.create(...)` starts a session with its own token.
 
 Where the read trail is on (`session_read_trail`), Beakr records what each
 session read: `beakr.sessions.trail()` is one page of the current session's

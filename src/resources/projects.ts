@@ -35,6 +35,22 @@ export type ProjectKnowledgeProfilePatch = BodyOf<
 /** A project's cross-project guard (`GET /v1/projects/{project_id}/cross-project-guard`). */
 export type CrossProjectGuard = ResponseOf<"/v1/projects/{project_id}/cross-project-guard", "get">;
 
+/**
+ * A project's boundary as it applies now: `content_out` (`allowed`, `locked`),
+ * `content_in` (`allowed`, `owner_approves`, `blocked`), the `preset` it
+ * matches, the project's own (`stored`), `raised_by_minimum`, the plain-words
+ * `summary` every surface prints and `can_change`. Null while the organization
+ * has project boundaries off.
+ */
+export type ProjectBoundary = NonNullable<ResponseOf<"/v1/projects/{project_id}", "get">["boundary"]>;
+/** A boundary preset: names only, the stored values are the two keys. */
+export type BoundaryPreset = "internal" | "siloed" | "leadership";
+
+/** What {@link Projects.setBoundary} changes: a preset, or either value (a value left out keeps its own). */
+export type BoundaryChange =
+  | { preset: BoundaryPreset }
+  | { contentOut?: "allowed" | "locked"; contentIn?: "allowed" | "owner_approves" | "blocked" };
+
 /** Options for {@link Projects.startProfileSetup}. */
 export interface ProfileSetupOptions {
   /** Continue this setup conversation instead of starting one. */
@@ -129,6 +145,29 @@ export class Projects extends Resource {
   }
 
   /**
+   * Set the project's boundary: a `preset`, or `contentOut` and/or `contentIn`
+   * (a value left out keeps its own). An owner or admin of the project, or an
+   * organization admin, acting as a person. Below the organization's minimum
+   * throws `BoundaryBelowMinimumError`. Returns the project, whose `boundary` is
+   * the one in force.
+   */
+  setBoundary(projectId: string, change: BoundaryChange): Promise<ResponseOf<"/v1/projects/{project_id}", "patch">> {
+    let body: Record<string, unknown>;
+    if ("preset" in change) {
+      body = { boundary_preset: change.preset };
+    } else {
+      const boundary = cleanBody({ content_out: change.contentOut, content_in: change.contentIn });
+      if (Object.keys(boundary).length === 0) {
+        throw new TypeError("Give a preset, or contentOut and/or contentIn.");
+      }
+      body = { boundary };
+    }
+    return this.transport.request({ method: "PATCH", path: `/v1/projects/${enc(projectId)}`, body });
+  }
+
+  /**
+   * Deprecated (one release): the project's `boundary.content_in` in the old
+   * guard's words; use `get` and its `boundary`.
    * What the project does with writes that bring in content from other
    * projects: `effective` is `allow`, `hold` (an owner or admin accepts them)
    * or `refuse`, the project's `override` else the organization's `org_default`.
@@ -138,8 +177,10 @@ export class Projects extends Resource {
   }
 
   /**
-   * Set the project's own guard (`allow`, `hold`, `refuse`); `null` follows the
-   * organization's. An owner or admin of the project acting as a person may.
+   * Deprecated (one release): use `setBoundary` with `contentIn`. `allow`,
+   * `hold` and `refuse` set `content_in` to `allowed`, `owner_approves` and
+   * `blocked`; `null` to `allowed`. An owner or admin of the project acting as a
+   * person may.
    */
   setCrossProjectGuard(projectId: string, override: "allow" | "hold" | "refuse" | null): Promise<CrossProjectGuard> {
     return this.transport.request({

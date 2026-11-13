@@ -174,10 +174,11 @@ abstract class ProjectIsolationError extends PermissionDeniedError {
 }
 
 /**
- * 403 `session_read_only`: the session read two projects, so it may no longer
- * write. With auto-lock on, a session that reads a second project becomes
- * read-only for the rest of its life; reads keep working. Start a new session
- * (a new client, or `sessions.start()`) and work in one project.
+ * 403 `session_read_only`: the session may no longer write. Project boundaries'
+ * rule A: a session that touched two projects whose boundary keeps their content
+ * in (`content_out: locked`) is read-only for the rest of its life, and a
+ * `read_everything` session never writes. Reads keep working. Start a new
+ * session (a new client, or `sessions.start()`) to write.
  */
 export class SessionReadOnlyError extends ProjectIsolationError {
   /** The projects the session read. */
@@ -192,8 +193,9 @@ export class SessionReadOnlyError extends ProjectIsolationError {
 
 /**
  * 403 `session_locked_to_project`: the session writes one project and this is
- * another. With auto-lock on, the first project a session touches becomes its
- * only write project. Start a new session to write the others.
+ * another. Project boundaries' rule A: once a session touches (reads or writes)
+ * a project whose boundary keeps its content in (`content_out: locked`), it may
+ * write only to that project. Start a new session to write the others.
  */
 export class SessionLockedToProjectError extends ProjectIsolationError {
   /** The project the session is locked to. */
@@ -209,8 +211,9 @@ export class SessionLockedToProjectError extends ProjectIsolationError {
 
 /**
  * 403 `cross_project_write_refused`: the project does not take content from
- * others. The write cites a source from another project, or its session read
- * another project, and the target's cross-project guard is `refuse`.
+ * others. The target's boundary is `content_in: blocked` (rule B), and the write
+ * cites, copies or moves content from another project, or its session read
+ * another project. Nothing was written.
  */
 export class CrossProjectWriteRefusedError extends ProjectIsolationError {
   /** The project written to. */
@@ -230,11 +233,30 @@ export class CrossProjectWriteRefusedError extends ProjectIsolationError {
 
 /**
  * 403 `cross_project_owner_required`: only an owner or admin of the project may
- * do this. Its cross-project guard is `hold`: a proposal bringing in content
- * from another project waits for an owner or admin, and a write that commits
- * without a proposal is refused. Stage it as a proposal instead.
+ * do this. Its boundary is `content_in: owner_approves`: a proposal bringing in
+ * content from another project waits for an owner or admin, and a write that
+ * commits without a proposal is refused. Stage it as a proposal instead.
  */
 export class CrossProjectOwnerRequiredError extends ProjectIsolationError {}
+
+/**
+ * 403 `project_content_locked`: the write carries a locked project's content
+ * elsewhere. A write to one project that cites, copies or moves content from
+ * another whose boundary keeps its content in (`content_out: locked`) is
+ * refused, for sessions and people alike. Nothing was written. Remove what
+ * comes from that project, or write it there.
+ */
+export class ProjectContentLockedError extends ProjectIsolationError {
+  /** The project written to, where the API names it. */
+  get project(): NamedProject | undefined {
+    return namedProject(this.details["project"]);
+  }
+
+  /** The locked projects the content came from. */
+  get otherProjects(): NamedProject[] {
+    return namedProjects(this.details["other_projects"]);
+  }
+}
 
 /**
  * 403 `session_project_required`: a call in a session must name a project. A
@@ -258,6 +280,7 @@ const FORBIDDEN_TYPES: Record<string, typeof PermissionDeniedError> = {
   cross_project_write_refused: CrossProjectWriteRefusedError,
   cross_project_owner_required: CrossProjectOwnerRequiredError,
   session_project_required: SessionProjectRequiredError,
+  project_content_locked: ProjectContentLockedError,
 };
 
 export class NotFoundError extends BeakrError {}
@@ -304,8 +327,71 @@ export class ProjectProfileRequiredError extends ConflictError {
  */
 export class SessionEndedError extends ConflictError {}
 
+/**
+ * 409 `session_already_started`: the session has already worked in a project.
+ * A session's projects (or `readEverything`) are declared before it reads or
+ * writes anything; after that its mode and lists can't be chosen again. Start a
+ * new session (a new client, or `sessions.start()`) to choose them.
+ */
+export class SessionAlreadyStartedError extends ConflictError {}
+
 /** 400 or 422: the request was malformed or failed validation. */
 export class ValidationError extends BeakrError {}
+
+/** One rule a picked session's lists break (`session_selection_invalid`, `sessions.options`). */
+export interface SelectionReason {
+  /** `locked_read_limits_writes`, `locked_reads_make_read_only` or `blocked_write_limits_reads`. */
+  code: string;
+  message: string;
+  project_ids?: string[];
+}
+
+/**
+ * 422 `session_selection_invalid`: picked lists that break a project boundary.
+ * `reasons` gives every failing rule; `sessions.options()` says which projects
+ * can be read and written with a given choice before starting.
+ */
+export class SessionSelectionInvalidError extends ValidationError {
+  get reasons(): SelectionReason[] {
+    const value = this.details["reasons"];
+    return Array.isArray(value)
+      ? value.filter((r): r is SelectionReason => typeof r === "object" && r !== null)
+      : [];
+  }
+
+  get reasonMessages(): string[] {
+    return this.reasons.map((r) => r.message).filter((m): m is string => Boolean(m));
+  }
+}
+
+/**
+ * 422 `boundary_below_minimum`: a boundary set below the organization's
+ * minimum. `minimum` is the floor (`{content_out, content_in}`; a missing key
+ * has none). Choose a boundary at or above it, or ask an organization admin to
+ * lower it.
+ */
+export class BoundaryBelowMinimumError extends ValidationError {
+  get minimum(): Record<string, unknown> | undefined {
+    const value = this.details["minimum"];
+    return typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined;
+  }
+}
+
+/**
+ * 422 `setting_retired`: a project isolation setting project boundaries
+ * replaced (`cross_project_guard`, `auto_lock_counts_search_results`, the
+ * session modes `picker` and `auto_lock`); the message says what to use instead.
+ */
+export class SettingRetiredError extends ValidationError {}
+
+/** 422 codes with their own error type. */
+const INVALID_TYPES: Record<string, typeof ValidationError> = {
+  session_selection_invalid: SessionSelectionInvalidError,
+  boundary_below_minimum: BoundaryBelowMinimumError,
+  setting_retired: SettingRetiredError,
+};
 
 /** 429. `retryAfter` is the server's hint in seconds, when it sent one. */
 export class RateLimitError extends BeakrError {
@@ -533,7 +619,10 @@ export function errorFromResponse(
   if (code !== undefined) common.code = code;
   if (requestId !== undefined) common.requestId = requestId;
 
-  if (status === 400 || status === 422) return new ValidationError(message, common);
+  if (status === 400 || status === 422) {
+    const Invalid = (code !== undefined ? INVALID_TYPES[code] : undefined) ?? ValidationError;
+    return new Invalid(message, common);
+  }
   if (status === 401) return new AuthenticationError(message, common);
   if (status === 403) {
     const requiredScope =
@@ -546,6 +635,7 @@ export function errorFromResponse(
   if (status === 409) {
     if (code === "project_profile_required") return new ProjectProfileRequiredError(message, common);
     if (code === "session_ended") return new SessionEndedError(message, common);
+    if (code === "session_already_started") return new SessionAlreadyStartedError(message, common);
     return new ConflictError(message, common);
   }
   if (status === 429) {
