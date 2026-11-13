@@ -6205,7 +6205,7 @@ export interface components {
         KnowledgeAttribution: {
             /**
              * Accepted By
-             * @description Who accepted the proposal, for one.
+             * @description The person who accepted the proposal, for one; null when auto-approve accepted it (see `auto_approved`).
              * @default null
              */
             accepted_by?: string | null;
@@ -6215,6 +6215,12 @@ export interface components {
              * @default null
              */
             agent?: string | null;
+            /**
+             * Auto Approved
+             * @description True when the filer's auto-approve setting accepted the proposal rather than a person.
+             * @default null
+             */
+            auto_approved?: boolean | null;
             /**
              * Client
              * @description The client the agent used (`X-Beakr-Client`), e.g. `beakr-mcp/0.4.0`.
