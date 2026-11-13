@@ -75,7 +75,13 @@ export interface SourceRecord {
   excerpts?: SourceExcerpt[];
   /** Compact reads: how many passages of the document the page cites. */
   cited_passages?: number;
-  retrieval?: { tool: string; arguments: { handle: string } };
+  /**
+   * The call that re-reads a connected item. A meeting note, an email or a
+   * Slack thread carries its provider's read tool and that item's own id: pass
+   * both to `integrations.callTool(tool, arguments)`. A connector file carries a
+   * download `handle` and nothing else.
+   */
+  retrieval?: { tool: string; arguments: Record<string, string | number> };
 }
 
 type Row = Record<string, unknown>;
@@ -98,10 +104,40 @@ function basename(path: string): string {
   return parts[parts.length - 1] ?? path;
 }
 
-/** Keep only the public source contract; never forward backend row fields. */
+/**
+ * The call that re-reads a connected item, in its public form.
+ *
+ * A connector file's retrieval keeps its download `handle` and nothing else. A
+ * text connector's item (a Granola note, an email or Slack thread) keeps the
+ * provider read tool and its scalar arguments: the item's share link carries a
+ * different id that the read tool refuses, so dropping the call left a caller
+ * with no way to re-read the item. The API has already limited the tool to a
+ * known read; anything nested or empty is still dropped here.
+ */
+function publicRetrieval(retrieval: Row): SourceRecord["retrieval"] {
+  const tool = retrieval["tool"];
+  const raw = retrieval["arguments"];
+  if (typeof tool !== "string" || !tool || !raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const args = raw as Row;
+  if ("handle" in args) {
+    const handle = args["handle"];
+    return typeof handle === "string" && handle ? { tool, arguments: { handle } } : undefined;
+  }
+  const entries = Object.entries(args);
+  if (!entries.length) return undefined;
+  const clean: Record<string, string | number> = {};
+  for (const [name, value] of entries) {
+    const scalar = (typeof value === "string" && value !== "") || (typeof value === "number" && Number.isInteger(value));
+    if (!scalar) return undefined;
+    clean[name] = value as string | number;
+  }
+  return { tool, arguments: clean };
+}
+
 /** `provider` of a source uploaded to Beakr rather than synced from a connector. */
 export const UPLOAD_PROVIDER = "upload";
 
+/** Keep only the public source contract; never forward backend row fields. */
 export function publicSource(source: Row, citationKey?: string): SourceRecord {
   const meta = asRow(source["meta"]);
   const location = asRow(source["location"]);
@@ -189,10 +225,8 @@ export function publicSource(source: Row, citationKey?: string): SourceRecord {
   if (typeof source["cited_passages"] === "number" && Number.isInteger(source["cited_passages"])) {
     item["cited_passages"] = source["cited_passages"];
   }
-  const args = asRow(retrieval["arguments"]);
-  if (typeof retrieval["tool"] === "string" && retrieval["tool"] && typeof args["handle"] === "string" && args["handle"]) {
-    item["retrieval"] = { tool: retrieval["tool"], arguments: { handle: args["handle"] } };
-  }
+  const call = publicRetrieval(retrieval);
+  if (call) item["retrieval"] = call;
   return Object.fromEntries(Object.entries(item).filter(([, v]) => !isEmpty(v))) as unknown as SourceRecord;
 }
 

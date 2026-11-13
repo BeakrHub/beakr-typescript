@@ -5,6 +5,14 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## @beakr/sdk 0.3.0 (2026-11-13)
 
+### Client changes
+
+- `publicSource` keeps the call that re-reads a connected item. A cited meeting
+  note, email or Slack thread carries `retrieval: {tool, arguments}` (the
+  provider read tool and the item's own id, e.g. `granola_get_note` with
+  `note_id`); it was dropped unless it carried a file download `handle`, so
+  a caller was left with the share link, whose id the read tool refuses.
+
 ### Changes
 
 - `POST /v1/knowledge/wiki/command` `log`, `proposals` and `ls` filter by who
