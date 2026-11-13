@@ -6315,6 +6315,20 @@ export interface components {
              */
             offset?: number | null;
             /**
+             * Related
+             * @description On a `grep` that matched nothing and shows entries related by meaning instead: what those entries are (`by`: meaning; `unit`: sections or pages; `returned`: how many are shown; `total` and `truncated` when the response budget left some out). They are not matches: `returned` and `total` stay 0. Absent otherwise.
+             * @default null
+             */
+            related?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Requested Limit
+             * @description The `limit` the call asked for, when it was above the command's maximum; `limit` is then the maximum that was applied. Absent otherwise.
+             * @default null
+             */
+            requested_limit?: number | null;
+            /**
              * Returned
              * @description Items shown; null when not a counted list.
              * @default null
@@ -16080,6 +16094,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    /** @description log, proposals: who accepted it: a person, or auto-approve. */
+                    accepted_by?: string;
                     /** @description rows: continue a capped card scan after this card. */
                     after_card?: string;
                     /** @description Keyset cursor for provenance: return only the sections that follow this section id in page order. Pass the last section id of the previous window to walk the whole page. */
@@ -16092,6 +16108,14 @@ export interface operations {
                     as_of?: string;
                     /** @description rows: the field by name, alias or meaning; replies say which field. */
                     attribute?: string;
+                    /** @description log, proposals: the person behind it (who filed a proposal): a name, email, user id or me. */
+                    by?: string;
+                    /** @description ls: pages with a revision by this person. */
+                    changed_by?: string;
+                    /** @description ls: pages with a revision on or after this date. */
+                    changed_since?: string;
+                    /** @description ls: pages with a revision through this client or agent. */
+                    changed_via?: string;
                     /**
                      * @description The command to run. `help` returns the guidance for every command or action, or for one with `topic`.
                      * @enum {string}
@@ -16103,6 +16127,12 @@ export interface operations {
                     content?: string;
                     /** @description grep only. Lines of context either side of each hit (default 1, max 10). Raise it for table rows, where the header naming the columns sits above the matching line. */
                     context_lines?: number;
+                    /** @description ls: pages this person created (their first revision). */
+                    created_by?: string;
+                    /** @description ls: pages created on or after this date. */
+                    created_since?: string;
+                    /** @description ls: pages created through this client or agent. */
+                    created_via?: string;
                     /** @description rows: facts, each card's current value per Attribute; connections, the relations not ended. Not findings (filter by start_date, end_date). */
                     current_only?: boolean;
                     /** @description timeline without timeline_query: next_cursor from the previous result; keep the same filters. query: the cursor a reply gives, sent with the same sql or spec. */
@@ -16137,6 +16167,8 @@ export interface operations {
                     include_evidence?: boolean;
                     /** @description If true, ontology includes proposed page types as well as active types. */
                     include_proposed?: boolean;
+                    /** @description log, proposals: person, agent, beakr or system. */
+                    kind?: string;
                     /** @description Max results. rows: rows per window (default 100, max 500). ls: pages per window (default 100, max 500). grep: pages per window (default 20, max 200). sources: source records per window (default 60, max 400). provenance: sections per window (default 12, max 200). Every window is ordered; use after_title (ls/grep/sources) or after_section (provenance) to continue past one. */
                     limit?: number;
                     /** @description cat only. Read an exact line range, `start-end` or a single line, 1-indexed and inclusive -- what grep's `section:line` addresses point at. Prefer `section_id` when the hit sits inside a marked section; use this for a long section, or a page with no section markers, instead of opening the whole page. */
@@ -16153,7 +16185,7 @@ export interface operations {
                      * @enum {string}
                      */
                     mode?: "semantic" | "text" | "regex" | "history";
-                    /** @description rows, proposals: rows to skip (continue a NOT ALL ROWS reply). */
+                    /** @description rows, proposals, log: rows to skip (continue a NOT ALL ROWS reply). */
                     offset?: number;
                     /** @description rows: entity (default), when, amount, date, or a column (sorted by the number in it); descending=true puts the largest first. */
                     order_by?: string;
@@ -16181,6 +16213,8 @@ export interface operations {
                     scope?: string;
                     /** @description cat only. Read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take. */
                     section_id?: string;
+                    /** @description log, proposals: from this date (YYYY-MM-DD, a UTC day) or ISO time. */
+                    since?: string;
                     /**
                      * @description Sort order for ls: title (default tree), updated_at, created_at (newest first).
                      * @enum {string}
@@ -16213,6 +16247,10 @@ export interface operations {
                     to?: string;
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
+                    /** @description log, proposals: up to this date or ISO time, inclusive. */
+                    until?: string;
+                    /** @description log, proposals: client or agent prefix, any case (claude-code, codex, beakr-cli). */
+                    via?: string;
                     /**
                      * @description rows: values (default), census (entity and value only, 300 rows), fields (field names, counts, examples), groups (one page_type's likely synonym names) or conflicts (facts: one card's different values for one field at one time, both sides cited).
                      * @enum {string}
