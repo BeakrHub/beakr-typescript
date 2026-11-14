@@ -12,6 +12,20 @@ Each release lists the public API changes it supports, taken from the API change
   permissions still apply. Keys and tokens remain blocked with
   `403 session_required` in organizations requiring enterprise SSO.
 
+- Enterprise single sign-on state on organizations: `GET /v1/organizations`,
+  `GET /v1/organizations/{org_id}` and `GET /v1/me/organization` return
+  `sso_required`, `sso_satisfied` (whether the calling session meets the
+  requirement; always `true` when none is required), and, when single sign-on
+  is required, `enterprise_sso_connection_id` (the identity provider's
+  connection id, not a Beakr UUID) and `sso_provider`. A web session that has
+  not signed in through a required connection is refused with `403` and
+  `detail.error_type: enterprise_sso_required`; keys and tokens are not
+  sessions and keep their own scopes, but in an organization that requires
+  single sign-on they answer `403 session_required` to every action that needs
+  step-up (creating service-account keys or service accounts, changing
+  roles or the authentication policy), and to project deletion independently
+  of the step-up setting.
+
 - Project isolation, for organizations whose projects must not write into one
   another (each part is available where the organization has it turned on;
   `GET /v1/organizations/{org_id}/project-isolation` returns which parts are on, under `available`):
