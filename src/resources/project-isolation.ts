@@ -10,15 +10,19 @@ export type ReadTrailSettings = ResponseOf<"/v1/organizations/{org_id}/read-trai
 export type ProjectIsolationUpdate = BodyOf<"/v1/organizations/{org_id}/project-isolation", "put">;
 
 /**
- * How agent sessions keep projects apart, set by an organization admin:
- * `session_mode` (`picker`, or `auto_lock`: the first project a session reads
- * or writes becomes its only write project, and reading a second makes it
- * read-only), `auto_lock_counts_search_results`, `agent_writes_require_session`
- * (service accounts are exempt) and the default `cross_project_guard`
- * (`allow`, `hold`, `refuse`; a project's own is `projects.crossProjectGuard`).
- * `available` says which features are on; a setting whose feature is off
- * cannot be changed (404 `feature_not_enabled`). The organization is `orgId`,
- * else the client's, else the caller's active one.
+ * How agent sessions keep projects apart, set by an organization admin, with
+ * project boundaries (a project's own is `projects.setBoundary`):
+ * `session_mode` (`automatic`: a session starts open and the server tracks what
+ * it touches; `must_pick`: every agent session chooses its projects, or read
+ * everything, before it starts), `default_boundary` (what new projects start
+ * with), `minimum_boundary` (a floor no project goes below; `null` for none,
+ * `{content_out: "locked"}` keeps every project locked, what auto-lock was) and
+ * `agent_writes_require_session` (service accounts are exempt). `presets` lists
+ * the boundary presets. `available` says which features are on; a setting whose
+ * feature is off cannot be changed (404 `feature_not_enabled`). The retired
+ * settings (`cross_project_guard`, `auto_lock_counts_search_results`, session
+ * modes `picker` and `auto_lock`) answer `SettingRetiredError`. The organization
+ * is `orgId`, else the client's, else the caller's active one.
  */
 export class ProjectIsolation extends OrgScoped {
   /** The settings, which features are available, and `can_change`. */
@@ -26,7 +30,11 @@ export class ProjectIsolation extends OrgScoped {
     return this.transport.request({ method: "GET", path: `${await this.orgBase(orgId)}/project-isolation` });
   }
 
-  /** Change the settings given (an organization admin acting as a person). */
+  /**
+   * Change the settings given (an organization admin acting as a person).
+   * `minimum_boundary: null` clears the floor; leaving it out keeps it. A default
+   * below the minimum throws `BoundaryBelowMinimumError`.
+   */
   async update(settings: ProjectIsolationUpdate, orgId?: string): Promise<ProjectIsolationSettings> {
     return this.transport.request({
       method: "PUT",

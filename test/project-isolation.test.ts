@@ -284,20 +284,20 @@ describe("settings", () => {
     const guard = { project_id: "pb", project_name: "Pharma B", override: null, org_default: "hold", effective: "hold", can_change: true, available: true };
     const { fetch, calls } = mockFetch([
       json({ id: "org1" }),
-      json({ session_mode: "auto_lock" }),
+      json({ session_mode: "must_pick" }),
       json(guard),
       json(guard),
       json(guard),
     ]);
     const { beakr } = client(fetch);
-    await beakr.projectIsolation.update({ session_mode: "auto_lock" });
+    await beakr.projectIsolation.update({ session_mode: "must_pick" });
     expect((await beakr.projects.crossProjectGuard("pb")).effective).toBe("hold");
     await beakr.projects.setCrossProjectGuard("pb", null);
     await beakr.projects.setCrossProjectGuard("pb", "refuse");
     expect(calls.map((c) => [c.method, new URL(c.url).pathname, c.body])).toEqual([
       // The caller's active organization, looked up first.
       ["GET", "/v1/me/organization", undefined],
-      ["PUT", "/v1/organizations/org1/project-isolation", { session_mode: "auto_lock" }],
+      ["PUT", "/v1/organizations/org1/project-isolation", { session_mode: "must_pick" }],
       ["GET", "/v1/projects/pb/cross-project-guard", undefined],
       ["PUT", "/v1/projects/pb/cross-project-guard", { override: null }],
       ["PUT", "/v1/projects/pb/cross-project-guard", { override: "refuse" }],

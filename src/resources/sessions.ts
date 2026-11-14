@@ -14,12 +14,32 @@ export type SessionTrailPage = ResponseOf<"/v1/sessions/{session_id}/trail", "ge
  * touched and the `items` it returned (pages, files, connector items, messages).
  */
 export type SessionRead = SessionTrailPage["data"][number];
+/**
+ * Which projects a picked session could read and write, given the lists so far
+ * (`POST /v1/sessions/options`): `valid`, every failing `reasons` entry, the
+ * `notes` on held writes, and each readable project with its `boundary`,
+ * `can_read`/`can_write` and the reason when it can't.
+ */
+export type SessionOptions = ResponseOf<"/v1/sessions/options", "post">;
+/**
+ * Where a session can still write, and why not elsewhere
+ * (`GET /v1/sessions/current/status`, `GET /v1/sessions/{session_id}/status`).
+ */
+export type SessionStatus = ResponseOf<"/v1/sessions/current/status", "get">;
+/** How a session works: `automatic`, `picked` or `read_everything`. */
+export type SessionMode = "automatic" | "picked" | "read_everything";
 
 export interface CreateSessionOptions {
-  /** Project ids the session may read. With neither list the session waits for the person to choose. */
+  /**
+   * Project ids the session may read (a picked session). With neither list nor
+   * `readEverything` the session is automatic, or, where the organization makes
+   * every session pick, waits for the person to choose.
+   */
   read?: string[];
   /** Project ids the session may write; each is also read (`write` alone reads the same projects). */
   write?: string[];
+  /** Read every project the person can read, locked ones included, and write none (no lists). */
+  readEverything?: boolean;
   /** A label the person recognizes, such as the agent and folder. */
   label?: string;
   /** The folder the client runs in, shown on the picker. */
@@ -38,6 +58,10 @@ export interface UpdateSessionOptions {
   label?: string;
   /** Ask the client to reuse this selection in the session's folder (the person only). */
   rememberFolder?: boolean;
+  /** Read every project and write none (not after an automatic session touched a project). */
+  readEverything?: boolean;
+  /** `automatic`: the server tracks what it touches instead (not in a `must_pick` organization). */
+  mode?: "automatic";
 }
 
 /** A session and a client confined to it. */
@@ -55,6 +79,12 @@ export interface StartSessionOptions {
   label?: string;
   /** The client shown to the person; defaults to this SDK's name. */
   clientName?: string;
+  /** Project ids to read: a picked session (`create` takes them the same way). */
+  read?: string[];
+  /** Project ids to write; each is also read. */
+  write?: string[];
+  /** Read every project, locked ones included, and write none. */
+  readEverything?: boolean;
 }
 
 type MakeClient<C> = (options: ClientOptions) => C;
@@ -86,6 +116,11 @@ export class AgentSession<C> {
     return this.sessions.current();
   }
 
+  /** Where the session can still write, and why not elsewhere (`sessions.status`). */
+  status(): Promise<SessionStatus> {
+    return this.sessions.status();
+  }
+
   /** One page of what the session read, newest first (`sessions.trail`). */
   trail(query: { cursor?: string; limit?: number } = {}): Promise<SessionTrailPage> {
     return this.sessions.trail(this.id, query);
@@ -103,9 +138,17 @@ function expiresAtMs(value: unknown): number | undefined {
 }
 
 /**
- * Agent sessions that read and write only the projects a person chooses. Start
- * one with your own credential and get back a client confined to it; the person
- * can change its projects at `pickerUrl` while it runs.
+ * Agent sessions. A session works one of three ways (`mode`): `automatic` (it
+ * starts open and the server tracks what it touches: touching a project whose
+ * boundary is locked locks its writes to that project, a second makes it
+ * read-only), `picked` (`read`/`write` lists declared at the start, checked
+ * against the projects' boundaries: `SessionSelectionInvalidError` with every
+ * reason; `options` says what can be added first) or `read_everything` (every
+ * project, locked ones included, and no writes). A declaration applies only
+ * while the session has touched nothing (`SessionAlreadyStartedError` after);
+ * `status` says where it can still write. Start one with your own credential and
+ * get back a client confined to it; the person can change a picked session's
+ * projects at `pickerUrl` while it runs.
  */
 export class Sessions<C = unknown> extends Resource {
   constructor(
@@ -127,6 +170,7 @@ export class Sessions<C = unknown> extends Resource {
         folder: options.folder,
         read_project_ids: read,
         write_project_ids: options.write,
+        read_everything: options.readEverything,
         issue_token: true,
         ttl_seconds: options.ttlSeconds,
       }),
@@ -162,6 +206,9 @@ export class Sessions<C = unknown> extends Resource {
           agent_session: agentSessionId,
           label: options.label,
           client_name: credentialClient(options.clientName, this.transport.clientName),
+          read_project_ids: options.read ?? (options.write ? [...options.write] : undefined),
+          write_project_ids: options.write,
+          read_everything: options.readEverything,
         }),
       });
     } catch (error) {
@@ -205,7 +252,7 @@ export class Sessions<C = unknown> extends Resource {
 
   /**
    * The session this client's requests run in: a scoped client's, or the one
-   * its `X-Beakr-Session` joins. With auto-lock, `lock_state` (`open`,
+   * its `X-Beakr-Session` joins. Its `mode`, `summary`, `lock_state` (`open`,
    * `locked`, `read_only`), `write_project` and `touched_projects` say what it
    * may still write.
    */
@@ -214,9 +261,35 @@ export class Sessions<C = unknown> extends Resource {
   }
 
   /**
+   * Which projects a picked session could read and write, given the lists so
+   * far. With your own credential, not a session token.
+   */
+  options(lists: { read?: string[]; write?: string[] } = {}): Promise<SessionOptions> {
+    return this.transport.request({
+      method: "POST",
+      path: "/v1/sessions/options",
+      body: { read_project_ids: lists.read ?? [], write_project_ids: lists.write ?? [] },
+    });
+  }
+
+  /**
+   * Where a session can still write, and why not elsewhere: its `mode`,
+   * `lock_state` (and `locked_to`), what it has read, `write.projects` it may
+   * write (`outcome` `write` or `held`), `write.refused` with each project's
+   * `code` and `reason`, a one-line `summary` and its last boundary `events`.
+   * Without `sessionId`, the session this client's requests run in
+   * (`NotFoundError` outside one).
+   */
+  status(sessionId?: string): Promise<SessionStatus> {
+    const path = sessionId === undefined ? "/v1/sessions/current/status" : `/v1/sessions/${enc(sessionId)}/status`;
+    return this.transport.request({ method: "GET", path });
+  }
+
+  /**
    * Set the session's projects. From your own client this chooses or changes
-   * them; from the session's scoped client it may only drop projects, and naming
-   * one the session lacks throws `SessionWidenRefusedError`.
+   * them (`readEverything` makes it read every project and write none); from the
+   * session's scoped client it may only drop projects, and naming one the
+   * session lacks throws `SessionWidenRefusedError`.
    */
   update(sessionId: string, options: UpdateSessionOptions): Promise<Session> {
     return this.transport.request({
@@ -227,6 +300,8 @@ export class Sessions<C = unknown> extends Resource {
         write_project_ids: options.write,
         label: options.label,
         remember_folder: options.rememberFolder,
+        read_everything: options.readEverything,
+        mode: options.mode,
       }),
     });
   }

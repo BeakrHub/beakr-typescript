@@ -1877,14 +1877,15 @@ export interface paths {
          * Get the project isolation settings
          * @description Get the project isolation settings.
          *
-         *     The organization's settings, and which of the features are turned on for it.
+         *     The organization's session mode, its default and minimum project boundary,
+         *     whether agent writes need a session, and which features are turned on.
          */
         get: operations["get_project_isolation_v1_organizations__org_id__project_isolation_get"];
         /**
          * Change the project isolation settings
          * @description Change the project isolation settings.
          *
-         *     Only the fields sent change.
+         *     Only the fields sent change. ``minimum_boundary`` null clears the floor.
          */
         put: operations["set_project_isolation_v1_organizations__org_id__project_isolation_put"];
         post?: never;
@@ -2049,14 +2050,14 @@ export interface paths {
          * Get a project's cross-project guard
          * @description Get a project's cross-project guard.
          *
-         *     Its own setting, the organization's, and the one that applies.
+         *     Legacy: the project's content_in, in the guard's words (allow, hold, refuse).
          */
         get: operations["get_cross_project_guard_v1_projects__project_id__cross_project_guard_get"];
         /**
          * Set a project's cross-project guard
          * @description Set a project's cross-project guard.
          *
-         *     Its own guard, or null to follow the organization's.
+         *     Legacy: sets the project's content_in (allow, hold, refuse; null is allow).
          */
         put: operations["set_cross_project_guard_v1_projects__project_id__cross_project_guard_put"];
         post?: never;
@@ -2532,6 +2533,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sessions/current/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Show this session's status
+         * @description Show this session's status.
+         *
+         *     For the session of the request (a session token, or a key joined by
+         *     ``X-Beakr-Session``): its mode, what it has read, where it may still write,
+         *     and why not elsewhere.
+         */
+        get: operations["current_session_status_v1_sessions_current_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sessions/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check a session's project choices
+         * @description Check a session's project choices.
+         *
+         *     For the given read and write lists: whether they are valid, and for each
+         *     project the person can read, whether it can be added to read or to write,
+         *     with the reason when not.
+         */
+        post: operations["session_options_v1_sessions_options_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sessions/{session_id}": {
         parameters: {
             query?: never;
@@ -2574,6 +2623,29 @@ export interface paths {
          * @description End the session: its tokens stop working. A session token may end its own.
          */
         post: operations["end_session_v1_sessions__session_id__end_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sessions/{session_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Show a session's status
+         * @description Show a session's status.
+         *
+         *     One of the caller's sessions: its mode, what it has read, where it may
+         *     still write, and why not elsewhere.
+         */
+        get: operations["session_status_v1_sessions__session_id__status_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4021,6 +4093,64 @@ export interface components {
              */
             reason?: string;
         };
+        /** BoundaryChange */
+        BoundaryChange: {
+            /**
+             * Content In
+             * @description Leave out to keep it.
+             */
+            content_in?: ("allowed" | "owner_approves" | "blocked") | null;
+            /**
+             * Content Out
+             * @description Leave out to keep it.
+             */
+            content_out?: ("allowed" | "locked") | null;
+        };
+        /** BoundaryPreset */
+        BoundaryPreset: {
+            /**
+             * Content In
+             * @description The preset's content_in.
+             * @enum {string}
+             */
+            content_in: "allowed" | "owner_approves" | "blocked";
+            /**
+             * Content Out
+             * @description The preset's content_out.
+             * @enum {string}
+             */
+            content_out: "allowed" | "locked";
+            /**
+             * Description
+             * @description What it means, in a sentence.
+             */
+            description: string;
+            /**
+             * Key
+             * @description `internal`, `siloed` or `leadership`.
+             */
+            key: string;
+            /**
+             * Title
+             * @description The name the apps show.
+             */
+            title: string;
+        };
+        /** BoundaryValues */
+        BoundaryValues: {
+            /**
+             * Content In
+             * @description `allowed`, `owner_approves` (writes bringing in other projects' content wait for its owners) or `blocked` (refused).
+             * @enum {string}
+             */
+            content_in: "allowed" | "owner_approves" | "blocked";
+            /**
+             * Content Out
+             * @description `allowed`, or `locked`: touching the project locks a session's writes to it.
+             * @enum {string}
+             */
+            content_out: "allowed" | "locked";
+        };
         /**
          * BulkCompleteFileIn
          * @description Single file completion info.
@@ -4871,29 +5001,29 @@ export interface components {
         CrossProjectGuardOut: {
             /**
              * Available
-             * @description Whether the cross-project guard is turned on.
+             * @description Whether project boundaries are turned on.
              */
             available: boolean;
             /**
              * Can Change
-             * @description Whether the caller may change it: an owner or admin of the project acting as a person.
+             * @description Whether the caller may change it: an owner or admin of the project, or an org admin, acting as a person.
              */
             can_change: boolean;
             /**
              * Effective
-             * @description The guard that applies: the project's, else the org's.
+             * @description The content_in that applies, in the guard's words.
              * @enum {string}
              */
             effective: "allow" | "hold" | "refuse";
             /**
              * Org Default
-             * @description The organization's guard.
+             * @description The organization's default content_in.
              * @enum {string}
              */
             org_default: "allow" | "hold" | "refuse";
             /**
              * Override
-             * @description The project's own guard; null follows the organization's.
+             * @description The project's own content_in in the guard's words; null when it has none.
              */
             override: ("allow" | "hold" | "refuse") | null;
             /**
@@ -4913,7 +5043,7 @@ export interface components {
         CrossProjectGuardUpdate: {
             /**
              * Override
-             * @description `allow`, `hold` or `refuse`; null clears it, so the project follows the organization.
+             * @description `allow`, `hold` or `refuse`, setting the project's content_in to allowed, owner_approves or blocked; null sets it to allowed.
              */
             override: ("allow" | "hold" | "refuse") | null;
         };
@@ -8737,6 +8867,29 @@ export interface components {
              */
             next_cursor?: string | null;
         };
+        /** OptionBoundary */
+        OptionBoundary: {
+            /**
+             * Content In
+             * @description `allowed`, `owner_approves` or `blocked`.
+             */
+            content_in: string;
+            /**
+             * Content Out
+             * @description `allowed` or `locked`.
+             */
+            content_out: string;
+            /**
+             * Preset
+             * @description `internal`, `siloed`, `leadership` or `custom`.
+             */
+            preset: string;
+            /**
+             * Summary
+             * @description The boundary in plain words.
+             */
+            summary: string;
+        };
         /**
          * OrgMemberAdd
          * @description Schema for adding a member to an organization.
@@ -9174,6 +9327,80 @@ export interface components {
          */
         PrincipalType: "user" | "group" | "org" | "service" | "link";
         /**
+         * ProjectBoundaryChange
+         * @description A change to a project's boundary: a key left out keeps its value.
+         */
+        ProjectBoundaryChange: {
+            /**
+             * Content In
+             * @description `owner_approves`: writes bringing in other projects' content wait for its owners; `blocked`: they are refused.
+             */
+            content_in?: ("allowed" | "owner_approves" | "blocked") | null;
+            /**
+             * Content Out
+             * @description `locked`: once an agent session touches the project, it may write only there.
+             */
+            content_out?: ("allowed" | "locked") | null;
+        };
+        /**
+         * ProjectBoundaryOut
+         * @description A project's boundary as it applies now (null on a project while boundaries are off).
+         */
+        ProjectBoundaryOut: {
+            /**
+             * Can Change
+             * @description The caller may change it: an owner or admin of the project, or an org admin, acting as a person.
+             * @default false
+             */
+            can_change?: boolean;
+            /**
+             * Content In
+             * @description The effective content_in: the project's own, raised to the org minimum.
+             * @enum {string}
+             */
+            content_in: "allowed" | "owner_approves" | "blocked";
+            /**
+             * Content Out
+             * @description The effective content_out: the project's own, raised to the org minimum.
+             * @enum {string}
+             */
+            content_out: "allowed" | "locked";
+            /**
+             * Preset
+             * @description The preset the effective boundary matches, or `custom`.
+             * @enum {string}
+             */
+            preset: "internal" | "siloed" | "leadership" | "custom";
+            /**
+             * Raised By Minimum
+             * @description The organization's minimum raised the project's setting.
+             * @default false
+             */
+            raised_by_minimum?: boolean;
+            /** @description The project's own setting; null when it has none (internal). */
+            stored?: components["schemas"]["ProjectBoundaryValues"] | null;
+            /**
+             * Summary
+             * @description The boundary in plain words, as list_projects prints it.
+             */
+            summary: string;
+        };
+        /** ProjectBoundaryValues */
+        ProjectBoundaryValues: {
+            /**
+             * Content In
+             * @description What may come into the project from other projects.
+             * @enum {string}
+             */
+            content_in: "allowed" | "owner_approves" | "blocked";
+            /**
+             * Content Out
+             * @description What may leave the project.
+             * @enum {string}
+             */
+            content_out: "allowed" | "locked";
+        };
+        /**
          * ProjectCreate
          * @description Request payload for creating a project.
          *
@@ -9193,6 +9420,13 @@ export interface components {
          *     }
          */
         ProjectCreate: {
+            /** @description The project's boundary (needs a person); without it, the org's default. */
+            boundary?: components["schemas"]["ProjectBoundaryChange"] | null;
+            /**
+             * Boundary Preset
+             * @description A preset to set the boundary from, instead of `boundary`.
+             */
+            boundary_preset?: ("internal" | "siloed" | "leadership") | null;
             /**
              * Description
              * @description Optional long-form project description.
@@ -9223,9 +9457,14 @@ export interface components {
             agent_writes_require_session: boolean;
             /**
              * Cross Project Guard
-             * @description `cross_project_guard` and project overrides may be set.
+             * @description Legacy name of `project_boundaries` (the same flag).
              */
             cross_project_guard: boolean;
+            /**
+             * Project Boundaries
+             * @description Project boundaries: `session_mode`, `default_boundary`, `minimum_boundary` and each project's boundary may be set, and they apply.
+             */
+            project_boundaries: boolean;
             /**
              * Server Agent Sessions
              * @description Agent sessions joined by X-Beakr-Session or agent_session_id.
@@ -9233,7 +9472,7 @@ export interface components {
             server_agent_sessions: boolean;
             /**
              * Session Auto Lock
-             * @description `session_mode` may be set.
+             * @description Retired (always false): the org-wide auto-lock is now a minimum boundary.
              */
             session_auto_lock: boolean;
         };
@@ -9246,7 +9485,8 @@ export interface components {
             agent_writes_require_session: boolean;
             /**
              * Auto Lock Counts Search Results
-             * @description In auto_lock, whether the projects an unscoped search's results come from count as read (true, strict) or only projects a request names (false).
+             * @deprecated
+             * @description Deprecated and always true: a broad search always counts what it read.
              */
             auto_lock_counts_search_results: boolean;
             /** @description Which of these features are turned on for the organization. */
@@ -9258,16 +9498,26 @@ export interface components {
             can_change: boolean;
             /**
              * Cross Project Guard
-             * @description The organization's default for writes into a project that cite a source from another project, or come from a session that read another project: `allow`, `hold` (only an owner or admin of the project may accept them) or `refuse`.
+             * @deprecated
+             * @description Deprecated: `default_boundary.content_in` in the old guard's words.
              * @enum {string}
              */
             cross_project_guard: "allow" | "hold" | "refuse";
+            /** @description The boundary new projects start with. */
+            default_boundary: components["schemas"]["BoundaryValues"];
+            /** @description A floor no project's boundary can be set below, or null for none. Every project's boundary applies raised to it; content_out locked keeps every project locked. */
+            minimum_boundary: components["schemas"]["BoundaryValues"] | null;
+            /**
+             * Presets
+             * @description The boundary presets the apps offer.
+             */
+            presets: components["schemas"]["BoundaryPreset"][];
             /**
              * Session Mode
-             * @description `picker`: the person chooses each agent session's projects. `auto_lock`: the server decides: the first project a session reads or writes becomes its read-write project, and reading a second makes it read-only for the rest of its life.
+             * @description `automatic` (the default): an agent session starts open and the server tracks what it touches; it may still choose its projects up front. `must_pick`: a session reaches no project until its projects (or read everything) are chosen.
              * @enum {string}
              */
-            session_mode: "picker" | "auto_lock";
+            session_mode: "automatic" | "must_pick";
         };
         /** ProjectIsolationUpdate */
         ProjectIsolationUpdate: {
@@ -9278,19 +9528,23 @@ export interface components {
             agent_writes_require_session?: boolean | null;
             /**
              * Auto Lock Counts Search Results
-             * @description In auto_lock, whether the projects an unscoped search's results come from count as read (true, strict) or only projects a request names (false).
+             * @description Retired: a broad search always counts its results now.
              */
             auto_lock_counts_search_results?: boolean | null;
             /**
              * Cross Project Guard
-             * @description The organization's default for writes into a project that cite a source from another project, or come from a session that read another project: `allow`, `hold` (only an owner or admin of the project may accept them) or `refuse`.
+             * @description Retired: set each project's content_in instead.
              */
-            cross_project_guard?: ("allow" | "hold" | "refuse") | null;
+            cross_project_guard?: string | null;
+            /** @description The boundary new projects start with. */
+            default_boundary?: components["schemas"]["BoundaryChange"] | null;
+            /** @description A floor no project's boundary can be set below, or null for none. Every project's boundary applies raised to it; content_out locked keeps every project locked. */
+            minimum_boundary?: components["schemas"]["BoundaryChange"] | null;
             /**
              * Session Mode
-             * @description `picker`: the person chooses each agent session's projects. `auto_lock`: the server decides: the first project a session reads or writes becomes its read-write project, and reading a second makes it read-only for the rest of its life.
+             * @description `automatic` (the default): an agent session starts open and the server tracks what it touches; it may still choose its projects up front. `must_pick`: a session reaches no project until its projects (or read everything) are chosen.
              */
-            session_mode?: ("picker" | "auto_lock") | null;
+            session_mode?: string | null;
         };
         /**
          * ProjectKnowledgeActivity
@@ -9716,6 +9970,57 @@ export interface components {
              */
             next_cursor?: string | null;
         };
+        /** ProjectOption */
+        ProjectOption: {
+            /** @description The project's boundary as it applies now. */
+            boundary: components["schemas"]["OptionBoundary"];
+            /**
+             * Can Read
+             * @description Adding it to the read list keeps the selection valid.
+             */
+            can_read: boolean;
+            /**
+             * Can Write
+             * @description Adding it to the write list (and so to read) keeps the selection valid.
+             */
+            can_write: boolean;
+            /**
+             * Id
+             * Format: uuid
+             * @description Project id.
+             */
+            id: string;
+            /**
+             * In Read
+             * @description It is in the read list given.
+             */
+            in_read: boolean;
+            /**
+             * In Write
+             * @description It is in the write list given.
+             */
+            in_write: boolean;
+            /**
+             * Name
+             * @description Project name.
+             */
+            name: string | null;
+            /**
+             * Read Reason
+             * @description Why it can't be read, when it can't.
+             */
+            read_reason: string | null;
+            /**
+             * Write Note
+             * @description What writing it means with these reads (an owner_approves hold).
+             */
+            write_note: string | null;
+            /**
+             * Write Reason
+             * @description Why it can't be written, when it can't.
+             */
+            write_reason: string | null;
+        };
         /**
          * ProjectOut
          * @description Serialized representation of a project resource.
@@ -9764,6 +10069,8 @@ export interface components {
          *     }
          */
         ProjectOut: {
+            /** @description The project's boundary as it applies now; null while project boundaries are off. */
+            boundary?: components["schemas"]["ProjectBoundaryOut"] | null;
             /**
              * Can Add Content
              * @description Whether the caller can add content.
@@ -9986,6 +10293,13 @@ export interface components {
          *     }
          */
         ProjectUpdate: {
+            /** @description Change the boundary: an owner or admin of the project, or an org admin, acting as a person. */
+            boundary?: components["schemas"]["ProjectBoundaryChange"] | null;
+            /**
+             * Boundary Preset
+             * @description Set the boundary from a preset, instead of `boundary`.
+             */
+            boundary_preset?: ("internal" | "siloed" | "leadership") | null;
             /**
              * Description
              * @description Optional updated project description.
@@ -10055,6 +10369,14 @@ export interface components {
              * @default null
              */
             user_name?: string | null;
+        };
+        /** ReadEverythingOption */
+        ReadEverythingOption: {
+            /**
+             * Summary
+             * @description What a read-everything session would read and write.
+             */
+            summary: string;
         };
         /** ReadTrailSettingsOut */
         ReadTrailSettingsOut: {
@@ -10665,6 +10987,44 @@ export interface components {
              */
             scopes: components["schemas"]["ScopeOut"][];
         };
+        /** SelectionOptionsIn */
+        SelectionOptionsIn: {
+            /**
+             * Read Project Ids
+             * @description The read list chosen so far.
+             */
+            read_project_ids?: string[];
+            /**
+             * Write Project Ids
+             * @description The write list chosen so far.
+             */
+            write_project_ids?: string[];
+        };
+        /** SelectionOptionsOut */
+        SelectionOptionsOut: {
+            /**
+             * Notes
+             * @description What the lists given mean for writes.
+             */
+            notes: components["schemas"]["SessionNote"][];
+            /**
+             * Projects
+             * @description Every project the person can read (at most 500), by name.
+             */
+            projects: components["schemas"]["ProjectOption"][];
+            /** @description The read-everything choice. */
+            read_everything: components["schemas"]["ReadEverythingOption"];
+            /**
+             * Reasons
+             * @description Why the lists given are invalid (session_selection_invalid's reasons).
+             */
+            reasons: components["schemas"]["SessionNote"][];
+            /**
+             * Valid
+             * @description The lists given are a valid selection.
+             */
+            valid: boolean;
+        };
         /** SendToKnowledgeRequest */
         SendToKnowledgeRequest: {
             /**
@@ -11046,7 +11406,7 @@ export interface components {
         SessionCreate: {
             /**
              * Agent Session
-             * @description The agent conversation this session is for (what the client sends as `X-Beakr-Session`). Returns the person's active session for it, or starts one; an id whose session has ended answers `409 session_ended`. Needs `server_agent_sessions`.
+             * @description The agent conversation this session is for (what the client sends as `X-Beakr-Session`). Returns the person's active session for it, or starts one; an id whose session has ended answers `409 session_ended`. Lists or `read_everything` given for a session that has already touched a project answer `409 session_already_started`. Needs `server_agent_sessions`.
              */
             agent_session?: string | null;
             /**
@@ -11072,8 +11432,14 @@ export interface components {
              */
             label?: string | null;
             /**
+             * Read Everything
+             * @description Read every project the person can, locked ones included, and write nothing. Takes no lists.
+             * @default false
+             */
+            read_everything?: boolean;
+            /**
              * Read Project Ids
-             * @description Projects the session may read. Omit both lists to create a pending session the person completes at `picker_url`; every Knowledge, document and research call answers `403 session_needs_selection` until they do.
+             * @description Projects the session may read (a picked session). Omit both lists for the organization's mode: an automatic session, or a pending one the person completes at `picker_url` (every Knowledge, document and research call answers `403 session_needs_selection` until they do). Lists that break a project's boundary answer `422 session_selection_invalid` with every reason.
              */
             read_project_ids?: string[] | null;
             /**
@@ -11087,6 +11453,66 @@ export interface components {
              * @description Projects the session may write; each must also be a read project.
              */
             write_project_ids?: string[] | null;
+        };
+        /** SessionNote */
+        SessionNote: {
+            /**
+             * Code
+             * @description `owner_approves`, or a reason code of `session_selection_invalid`.
+             */
+            code: string;
+            /**
+             * Message
+             * @description What it means, in plain words.
+             */
+            message: string;
+            /**
+             * Project Ids
+             * @description The projects it names.
+             */
+            project_ids: string[];
+        };
+        /**
+         * SessionNotice
+         * @description A lock this request's touch engaged in its agent session (project boundaries).
+         */
+        SessionNotice: {
+            /**
+             * Lock State
+             * @description `locked` or `read_only`.
+             */
+            lock_state: string;
+            /**
+             * Message
+             * @description What changed, in plain words.
+             */
+            message: string;
+            /**
+             * @description `locked`: the one project the session may now write.
+             * @default null
+             */
+            project?: components["schemas"]["SessionNoticeProject"] | null;
+            /**
+             * Projects
+             * @description `read_only`: the locked projects it has touched.
+             * @default null
+             */
+            projects?: components["schemas"]["SessionNoticeProject"][] | null;
+        };
+        /** SessionNoticeProject */
+        SessionNoticeProject: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Project id.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Project name, when the caller can see it.
+             * @default null
+             */
+            name?: string | null;
         };
         /** SessionOut */
         SessionOut: {
@@ -11135,15 +11561,20 @@ export interface components {
             last_used_at: string | null;
             /**
              * Lock State
-             * @description `auto_lock` only: `open` (no project yet), `locked` (reads and writes `write_project`) or `read_only` (read two projects; writes are refused). Null in picker mode.
+             * @description `open`, `locked` (it touched one project that keeps its content in, and writes only there: `write_project`) or `read_only` (two such projects, or read everything). Null while pending.
              */
             lock_state?: string | null;
             /**
              * Mode
-             * @description `picker` (the person chooses the projects) or `auto_lock` (the first project the session reads or writes becomes its project; reading a second makes it read-only).
-             * @default picker
+             * @description `automatic` (the server tracks what it touches), `picked` (its read and write lists were chosen) or `read_everything` (every project, no writes).
+             * @default picked
              */
             mode?: string;
+            /**
+             * Notes
+             * @description What its lists mean for writes: `owner_approves` holds.
+             */
+            notes?: components["schemas"]["SessionNote"][];
             /**
              * Picker Url
              * @description Where the person chooses and changes the projects.
@@ -11161,9 +11592,14 @@ export interface components {
             read_only_reason?: string | null;
             /**
              * Read Projects
-             * @description Projects the session may read.
+             * @description Projects the session may read; for an automatic session, those it has read.
              */
             read_projects: components["schemas"]["SessionProject"][];
+            /**
+             * Read Touched Projects
+             * @description Every project the session has read, in order.
+             */
+            read_touched_projects?: components["schemas"]["SessionProject"][];
             /**
              * Remember Folder
              * @description The person asked the client to reuse this selection in `folder`.
@@ -11184,11 +11620,17 @@ export interface components {
              * @description `pending` (no projects chosen yet), `active` or `ended`.
              */
             status: string;
+            /**
+             * Summary
+             * @description The session's projects in one line.
+             * @default
+             */
+            summary?: string;
             /** @description The token minted with the session, when `issue_token` was set. */
             token?: components["schemas"]["SessionToken"] | null;
             /**
              * Touched Projects
-             * @description Every project the session has read or written, in order (tracked under auto-lock or the cross-project guard).
+             * @description Every project the session has read or written, in order.
              */
             touched_projects?: components["schemas"]["SessionProject"][];
             /**
@@ -11198,11 +11640,11 @@ export interface components {
              * @example 2026-10-03T09:15:42Z
              */
             updated_at: string;
-            /** @description `auto_lock` only: the project it reads and writes, while locked. */
+            /** @description The project it is locked to, while locked. */
             write_project?: components["schemas"]["SessionProject"] | null;
             /**
              * Write Projects
-             * @description Projects the session may write.
+             * @description Projects the session may write now.
              */
             write_projects: components["schemas"]["SessionProject"][];
         };
@@ -11323,6 +11765,63 @@ export interface components {
              */
             next_cursor?: string | null;
         };
+        /** SessionStatusOut */
+        SessionStatusOut: {
+            /**
+             * Events
+             * @description Its latest boundary events (at most 20), newest first: rows of its trail whose `op` is `boundary:started`, `boundary:changed`, `boundary:locked`, `boundary:read_only` or `boundary:refused`.
+             */
+            events: components["schemas"]["SessionReadOut"][];
+            /**
+             * Lock State
+             * @description `open`, `locked` or `read_only`; null while pending.
+             */
+            lock_state: string | null;
+            /** @description The project its writes are locked to. */
+            locked_to: components["schemas"]["SessionProject"] | null;
+            /**
+             * Mode
+             * @description `automatic`, `picked` or `read_everything`.
+             */
+            mode: string;
+            /**
+             * Read Projects
+             * @description What it has read, in order.
+             */
+            read_projects: components["schemas"]["SessionProject"][];
+            /**
+             * Readable Projects
+             * @description A picked session's read list (empty otherwise).
+             */
+            readable_projects: components["schemas"]["SessionProject"][];
+            /**
+             * Reads Everything
+             * @description It may read every project the person can (automatic, read everything).
+             */
+            reads_everything: boolean;
+            /**
+             * Session Id
+             * @description The session this status describes.
+             */
+            session_id: string;
+            /**
+             * Status
+             * @description `pending`, `active` or `ended`.
+             */
+            status: string;
+            /**
+             * Summary
+             * @description Where the session stands, in plain words.
+             */
+            summary: string;
+            /**
+             * Touched Projects
+             * @description What it has read or written.
+             */
+            touched_projects: components["schemas"]["SessionProject"][];
+            /** @description Where it may still write, and why not elsewhere. */
+            write: components["schemas"]["SessionWriteStatus"];
+        };
         /** SessionToken */
         SessionToken: {
             /**
@@ -11361,6 +11860,16 @@ export interface components {
              */
             label?: string | null;
             /**
+             * Mode
+             * @description `automatic`: the server tracks what the session touches instead of chosen lists. Only while it has touched nothing, and not where the organization's session mode is must_pick (`422 session_mode_must_pick`).
+             */
+            mode?: "automatic" | null;
+            /**
+             * Read Everything
+             * @description true: read every project and write none. Only while the session has touched nothing (else `409 session_already_started`).
+             */
+            read_everything?: boolean | null;
+            /**
              * Read Project Ids
              * @description The session's read projects, replacing the list. Dropping a read project drops it from write too.
              */
@@ -11375,6 +11884,24 @@ export interface components {
              * @description The session's write projects, replacing the list; each must be a read project.
              */
             write_project_ids?: string[] | null;
+        };
+        /** SessionWriteStatus */
+        SessionWriteStatus: {
+            /**
+             * Anywhere
+             * @description It may write any project it can read, except those in `refused`.
+             */
+            anywhere: boolean;
+            /**
+             * Projects
+             * @description Where it may write (empty when `anywhere`), and whether it is held.
+             */
+            projects: components["schemas"]["StatusWrite"][];
+            /**
+             * Refused
+             * @description Projects it can read but not write, with why (at most 200).
+             */
+            refused: components["schemas"]["StatusRefused"][];
         };
         /** SkillBundleOut */
         SkillBundleOut: {
@@ -12220,6 +12747,54 @@ export interface components {
              * @description Id of the user message.
              */
             user_message_id?: string | null;
+        };
+        /** StatusRefused */
+        StatusRefused: {
+            /**
+             * Code
+             * @description The refusal a write there would get.
+             */
+            code: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description Project id.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Project name.
+             */
+            name: string | null;
+            /**
+             * Reason
+             * @description Why, in plain words.
+             */
+            reason: string;
+        };
+        /** StatusWrite */
+        StatusWrite: {
+            /**
+             * Id
+             * Format: uuid
+             * @description Project id.
+             */
+            id: string;
+            /**
+             * Name
+             * @description Project name.
+             */
+            name: string | null;
+            /**
+             * Outcome
+             * @description `write`, or `held` (its owners approve what this session writes there).
+             */
+            outcome: string;
+            /**
+             * Reason
+             * @description Why it is held, when it is.
+             */
+            reason: string | null;
         };
         /** TextContent */
         TextContent: {
@@ -13100,6 +13675,11 @@ export interface components {
              * @default null
              */
             query?: components["schemas"]["KnowledgeQueryResult"] | null;
+            /**
+             * @description Present when this read locked the agent session (project boundaries).
+             * @default null
+             */
+            session_notice?: components["schemas"]["SessionNotice"] | null;
             /**
              * Sources
              * @description The sources it cites or draws on.
@@ -14338,6 +14918,11 @@ export interface components {
              * @default null
              */
             proposal_id?: string | null;
+            /**
+             * @description Present when this write locked the agent session (project boundaries).
+             * @default null
+             */
+            session_notice?: components["schemas"]["SessionNotice"] | null;
             /**
              * Sources
              * @description The sources it cites or draws on.
@@ -22206,6 +22791,104 @@ export interface operations {
             };
         };
     };
+    current_session_status_v1_sessions_current_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionStatusOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    session_options_v1_sessions_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectionOptionsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SelectionOptionsOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     get_session_v1_sessions__session_id__get: {
         parameters: {
             query?: never;
@@ -22326,6 +23009,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    session_status_v1_sessions__session_id__status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionStatusOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
