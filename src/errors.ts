@@ -335,6 +335,65 @@ export class SessionEndedError extends ConflictError {}
  */
 export class SessionAlreadyStartedError extends ConflictError {}
 
+/**
+ * The request header that confirms entering the locked projects it names (ids,
+ * comma-separated): what a `SessionLockConfirmError` asks to be repeated with.
+ */
+export const CONFIRM_LOCK_HEADER = "X-Beakr-Confirm-Lock";
+
+/**
+ * 409 `session_lock_confirm`: entering this locked project would cost the
+ * session. An automatic session that already read or wrote another project is
+ * about to touch a project that keeps its content in: entering it would limit
+ * the session's writes to it (or, as a second such project, leave none).
+ * Nothing was read, written or recorded. `project` is `{id, name}`, `cost` what
+ * entering takes away ("can no longer write to Research (written earlier in this
+ * session)"), and `confirmLock` the id to confirm. To go in, repeat the call on
+ * `beakr.confirmingLock(error.confirmLock)` (it sends `CONFIRM_LOCK_HEADER`); or
+ * ask the user, or start a new session.
+ */
+export class SessionLockConfirmError extends ConflictError {
+  private extra(key: string): unknown {
+    // Beside `code` in the envelope and in `detail`, as other session refusals.
+    const body = this.body as Record<string, unknown> | undefined;
+    for (const holder of [this.details, body?.["error"], body?.["detail"]]) {
+      const value = (holder as Record<string, unknown> | undefined)?.[key];
+      if (value !== undefined && value !== null) return value;
+    }
+    return undefined;
+  }
+
+  get project(): { id?: string; name?: string } | undefined {
+    const value = this.extra("project");
+    return value && typeof value === "object" ? (value as { id?: string; name?: string }) : undefined;
+  }
+
+  get projectId(): string | undefined {
+    const value = this.project?.id;
+    return typeof value === "string" && value ? value : undefined;
+  }
+
+  get projectName(): string | undefined {
+    const value = this.project?.name;
+    return typeof value === "string" && value ? value : undefined;
+  }
+
+  get cost(): string | undefined {
+    const value = this.extra("cost");
+    return typeof value === "string" ? value : undefined;
+  }
+
+  get confirmLock(): string | undefined {
+    const value = this.extra("confirm_lock");
+    return typeof value === "string" && value ? value : this.projectId;
+  }
+
+  get sessionId(): string | undefined {
+    const value = this.extra("session_id");
+    return typeof value === "string" && value ? value : undefined;
+  }
+}
+
 /** 400 or 422: the request was malformed or failed validation. */
 export class ValidationError extends BeakrError {}
 
@@ -636,6 +695,7 @@ export function errorFromResponse(
     if (code === "project_profile_required") return new ProjectProfileRequiredError(message, common);
     if (code === "session_ended") return new SessionEndedError(message, common);
     if (code === "session_already_started") return new SessionAlreadyStartedError(message, common);
+    if (code === "session_lock_confirm") return new SessionLockConfirmError(message, common);
     return new ConflictError(message, common);
   }
   if (status === 429) {

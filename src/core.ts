@@ -20,6 +20,7 @@ import {
   APIConnectionError,
   AuthenticationError,
   BeakrError,
+  CONFIRM_LOCK_HEADER,
   errorFromResponse,
   isHtmlPage,
   parseRetryAfter,
@@ -630,6 +631,35 @@ export class Transport {
     options.session = this.#session ?? false;
     if (this.orgId !== undefined) options.orgId = this.orgId;
     return options;
+  }
+
+  /**
+   * This transport as one that also sends `projectIds` as `X-Beakr-Confirm-Lock`:
+   * the same caller, session and settings, confirming entry to those locked
+   * projects (`Beakr.confirmingLock`).
+   * @internal
+   */
+  withConfirmLock(projectIds: string[]): Transport {
+    const ids = [...new Set(projectIds.map((id) => String(id).trim()).filter(Boolean))];
+    const withHeader = (options: RequestOptions): RequestOptions => {
+      const given = options.headers?.[CONFIRM_LOCK_HEADER];
+      const merged = [...new Set([...(given ? given.split(",") : []), ...ids])].join(",");
+      return { ...options, headers: { ...(options.headers ?? {}), [CONFIRM_LOCK_HEADER]: merged } };
+    };
+    return new Proxy(this, {
+      get(target, property) {
+        if (property === "request") return (options: RequestOptions) => target.request(withHeader(options));
+        if (property === "raw") return (options: RequestOptions) => target.raw(withHeader(options));
+        if (property === "paginate") {
+          return (options: RequestOptions, pageSize?: number) => target.paginate(withHeader(options), pageSize);
+        }
+        // A confirming client confirming more keeps these ids too.
+        if (property === "withConfirmLock") return (more: string[]) => target.withConfirmLock([...ids, ...more]);
+        const value: unknown = Reflect.get(target, property, target);
+        // Bound to the transport itself: its #private fields are not on the proxy.
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
   }
 
   /**

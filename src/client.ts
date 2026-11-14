@@ -3,6 +3,7 @@ import type { JsonObject } from "./types.js";
 import {
   INSPECT_CUSTOM,
   Transport,
+  onTransport,
   sharedTransport,
   type ClientOptions,
   type QueryValue,
@@ -132,6 +133,17 @@ export class Beakr {
   /** Wait for any long operation (a run, import, sync, ...): `await beakr.wait(run)`. */
   wait(job: JobReference, options?: JobWaitOptions): Promise<Job> {
     return this.jobs.wait(job, options);
+  }
+
+  /**
+   * This client confirming entry to these locked projects: the same caller and
+   * session, sending `X-Beakr-Confirm-Lock` on every request. A
+   * `SessionLockConfirmError` held a call because entering a locked project would
+   * cost the session; repeat it here with the error's `confirmLock` to go in:
+   * `await beakr.confirmingLock(error.confirmLock).knowledge.command("ls", ...)`.
+   */
+  confirmingLock(...projectIds: string[]): Beakr {
+    return new Beakr(onTransport(this.transport.withConfirmLock(projectIds)));
   }
 
   /** Call any route, including ones without a resource method yet. */

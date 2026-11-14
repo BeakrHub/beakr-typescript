@@ -512,6 +512,20 @@ Each release lists the public API changes it supports, taken from the API change
     `X-Beakr-Session-Lock`, and the Knowledge operations
     (`POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write`) also
     `session_notice`.
+  - Confirm before entering a locked project: in an `automatic` session that has
+    already read or written another project, the first request that touches a
+    `locked` project it has not touched answers `409 session_lock_confirm` and
+    reads, writes and records nothing. `detail` (and `error`, beside `code`)
+    carries `message` (one line: what entering costs and how to go in), `fix`,
+    `session_id`, `project` (`id`, `name`), `cost` and `confirm_lock`, the id to
+    send back. The same request with `X-Beakr-Confirm-Lock: <project id>`
+    (several ids comma-separated) goes in, with the usual lock notice; anything
+    but project ids in it answers `422 invalid_arguments`. Never held: a
+    session's first touch, a project it already touched or is locked to, a
+    session that is already read-only, `picked` and `read_everything` sessions,
+    and a credential that can read only that project. A `picked` session gets no
+    lock notice either (its log and status still record the lock). The session's
+    log records one `boundary:held` event per held project.
   - `POST /v1/sessions/options` says, for a picker's read and write lists, whether
     they are valid and, for each project the person can read, whether it can be
     added to read or to write, with the reason when not.
@@ -653,6 +667,12 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- `SessionLockConfirmError` (a `ConflictError`) for `409 session_lock_confirm`:
+  an automatic session held before entering a locked project, nothing read or
+  written. It has `project` (`{id, name}`), `projectId`, `projectName`, `cost`,
+  `confirmLock` (the id to confirm) and `sessionId`. Repeat the call on
+  `beakr.confirmingLock(error.confirmLock)`, the same caller and session sending
+  `X-Beakr-Confirm-Lock` (`CONFIRM_LOCK_HEADER`), to go in.
 - `publicSource` keeps the call that re-reads a connected item. A cited meeting
   note, email or Slack thread carries `retrieval: {tool, arguments}` (the
   provider read tool and the item's own id, e.g. `granola_get_note` with
