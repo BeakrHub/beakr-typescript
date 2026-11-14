@@ -268,6 +268,26 @@ export class ProjectContentLockedError extends ProjectIsolationError {
  */
 export class SessionProjectRequiredError extends ProjectIsolationError {}
 
+/**
+ * 403 `session_route_unavailable`: this route is not served inside a session. A
+ * write's read trail (a proposal's, an ingestion event's, a revision's) and a few
+ * web-app views answer only a person's own credential, outside any session (they
+ * answered a session `read_trail_forbidden` before). Ask with a client that sends
+ * no session (`session: false`), as the person. `sessionId` names the session
+ * that asked.
+ */
+export class SessionRouteUnavailableError extends ProjectIsolationError {
+  override get sessionId(): string | undefined {
+    // In `detail` (and beside the envelope's code), as other session refusals.
+    const body = this.body as Record<string, unknown> | undefined;
+    for (const holder of [this.details, body?.["error"], body?.["detail"]]) {
+      const value = (holder as Record<string, unknown> | undefined)?.["session_id"];
+      if (typeof value === "string" && value) return value;
+    }
+    return undefined;
+  }
+}
+
 /** 403 codes with their own error type. */
 const FORBIDDEN_TYPES: Record<string, typeof PermissionDeniedError> = {
   person_review_required: PersonReviewRequiredError,
@@ -281,6 +301,7 @@ const FORBIDDEN_TYPES: Record<string, typeof PermissionDeniedError> = {
   cross_project_owner_required: CrossProjectOwnerRequiredError,
   session_project_required: SessionProjectRequiredError,
   project_content_locked: ProjectContentLockedError,
+  session_route_unavailable: SessionRouteUnavailableError,
 };
 
 export class NotFoundError extends BeakrError {}
