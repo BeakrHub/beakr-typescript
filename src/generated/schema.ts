@@ -416,7 +416,7 @@ export interface paths {
         put?: never;
         /**
          * Get context for an agent session
-         * @description What an agent should start a session with, in one call: the organization's, project's and caller's profiles, the caller's memories, relevant past conversations (with `question`), what changed since the agent's last session (or `since`), and the skills and entities that matter. `format` is `markdown` (default), `json`, `claude_md` or `agents_md`; `budget_chars` caps the size, earlier blocks winning. `client` names the agent (`claude-code`, `codex`).
+         * @description What an agent should start a session with, in one call: the organization's, project's and caller's profiles, the caller's memories, relevant past conversations (with `question`), what changed since the agent's last session (or `since`), and the skills and entities that matter. `format` is `markdown` (default), `json`, `claude_md` or `agents_md`; `budget_chars` caps the size. When it cannot hold everything, the organization and project come first, then what `question` selects, then the profile, with activity and past conversations last, and `truncated` is true. `client` names the agent (`claude-code`, `codex`).
          */
         post: operations["agent_context_v1_context_post"];
         delete?: never;
@@ -2923,6 +2923,17 @@ export interface components {
              * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
              */
             project_id?: string | null;
+            /**
+             * Truncated
+             * @description True when `budget_chars` shortened a block or left one out: a larger budget, or a `question` or `project_id` to focus it, returns more of what matters.
+             * @default false
+             */
+            truncated?: boolean;
+            /**
+             * @description Which Beakr answered and for which organization, so a client connected to the wrong environment or organization can tell.
+             * @default null
+             */
+            workspace?: components["schemas"]["Workspace"] | null;
         };
         /**
          * AgentReviewPolicyBody
@@ -5143,6 +5154,12 @@ export interface components {
         /** DocumentsCoverage */
         DocumentsCoverage: {
             /**
+             * Command
+             * @description `grep` or `search`.
+             * @default null
+             */
+            command?: string | null;
+            /**
              * Complete
              * @description Whether this answer covers every match in scope; when false, see `reason`.
              */
@@ -5166,11 +5183,23 @@ export interface components {
              */
             documents_considered: number;
             /**
+             * Limit
+             * @description The page size applied.
+             * @default null
+             */
+            limit?: number | null;
+            /**
              * Next Offset
              * @description The offset of the next page, if any.
              * @default null
              */
             next_offset?: number | null;
+            /**
+             * Offset
+             * @description Where this page starts.
+             * @default null
+             */
+            offset?: number | null;
             /**
              * Reason
              * @description Why it is not complete: `page` (more entries than this page), `time_budget` or `scan_budget` (the scan stopped early; counts cover what it checked), or `catalog_cap` (the scope held more documents than one call considers).
@@ -5184,6 +5213,12 @@ export interface components {
              */
             resume_after_document?: string | null;
             /**
+             * Returned
+             * @description Entries (`grep`) or documents (`search`) this reply shows, as a Knowledge read's `coverage.returned`.
+             * @default null
+             */
+            returned?: number | null;
+            /**
              * Rows Not Searched
              * @description Documents in scope whose table rows were not searched, only their profile; no match in them is not evidence the value is absent.
              * @default null
@@ -5195,6 +5230,12 @@ export interface components {
              * @default null
              */
             total?: number | null;
+            /**
+             * Truncated
+             * @description True when the reply's size budget cut this page short of `limit`; `next_offset` is then the first entry not shown. Absent otherwise.
+             * @default null
+             */
+            truncated?: boolean | null;
         };
         /** DocumentsResult */
         DocumentsResult: {
@@ -5289,7 +5330,7 @@ export interface components {
             section?: string | null;
             /**
              * Source Ref
-             * @description Reusable reference to this passage: a later Knowledge write cites it, `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.
+             * @description Reusable reference to this passage's document, the same as its document's `source_ref`: a later Knowledge write cites it (add ` › ` and `unit_locator` for this place, or cite `citation_key` for this passage), `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.
              * @default null
              */
             source_ref?: string | null;
@@ -5991,7 +6032,7 @@ export interface components {
             has_more: boolean;
             /**
              * Next Offset
-             * @description Without a unit: the offset that continues this read
+             * @description The offset that continues this read with the same reference: through the file without a unit, or through the rest of the unit's page or sheet with one
              */
             next_offset?: number | null;
             /**
@@ -5999,6 +6040,17 @@ export interface components {
              * @description With a paged unit: the reference that reads the next page
              */
             next_reference?: string | null;
+            /**
+             * Note
+             * @description With past_end: the plain statement of it, with the length of the text (its characters, lines or pages) and, for an offset, the last valid offset
+             */
+            note?: string | null;
+            /**
+             * Past End
+             * @description True when the offset, or the place the reference named, lies at or past the end of the text: text is empty and start and end equal total_chars, never a range beyond it
+             * @default false
+             */
+            past_end?: boolean;
             /**
              * Start
              * @description First character of the window (within the page when paged)
@@ -6030,7 +6082,7 @@ export interface components {
             max_chars?: number;
             /**
              * Offset
-             * @description Without a unit: the first character to return (at most 100,000,000; past the end of the text the window is empty). Ignored with a unit.
+             * @description Without a unit: the first character to return (at most 100,000,000). With a unit: the offset into its page, sheet or document that next_offset gave. At or past the end of the text the window is empty, start and end equal total_chars, and past_end is true.
              * @default 0
              */
             offset?: number;
@@ -6041,7 +6093,7 @@ export interface components {
             project?: string | null;
             /**
              * Reference
-             * @description The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' › <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's or source_ref's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).
+             * @description The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' › <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's own passage is its unit; a file's source_ref names the file, so add the unit to open a place in it. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).
              */
             reference: string;
         };
@@ -6052,7 +6104,7 @@ export interface components {
         FileReadUnitOut: {
             /**
              * Found
-             * @description False when the place could not be found in this version; the window is then the start of the file
+             * @description False when the place could not be found in this version; the window is then the start of the file, or empty when the place lies past the end of the file (past_end is then true)
              */
             found: boolean;
             /**
@@ -6793,7 +6845,7 @@ export interface components {
         KnowledgeAttribution: {
             /**
              * Accepted By
-             * @description Who accepted the proposal, for one.
+             * @description The person who accepted the proposal, for one; null when auto-approve accepted it (see `auto_approved`).
              * @default null
              */
             accepted_by?: string | null;
@@ -6803,6 +6855,12 @@ export interface components {
              * @default null
              */
             agent?: string | null;
+            /**
+             * Auto Approved
+             * @description True when the filer's auto-approve setting accepted the proposal rather than a person.
+             * @default null
+             */
+            auto_approved?: boolean | null;
             /**
              * Client
              * @description The client the agent used (`X-Beakr-Client`), e.g. `beakr-mcp/0.4.0`.
@@ -6858,11 +6916,31 @@ export interface components {
              */
             complete?: boolean | null;
             /**
+             * Continue With
+             * @description On a reply cut to its response budget, and on an `ls` window with more pages after it: the arguments that continue it. For `cat`, the whole call's arguments (`page` as the page id, `lines` as the page line range not shown yet, `scope` when the call gave one); for a listing, the arguments to change in the same call (`ls`: `after_title`, with `after_page_id` when the next page shares that title; a date-sorted `ls` has no cursor and gives `sort_by: title`). Null when nothing remains.
+             * @default null
+             */
+            continue_with?: {
+                [key: string]: unknown;
+            } | null;
+            /**
              * Limit
              * @description The most items to return.
              * @default null
              */
             limit?: number | null;
+            /**
+             * Lines Shown
+             * @description A cut `cat`: the page lines shown whole, `first-last`; null when none is.
+             * @default null
+             */
+            lines_shown?: string | null;
+            /**
+             * Lines Total
+             * @description A cut `cat`: the page lines the call asked for, `first-last`.
+             * @default null
+             */
+            lines_total?: string | null;
             /**
              * Next Cursor
              * @description Opaque cursor for the next chronological timeline window without timeline_query; repeat the same filters with it.
@@ -6883,11 +6961,39 @@ export interface components {
              */
             offset?: number | null;
             /**
+             * Projects
+             * @description On a listing whose pages are of more than one project: each project's `id` and `name`, only projects the caller can read. The text names each page's project; pass an id as `scope` to read one. Absent on a read within one project.
+             * @default null
+             */
+            projects?: {
+                [key: string]: string;
+            }[] | null;
+            /**
+             * Related
+             * @description On a `grep` that matched nothing and shows entries related by meaning instead: what those entries are (`by`: meaning; `unit`: sections or pages; `returned`: how many are shown; `total` and `truncated` when the response budget left some out). They are not matches: `returned` and `total` stay 0. Absent otherwise.
+             * @default null
+             */
+            related?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Requested Limit
+             * @description The `limit` the call asked for, when it was above the command's maximum; `limit` is then the maximum that was applied. Absent otherwise.
+             * @default null
+             */
+            requested_limit?: number | null;
+            /**
              * Returned
              * @description Items shown; null when not a counted list.
              * @default null
              */
             returned?: number | null;
+            /**
+             * Revision
+             * @description A cut `cat`: the page revision that was read.
+             * @default null
+             */
+            revision?: number | null;
             /**
              * Scan Complete
              * @description True only when an unqueried chronological timeline scan reached the end of the requested scope and filters. Semantic queries are always non-exhaustive.
@@ -6903,6 +7009,18 @@ export interface components {
             /** @description The scope it applies to. */
             scope: components["schemas"]["KnowledgeScope"];
             /**
+             * Sections Not Shown
+             * @description A cut `cat`: the ids of the sections that start after the cut.
+             * @default null
+             */
+            sections_not_shown?: string[] | null;
+            /**
+             * Shown Chars
+             * @description A cut `cat`: characters of text shown, against `total_chars`.
+             * @default null
+             */
+            shown_chars?: number | null;
+            /**
              * Status
              * @description success, empty or error.
              */
@@ -6913,6 +7031,12 @@ export interface components {
              * @default null
              */
             total?: number | null;
+            /**
+             * Total Chars
+             * @description A cut `cat`: characters the uncut text holds.
+             * @default null
+             */
+            total_chars?: number | null;
             /**
              * Truncated
              * @description Reported by compact/full source-sidecar Knowledge reads when their response budget omits text; true means text was truncated. Other reads may omit this field.
@@ -10458,7 +10582,7 @@ export interface components {
          *           "name": "validation-run-2026-03.pdf",
          *           "provider": "upload",
          *           "source_kind": "file",
-         *           "source_ref": "beakr-source:v1:key:YXJ0aWZhY3Q6M2Y2YTFjMmUtN2I0ZC00ZTlhLTljMWYtMmQ4ZTViN2E2YzQw",
+         *           "source_ref": "beakr-source:v1:file:3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40",
          *           "stance": "support"
          *         }
          *       ],
@@ -10607,7 +10731,7 @@ export interface components {
             key: string;
             /**
              * Source Ref
-             * @description Reusable reference a later Knowledge write can cite: a stored citation, a Knowledge page or section, or a source known by its citation key.
+             * @description Reusable reference a later Knowledge write can cite: a file (one reference per document, the same on every read), a stored citation, a Knowledge page or section, or a source known by its citation key.
              * @default null
              */
             source_ref?: string | null;
@@ -12388,7 +12512,7 @@ export interface components {
             revision?: number | null;
             /**
              * Source Ref
-             * @description Opaque reference to a source; pass it back in a citation.
+             * @description Opaque reference to a source, the same on every read of it; pass it back in a citation.
              */
             source_ref?: string | null;
             /**
@@ -12490,7 +12614,7 @@ export interface components {
             source_kind?: string | null;
             /**
              * Source Ref
-             * @description Opaque reference to a source; pass it back in a citation.
+             * @description The source's reference: a file has one, the same on every read (`beakr-source:v1:file:<file id>`), and the place cited in it is `location.unit_locator`. Pass it to a Knowledge write to cite the document, or followed by ` › <unit_locator>` to cite or open that place; `citation_key` names the cited passage itself.
              * @default null
              */
             source_ref?: string | null;
@@ -13772,7 +13896,7 @@ export interface components {
             id: string;
             /**
              * Last Compiled By
-             * @description Who or what wrote the current revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`) or `system`.
+             * @description Who or what wrote the current revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`), an accepted proposal (`proposal:<id>`) or `system`. A proposal you cannot open is named by the first eight characters of its id (`proposal:66b0af0f`).
              * @default null
              */
             last_compiled_by?: string | null;
@@ -13944,7 +14068,7 @@ export interface components {
             source_id?: string | null;
             /**
              * Source Ref
-             * @description Opaque reference to a source; pass it back in a citation.
+             * @description Opaque reference to a source, the same on every read of it; pass it back in a citation.
              * @default null
              */
             source_ref?: string | null;
@@ -14478,7 +14602,7 @@ export interface components {
             attribution?: components["schemas"]["KnowledgeAttribution"] | null;
             /**
              * Compiled By
-             * @description Who or what wrote this revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`) or `system`.
+             * @description Who or what wrote this revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`), an accepted proposal (`proposal:<id>`) or `system`. A proposal you cannot open is named by the first eight characters of its id (`proposal:66b0af0f`), as `writer` names it.
              * @default null
              */
             compiled_by?: string | null;
@@ -14698,7 +14822,7 @@ export interface components {
             source_id?: string;
             /**
              * Source Ref
-             * @description Opaque reference to a source; pass it back in a citation.
+             * @description Opaque reference to a source, the same on every read of it; pass it back in a citation.
              */
             source_ref?: string | null;
             /**
@@ -14987,6 +15111,35 @@ export interface components {
              * @description That step's title, as the workflow names it.
              */
             step_title?: string | null;
+        };
+        /**
+         * Workspace
+         * @description Where a call landed: this deployment and the organization it acted in.
+         */
+        Workspace: {
+            /**
+             * Environment
+             * @description The deployment that answered: production, sandbox, eval, test or local.
+             */
+            environment: string;
+            /**
+             * @description The organization this call acted in; null if it could not be read.
+             * @default null
+             */
+            organization?: components["schemas"]["WorkspaceOrganization"] | null;
+        };
+        /** WorkspaceOrganization */
+        WorkspaceOrganization: {
+            /**
+             * Name
+             * @description The organization's display name.
+             */
+            name: string;
+            /**
+             * Slug
+             * @description Its URL slug.
+             */
+            slug: string;
         };
         /** WriteTrailOut */
         WriteTrailOut: {
@@ -17685,6 +17838,8 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    /** @description log, proposals: who accepted it: a person, or auto-approve. */
+                    accepted_by?: string;
                     /** @description rows: continue a capped card scan after this card. */
                     after_card?: string;
                     /** @description Keyset cursor for provenance: return only the sections that follow this section id in page order. Pass the last section id of the previous window to walk the whole page. */
@@ -17697,6 +17852,14 @@ export interface operations {
                     as_of?: string;
                     /** @description rows: the field by name, alias or meaning; replies say which field. */
                     attribute?: string;
+                    /** @description log, proposals: the person behind it (who filed a proposal): a name, email, user id or me. */
+                    by?: string;
+                    /** @description ls: pages with a revision by this person. */
+                    changed_by?: string;
+                    /** @description ls: pages with a revision on or after this date. */
+                    changed_since?: string;
+                    /** @description ls: pages with a revision through this client or agent. */
+                    changed_via?: string;
                     /**
                      * @description The command to run. `help` returns the guidance for every command or action, or for one with `topic`.
                      * @enum {string}
@@ -17708,6 +17871,12 @@ export interface operations {
                     content?: string;
                     /** @description grep only. Lines of context either side of each hit (default 1, max 10). Raise it for table rows, where the header naming the columns sits above the matching line. */
                     context_lines?: number;
+                    /** @description ls: pages this person created (their first revision). */
+                    created_by?: string;
+                    /** @description ls: pages created on or after this date. */
+                    created_since?: string;
+                    /** @description ls: pages created through this client or agent. */
+                    created_via?: string;
                     /** @description rows: facts, each card's current value per Attribute; connections, the relations not ended. Not findings (filter by start_date, end_date). */
                     current_only?: boolean;
                     /** @description timeline without timeline_query: next_cursor from the previous result; keep the same filters. query: the cursor a reply gives, sent with the same sql or spec. */
@@ -17742,6 +17911,8 @@ export interface operations {
                     include_evidence?: boolean;
                     /** @description If true, ontology includes proposed page types as well as active types. */
                     include_proposed?: boolean;
+                    /** @description log, proposals: person, agent, beakr or system. */
+                    kind?: string;
                     /** @description Max results. rows: rows per window (default 100, max 500). ls: pages per window (default 100, max 500). grep: pages per window (default 20, max 200). sources: source records per window (default 60, max 400). provenance: sections per window (default 12, max 200). Every window is ordered; use after_title (ls/grep/sources) or after_section (provenance) to continue past one. */
                     limit?: number;
                     /** @description cat only. Read an exact line range, `start-end` or a single line, 1-indexed and inclusive -- what grep's `section:line` addresses point at. Prefer `section_id` when the hit sits inside a marked section; use this for a long section, or a page with no section markers, instead of opening the whole page. */
@@ -17758,7 +17929,7 @@ export interface operations {
                      * @enum {string}
                      */
                     mode?: "semantic" | "text" | "regex" | "history";
-                    /** @description rows, proposals: rows to skip (continue a NOT ALL ROWS reply). */
+                    /** @description rows, proposals, log: rows to skip (continue a NOT ALL ROWS reply). */
                     offset?: number;
                     /** @description rows: entity (default), when, amount, date, or a column (sorted by the number in it); descending=true puts the largest first. */
                     order_by?: string;
@@ -17786,6 +17957,8 @@ export interface operations {
                     scope?: string;
                     /** @description cat only. Read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take. */
                     section_id?: string;
+                    /** @description log, proposals: from this date (YYYY-MM-DD, a UTC day) or ISO time. */
+                    since?: string;
                     /**
                      * @description Sort order for ls: title (default tree), updated_at, created_at (newest first).
                      * @enum {string}
@@ -17818,6 +17991,10 @@ export interface operations {
                     to?: string;
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
+                    /** @description log, proposals: up to this date or ISO time, inclusive. */
+                    until?: string;
+                    /** @description log, proposals: client or agent prefix, any case (claude-code, codex, beakr-cli). */
+                    via?: string;
                     /**
                      * @description rows: values (default), census (entity and value only, 300 rows), fields (field names, counts, examples), groups (one page_type's likely synonym names) or conflicts (facts: one card's different values for one field at one time, both sides cited).
                      * @enum {string}
