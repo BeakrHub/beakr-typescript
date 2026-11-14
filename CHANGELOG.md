@@ -3,7 +3,7 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## @beakr/sdk 0.2.0 (2026-11-09)
+## @beakr/sdk 0.3.0 (2026-11-13)
 
 ### Changes
 
@@ -67,29 +67,6 @@ Each release lists the public API changes it supports, taken from the API change
     `GET /v1/projects/{project_id}`) never counts as reading it.
     `POST /v1/artifacts/{artifact_id}/knowledge` and its `/approve` accept a
     session token or `X-Beakr-Session`, confined to the session's projects.
-- TypeScript: every client sends `X-Beakr-Session` on every request: `session`,
-  else `BEAKR_SESSION`, else an id the client makes once
-  (`sdk-typescript-<32 hex>`), so one client is one session and auto-lock, the
-  cross-project guard and `agent_writes_require_session` apply to a script as
-  to an agent. Meant for `auto_lock` organizations: in `picker` mode such a
-  session waits for the person to choose its projects, so pass
-  `session: false` there to send none. The id comes from Web Crypto, or
-  `node:crypto` on Node 18. `beakr.sessions.within({ label }, work)` runs
-  work in a fresh session and ends it (`sessions.start()` returns one to end
-  yourself); `sessions.current()` shows its `lock_state`, and
-  `sessions.end()` without an id ends the current one. Refusals throw
-  `SessionReadOnlyError` (`touchedProjects`), `SessionLockedToProjectError`
-  (`writeProject`, `refusedProjects`), `CrossProjectWriteRefusedError`
-  (`project`, `otherProjects`), `CrossProjectOwnerRequiredError`,
-  `SessionEndedError` and `SessionRequiredError`; `crossProjectHold(result)`
-  says why a held write waits. `beakr.projectIsolation` (`get`, `update`) and
-  `projects.crossProjectGuard` / `setCrossProjectGuard` read and change the
-  settings.
-- A call in a session that must name a project and names none (research, a
-  document search, an upload or folder without a project) answers
-  `403 session_project_required` (it used to be `insufficient_scope`) and throws
-  `SessionProjectRequiredError` (`sessionId`): pass one of the session's projects and repeat the call
-  for each project you need.
 - Session read trail: what an agent session read before it wrote (available
   where the organization has it turned on; otherwise these operations answer
   `404 feature_not_enabled`). Each read a session makes is recorded by
@@ -120,12 +97,6 @@ Each release lists the public API changes it supports, taken from the API change
     `read_trail_retention_days` (default 90); `PUT` changes it (1 to 3650
     days), which needs an organization admin signed in, or their key with
     `proposals:accept`. Reads older than that are deleted within the hour.
-- TypeScript: `beakr.sessions.trail()` is one page of the current session's
-  reads (`trail(sessionId)` for another, `iterTrail(sessionId)` for every
-  read), and a session from `sessions.start` has `s.trail()`. A write's trail:
-  `knowledge.proposals.trail(proposalId)`, `knowledge.ingestionEventTrail(eventId)`
-  and `knowledge.pages.revisionTrail(pageId, revision)`. Retention:
-  `projectIsolation.readTrail()` and `setReadTrailRetention(days)`.
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:
   who and what wrote it. `kind` is `beakr` (a model or maintenance process
@@ -166,11 +137,6 @@ Each release lists the public API changes it supports, taken from the API change
   session. The person can also ask the client to reuse a selection for the
   folder it runs in (`remember_folder`). Available where the organization has
   sessions enabled.
-- TypeScript: `beakr.sessions.create({ read, write })` starts a session and
-  returns a client confined to it, which mints a new token with your credential
-  before the old one expires. Refusals throw `SessionNeedsSelectionError` (with
-  `pickerUrl`), `SessionWriteScopeError` (with `writeProjectIds`) and
-  `SessionWidenRefusedError`.
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.
@@ -193,10 +159,74 @@ Each release lists the public API changes it supports, taken from the API change
   citation's `reference`). One record is one citation, keyed `record:<hash>`; to
   cite it in the prose by a name of your own, give it a `key` such as
   `record:mol-1234` and write `{{record:mol-1234}}`.
+- `POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert` undoes a
+  source's compiled Knowledge contributions. For an uploaded file use
+  `source_type` `artifact` with the version UUID as `source_id`, and undo
+  versions newest first to remove a whole file's contribution. Requires
+  `kb:write`; a project-restricted credential must supply an allowed
+  `project_id`. File bytes are not deleted. Later edits can prevent a complete
+  undo, so inspect `status`, `skipped`, `conflicts` and `proposals` before
+  deleting files: a `blocked` result can include applied changes, and HTTP 200
+  is not proof that every contribution was removed. An unknown source returns
+  `noop`. `Idempotency-Key` retries replay the original outcome for 24 hours.
+
+### Client changes
+
+- `publicSource` keeps the call that re-reads a connected item. A cited meeting
+  note, email or Slack thread carries `retrieval: {tool, arguments}` (the
+  provider read tool and the item's own id, e.g. `granola_get_note` with
+  `note_id`); it was dropped unless it carried a file download `handle`, so
+  a caller was left with the share link, whose id the read tool refuses.
+
+- TypeScript: every client sends `X-Beakr-Session` on every request: `session`,
+  else `BEAKR_SESSION`, else an id the client makes once
+  (`sdk-typescript-<32 hex>`), so one client is one session and auto-lock, the
+  cross-project guard and `agent_writes_require_session` apply to a script as
+  to an agent. Meant for `auto_lock` organizations: in `picker` mode such a
+  session waits for the person to choose its projects, so pass
+  `session: false` there to send none. The id comes from Web Crypto, or
+  `node:crypto` on Node 18. `beakr.sessions.within({ label }, work)` runs
+  work in a fresh session and ends it (`sessions.start()` returns one to end
+  yourself); `sessions.current()` shows its `lock_state`, and
+  `sessions.end()` without an id ends the current one. Refusals throw
+  `SessionReadOnlyError` (`touchedProjects`), `SessionLockedToProjectError`
+  (`writeProject`, `refusedProjects`), `CrossProjectWriteRefusedError`
+  (`project`, `otherProjects`), `CrossProjectOwnerRequiredError`,
+  `SessionEndedError` and `SessionRequiredError`; `crossProjectHold(result)`
+  says why a held write waits. `beakr.projectIsolation` (`get`, `update`) and
+  `projects.crossProjectGuard` / `setCrossProjectGuard` read and change the
+  settings.
+
+- A call in a session that must name a project and names none (research, a
+  document search, an upload or folder without a project) answers
+  `403 session_project_required` (it used to be `insufficient_scope`) and throws
+  `SessionProjectRequiredError` (`sessionId`): pass one of the session's projects and repeat the call
+  for each project you need.
+
+- TypeScript: `beakr.sessions.trail()` is one page of the current session's
+  reads (`trail(sessionId)` for another, `iterTrail(sessionId)` for every
+  read), and a session from `sessions.start` has `s.trail()`. A write's trail:
+  `knowledge.proposals.trail(proposalId)`, `knowledge.ingestionEventTrail(eventId)`
+  and `knowledge.pages.revisionTrail(pageId, revision)`. Retention:
+  `projectIsolation.readTrail()` and `setReadTrailRetention(days)`.
+
+- TypeScript: `beakr.sessions.create({ read, write })` starts a session and
+  returns a client confined to it, which mints a new token with your credential
+  before the old one expires. Refusals throw `SessionNeedsSelectionError` (with
+  `pickerUrl`), `SessionWriteScopeError` (with `writeProjectIds`) and
+  `SessionWidenRefusedError`.
+
+## @beakr/sdk 0.2.0 (2026-11-10)
+
+### Client changes
+
 - **Research is quick by default.** `knowledge.research()` answers within 15
   seconds from one search of Knowledge and documents unless called with
   `{ quick: false }`, which runs the full researcher: up to 150 seconds, and it
   also reads connected services.
+
+### Changes
+
 - `GET /v1/threads/{thread_id}` returns `last_run_failure` for the thread's
   owner when the newest turn failed without an answer: `run_id`, a `reason`
   (`server_update` when a server update interrupted the run, `failed` otherwise)
@@ -255,16 +285,6 @@ Each release lists the public API changes it supports, taken from the API change
   `template_id` and `template_name` it was made from, when it was. Changes
   belong in that document, which is then saved again. It is `null` for every
   other file, and for a saved copy whose document the caller cannot open.
-- `POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert` undoes a
-  source's compiled Knowledge contributions. For an uploaded file use
-  `source_type` `artifact` with the version UUID as `source_id`, and undo
-  versions newest first to remove a whole file's contribution. Requires
-  `kb:write`; a project-restricted credential must supply an allowed
-  `project_id`. File bytes are not deleted. Later edits can prevent a complete
-  undo, so inspect `status`, `skipped`, `conflicts` and `proposals` before
-  deleting files: a `blocked` result can include applied changes, and HTTP 200
-  is not proof that every contribution was removed. An unknown source returns
-  `noop`. `Idempotency-Key` retries replay the original outcome for 24 hours.
 - Match labels gain a fourth band, `tangential`: a result on a related subject
   that is not about the query. `moderate` now means closer than any such
   result, so fewer results carry it. The labels are `match_strength` and
@@ -299,6 +319,7 @@ Each release lists the public API changes it supports, taken from the API change
   the knowledge base may not cover the question; each of its results carries
   `relevance`. A keyword answer carries none of these. The operation is limited
   to 120 requests a minute per caller.
+
 ## @beakr/sdk 0.1.1 (2026-11-02)
 
 No public API changes.
