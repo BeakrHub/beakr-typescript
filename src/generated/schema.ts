@@ -6041,6 +6041,17 @@ export interface components {
              */
             next_reference?: string | null;
             /**
+             * Note
+             * @description With past_end: the plain statement of it, with the length of the text (its characters, lines or pages) and, for an offset, the last valid offset
+             */
+            note?: string | null;
+            /**
+             * Past End
+             * @description True when the offset, or the place the reference named, lies at or past the end of the text: text is empty and start and end equal total_chars, never a range beyond it
+             * @default false
+             */
+            past_end?: boolean;
+            /**
              * Start
              * @description First character of the window (within the page when paged)
              */
@@ -6071,7 +6082,7 @@ export interface components {
             max_chars?: number;
             /**
              * Offset
-             * @description Without a unit: the first character to return (at most 100,000,000; past the end of the text the window is empty). Ignored with a unit.
+             * @description Without a unit: the first character to return (at most 100,000,000). With a unit: the offset into its page, sheet or document that next_offset gave. At or past the end of the text the window is empty, start and end equal total_chars, and past_end is true.
              * @default 0
              */
             offset?: number;
@@ -6093,7 +6104,7 @@ export interface components {
         FileReadUnitOut: {
             /**
              * Found
-             * @description False when the place could not be found in this version; the window is then the start of the file
+             * @description False when the place could not be found in this version; the window is then the start of the file, or empty when the place lies past the end of the file (past_end is then true)
              */
             found: boolean;
             /**
@@ -13885,7 +13896,7 @@ export interface components {
             id: string;
             /**
              * Last Compiled By
-             * @description Who or what wrote the current revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`) or `system`.
+             * @description Who or what wrote the current revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`), an accepted proposal (`proposal:<id>`) or `system`. A proposal you cannot open is named by the first eight characters of its id (`proposal:66b0af0f`).
              * @default null
              */
             last_compiled_by?: string | null;
@@ -14591,7 +14602,7 @@ export interface components {
             attribution?: components["schemas"]["KnowledgeAttribution"] | null;
             /**
              * Compiled By
-             * @description Who or what wrote this revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`) or `system`.
+             * @description Who or what wrote this revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`), an accepted proposal (`proposal:<id>`) or `system`. A proposal you cannot open is named by the first eight characters of its id (`proposal:66b0af0f`), as `writer` names it.
              * @default null
              */
             compiled_by?: string | null;
