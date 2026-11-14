@@ -2536,6 +2536,11 @@ export interface components {
              * @default false
              */
             truncated?: boolean;
+            /**
+             * @description Which Beakr answered and for which organization, so a client connected to the wrong environment or organization can tell.
+             * @default null
+             */
+            workspace?: components["schemas"]["Workspace"] | null;
         };
         /**
          * AgentReviewPolicyBody
@@ -4555,6 +4560,12 @@ export interface components {
         /** DocumentsCoverage */
         DocumentsCoverage: {
             /**
+             * Command
+             * @description `grep` or `search`.
+             * @default null
+             */
+            command?: string | null;
+            /**
              * Complete
              * @description Whether this answer covers every match in scope; when false, see `reason`.
              */
@@ -4578,11 +4589,23 @@ export interface components {
              */
             documents_considered: number;
             /**
+             * Limit
+             * @description The page size applied.
+             * @default null
+             */
+            limit?: number | null;
+            /**
              * Next Offset
              * @description The offset of the next page, if any.
              * @default null
              */
             next_offset?: number | null;
+            /**
+             * Offset
+             * @description Where this page starts.
+             * @default null
+             */
+            offset?: number | null;
             /**
              * Reason
              * @description Why it is not complete: `page` (more entries than this page), `time_budget` or `scan_budget` (the scan stopped early; counts cover what it checked), or `catalog_cap` (the scope held more documents than one call considers).
@@ -4596,6 +4619,12 @@ export interface components {
              */
             resume_after_document?: string | null;
             /**
+             * Returned
+             * @description Entries (`grep`) or documents (`search`) this reply shows, as a Knowledge read's `coverage.returned`.
+             * @default null
+             */
+            returned?: number | null;
+            /**
              * Rows Not Searched
              * @description Documents in scope whose table rows were not searched, only their profile; no match in them is not evidence the value is absent.
              * @default null
@@ -4607,6 +4636,12 @@ export interface components {
              * @default null
              */
             total?: number | null;
+            /**
+             * Truncated
+             * @description True when the reply's size budget cut this page short of `limit`; `next_offset` is then the first entry not shown. Absent otherwise.
+             * @default null
+             */
+            truncated?: boolean | null;
         };
         /** DocumentsResult */
         DocumentsResult: {
@@ -4701,7 +4736,7 @@ export interface components {
             section?: string | null;
             /**
              * Source Ref
-             * @description Reusable reference to this passage: a later Knowledge write cites it, `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.
+             * @description Reusable reference to this passage's document, the same as its document's `source_ref`: a later Knowledge write cites it (add ` › ` and `unit_locator` for this place, or cite `citation_key` for this passage), `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.
              * @default null
              */
             source_ref?: string | null;
@@ -5453,7 +5488,7 @@ export interface components {
             project?: string | null;
             /**
              * Reference
-             * @description The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' › <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's or source_ref's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).
+             * @description The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' › <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's own passage is its unit; a file's source_ref names the file, so add the unit to open a place in it. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).
              */
             reference: string;
         };
@@ -6320,6 +6355,14 @@ export interface components {
              * @default null
              */
             offset?: number | null;
+            /**
+             * Projects
+             * @description On a listing whose pages are of more than one project: each project's `id` and `name`, only projects the caller can read. The text names each page's project; pass an id as `scope` to read one. Absent on a read within one project.
+             * @default null
+             */
+            projects?: {
+                [key: string]: string;
+            }[] | null;
             /**
              * Related
              * @description On a `grep` that matched nothing and shows entries related by meaning instead: what those entries are (`by`: meaning; `unit`: sections or pages; `returned`: how many are shown; `total` and `truncated` when the response budget left some out). They are not matches: `returned` and `total` stay 0. Absent otherwise.
@@ -7589,6 +7632,11 @@ export interface components {
         MembershipRole: "owner" | "admin" | "member" | "viewer" | "guest";
         /** Message */
         Message: {
+            /**
+             * Answer Complete
+             * @description Whether this message contains a completed user-facing answer, independent of transport or worker status. Null for legacy history.
+             */
+            answer_complete?: boolean | null;
             /**
              * Canvases
              * @description The outputs.
@@ -9670,7 +9718,7 @@ export interface components {
          *           "name": "validation-run-2026-03.pdf",
          *           "provider": "upload",
          *           "source_kind": "file",
-         *           "source_ref": "beakr-source:v1:key:YXJ0aWZhY3Q6M2Y2YTFjMmUtN2I0ZC00ZTlhLTljMWYtMmQ4ZTViN2E2YzQw",
+         *           "source_ref": "beakr-source:v1:file:3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40",
          *           "stance": "support"
          *         }
          *       ],
@@ -9819,7 +9867,7 @@ export interface components {
             key: string;
             /**
              * Source Ref
-             * @description Reusable reference a later Knowledge write can cite: a stored citation, a Knowledge page or section, or a source known by its citation key.
+             * @description Reusable reference a later Knowledge write can cite: a file (one reference per document, the same on every read), a stored citation, a Knowledge page or section, or a source known by its citation key.
              * @default null
              */
             source_ref?: string | null;
@@ -11061,7 +11109,7 @@ export interface components {
             revision?: number | null;
             /**
              * Source Ref
-             * @description Opaque reference to a source; pass it back in a citation.
+             * @description Opaque reference to a source, the same on every read of it; pass it back in a citation.
              */
             source_ref?: string | null;
             /**
@@ -11163,7 +11211,7 @@ export interface components {
             source_kind?: string | null;
             /**
              * Source Ref
-             * @description Opaque reference to a source; pass it back in a citation.
+             * @description The source's reference: a file has one, the same on every read (`beakr-source:v1:file:<file id>`), and the place cited in it is `location.unit_locator`. Pass it to a Knowledge write to cite the document, or followed by ` › <unit_locator>` to cite or open that place; `citation_key` names the cited passage itself.
              * @default null
              */
             source_ref?: string | null;
@@ -12489,7 +12537,7 @@ export interface components {
             source_id?: string | null;
             /**
              * Source Ref
-             * @description Opaque reference to a source; pass it back in a citation.
+             * @description Opaque reference to a source, the same on every read of it; pass it back in a citation.
              * @default null
              */
             source_ref?: string | null;
@@ -13232,7 +13280,7 @@ export interface components {
             source_id?: string;
             /**
              * Source Ref
-             * @description Opaque reference to a source; pass it back in a citation.
+             * @description Opaque reference to a source, the same on every read of it; pass it back in a citation.
              */
             source_ref?: string | null;
             /**
@@ -13439,6 +13487,35 @@ export interface components {
              * @description That step's title, as the workflow names it.
              */
             step_title?: string | null;
+        };
+        /**
+         * Workspace
+         * @description Where a call landed: this deployment and the organization it acted in.
+         */
+        Workspace: {
+            /**
+             * Environment
+             * @description The deployment that answered: production, sandbox, eval, test or local.
+             */
+            environment: string;
+            /**
+             * @description The organization this call acted in; null if it could not be read.
+             * @default null
+             */
+            organization?: components["schemas"]["WorkspaceOrganization"] | null;
+        };
+        /** WorkspaceOrganization */
+        WorkspaceOrganization: {
+            /**
+             * Name
+             * @description The organization's display name.
+             */
+            name: string;
+            /**
+             * Slug
+             * @description Its URL slug.
+             */
+            slug: string;
         };
         /** ProjectOverrideUpdate */
         beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate: {
