@@ -7,6 +7,11 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `DELETE /v1/projects/{project_id}` no longer requires step-up MFA, even
+  when the organization requires it for sensitive actions. Project deletion
+  permissions still apply. Keys and tokens remain blocked with
+  `403 session_required` in organizations requiring enterprise SSO.
+
 - Project isolation, for organizations whose projects must not write into one
   another (each part is available where the organization has it turned on;
   `GET /v1/organizations/{org_id}/project-isolation` returns which parts are on, under `available`):
@@ -1507,8 +1512,9 @@ No public API changes.
   `detail.error_type: enterprise_sso_required`; keys and tokens are not
   sessions and keep their own scopes, but in an organization that requires
   single sign-on they answer `403 session_required` to every action that needs
-  step-up (creating keys or service accounts, deleting a project, changing
-  roles or the authentication policy).
+  step-up (creating service-account keys or service accounts, changing
+  roles or the authentication policy), and to project deletion independently
+  of the step-up setting.
 - An organization admin revoking a member's credential, and
   `POST /v1/organizations/{org_id}/service-accounts/{account_id}/disable`, need
   an interactive session (and step-up where the organization requires it); keys
