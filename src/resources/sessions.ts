@@ -60,6 +60,8 @@ export interface UpdateSessionOptions {
   rememberFolder?: boolean;
   /** Read every project and write none (not after an automatic session touched a project). */
   readEverything?: boolean;
+  /** `automatic`: the server tracks what it touches instead (not in a `must_pick` organization). */
+  mode?: "automatic";
 }
 
 /** A session and a client confined to it. */
@@ -299,6 +301,7 @@ export class Sessions<C = unknown> extends Resource {
         label: options.label,
         remember_folder: options.rememberFolder,
         read_everything: options.readEverything,
+        mode: options.mode,
       }),
     });
   }

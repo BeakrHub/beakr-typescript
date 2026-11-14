@@ -151,9 +151,12 @@ export const OPERATIONS = {
   "sessions.getSession": { method: "GET", path: "/v1/sessions/{session_id}" },
   "sessions.updateSession": { method: "PATCH", path: "/v1/sessions/{session_id}" },
   "sessions.endSession": { method: "POST", path: "/v1/sessions/{session_id}/end" },
+  "sessions.sessionStatus": { method: "GET", path: "/v1/sessions/{session_id}/status" },
   "sessions.mintSessionToken": { method: "POST", path: "/v1/sessions/{session_id}/tokens" },
   "sessions.sessionTrail": { method: "GET", path: "/v1/sessions/{session_id}/trail" },
   "sessions.currentSession": { method: "GET", path: "/v1/sessions/current" },
+  "sessions.currentSessionStatus": { method: "GET", path: "/v1/sessions/current/status" },
+  "sessions.sessionOptions": { method: "POST", path: "/v1/sessions/options" },
   "skills.listSkills": { method: "GET", path: "/v1/skills" },
   "skills.createSkill": { method: "POST", path: "/v1/skills" },
   "skills.getSkill": { method: "GET", path: "/v1/skills/{skill_id}" },
@@ -1226,6 +1229,12 @@ export class SessionsApi {
     return this.transport.request(request);
   }
 
+  /** GET /v1/sessions/{session_id}/status (Show a session's status) */
+  sessionStatus(args: { path: operations["session_status_v1_sessions__session_id__status_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["session_status_v1_sessions__session_id__status_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/sessions/${enc(String(args.path.session_id))}/status`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
   /** POST /v1/sessions/{session_id}/tokens (Mint a session token) */
   mintSessionToken(args: { path: operations["mint_session_token_v1_sessions__session_id__tokens_post"]["parameters"]["path"]; body: NonNullable<operations["mint_session_token_v1_sessions__session_id__tokens_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["mint_session_token_v1_sessions__session_id__tokens_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/sessions/${enc(String(args.path.session_id))}/tokens`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
@@ -1247,6 +1256,18 @@ export class SessionsApi {
   /** GET /v1/sessions/current (Get the current session) */
   currentSession(options?: CallOptions): Promise<OperationResponse<operations["current_session_v1_sessions_current_get"]>> {
     const request: RequestOptions = { method: "GET", path: "/v1/sessions/current", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/sessions/current/status (Show this session's status) */
+  currentSessionStatus(options?: CallOptions): Promise<OperationResponse<operations["current_session_status_v1_sessions_current_status_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/sessions/current/status", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/sessions/options (Check a session's project choices) */
+  sessionOptions(args: { body: NonNullable<operations["session_options_v1_sessions_options_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["session_options_v1_sessions_options_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/sessions/options", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 }

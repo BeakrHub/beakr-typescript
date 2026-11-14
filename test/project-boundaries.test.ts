@@ -61,9 +61,11 @@ describe("session modes", () => {
   });
 
   it("update sends read_everything", async () => {
-    const { fetch, calls } = mockFetch([json(session({ mode: "read_everything" }))]);
-    await client(fetch).beakr.sessions.update("s1", { readEverything: true });
-    expect(calls[0]!.body).toEqual({ read_everything: true });
+    const { fetch, calls } = mockFetch([json(session({ mode: "read_everything" })), json(session({ mode: "automatic" }))]);
+    const { beakr } = client(fetch);
+    await beakr.sessions.update("s1", { readEverything: true });
+    await beakr.sessions.update("s1", { mode: "automatic" });
+    expect(calls.map((c) => c.body)).toEqual([{ read_everything: true }, { mode: "automatic" }]);
   });
 
   it("a choice that breaks a boundary is typed with every reason", async () => {
