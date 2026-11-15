@@ -6032,6 +6032,17 @@ export interface components {
          */
         FileReadOut: {
             /**
+             * Agent Written
+             * @description True when Beakr wrote this file (a workflow output, an Ask notebook or an agent's document), as documents read marks it
+             * @default false
+             */
+            agent_written?: boolean;
+            /**
+             * Agent Written Note
+             * @description With agent_written: why it is not a source, and what to cite instead (the sentence documents read gives)
+             */
+            agent_written_note?: string | null;
+            /**
              * End
              * @description One past the last character of the window
              */
@@ -18030,7 +18041,7 @@ export interface operations {
                     rev2?: number;
                     /** @description Project name or id to read in. Omitted, a read covers every project you can see (a project-restricted credential: its own projects). */
                     scope?: string;
-                    /** @description cat only. Read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take. */
+                    /** @description cat and provenance. cat: read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take. provenance: that one section's citations, in the same shape. */
                     section_id?: string;
                     /** @description log, proposals: from this date (YYYY-MM-DD, a UTC day) or ISO time. */
                     since?: string;
