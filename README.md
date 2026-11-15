@@ -367,6 +367,12 @@ write, and why not elsewhere.
   the project can accept it (`CrossProjectOwnerRequiredError` for anyone else).
 - A write that cites or copies a locked project's content into another project
   throws `ProjectContentLockedError`, for people too.
+- In an automatic session that already worked in another project, the first
+  call that touches a locked project throws `SessionLockConfirmError` (`project`,
+  `cost`, `confirmLock`): nothing was read or written, because entering would
+  limit the session's writes. To go in, repeat it on
+  `beakr.confirmingLock(error.confirmLock)`; or ask the user, or start a new
+  session.
 - A session id is used once. After its session ends (`beakr.sessions.end()`),
   the client's requests throw `SessionEndedError`; make a new client.
 - Where agents must write inside a session (`agent_writes_require_session`), a
@@ -446,7 +452,8 @@ where only a person or a key holding `proposals:accept` may accept proposals
 or commit Knowledge; `SessionRequiredError` for `session_required`; and the
 session and cross-project refusals under "Sessions and project isolation"),
 `NotFoundError`, `ConflictError` (`ProjectProfileRequiredError` for
-`project_profile_required`, `SessionEndedError` for `session_ended`), `ValidationError`,
+`project_profile_required`, `SessionEndedError` for `session_ended`,
+`SessionLockConfirmError` for `session_lock_confirm`), `ValidationError`,
 `RateLimitError` (with `retryAfter`), `ServerError`, `APIConnectionError`,
 `KnowledgeCommandError` (a refused Knowledge command), `UnexpectedResponseError`
 (a success whose body is an HTML page where JSON was expected) and
