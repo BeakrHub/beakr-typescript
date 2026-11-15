@@ -3,7 +3,7 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## @beakr/sdk 0.3.0 (2026-11-14)
+## @beakr/sdk 0.3.0 (2026-11-15)
 
 ### Changes
 
@@ -430,7 +430,10 @@ Each release lists the public API changes it supports, taken from the API change
   organization's members: a name that several of them share is refused with
   `person_ambiguous` and their names, and anyone else (a name nobody has, a
   colleague who wrote nothing there, a user id) is not an error, it lists
-  nothing. The `Filters:` line says a person back as you typed it. A revision written from a proposal
+  nothing. An email address names you, or a person the history prints by
+  that address because they have no display name; anyone else's email
+  address lists nothing, as a name nobody has does. The `Filters:` line says
+  a person back as you typed it. A revision written from a proposal
   you cannot open names only the person who applied it in `log`, so it matches
   `by` for that person and no `via` or `accepted_by`. Calls without these
   options answer as before. The
