@@ -5245,7 +5245,7 @@ export interface components {
              */
             content: string;
             /**
-             * @description `grep` and `search`: whether the answer is complete, and the next call.
+             * @description `grep`, `read` and `search`: whether the answer is complete, and the next call.
              * @default null
              */
             coverage?: components["schemas"]["DocumentsCoverage"] | null;
@@ -5255,6 +5255,14 @@ export interface components {
              * @default null
              */
             error_code?: string | null;
+            /**
+             * File
+             * @description `read` of a reference with a place (`memo.pdf › p. 7`): the file opened (`id`, `version_id`, `display_path`). The content is then the text around that place, as `POST /v1/artifacts/read` returns it.
+             * @default null
+             */
+            file?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Is Error
              * @description Whether it is error.
@@ -5267,6 +5275,12 @@ export interface components {
              * @default null
              */
             next?: string[] | null;
+            /**
+             * Next Calls
+             * @description The calls the `next` steps name, as data, in the same order: a client turns each into its own syntax without reading the sentences. Empty when no step names a call. A partial result's first entry is the call that continues it.
+             * @default null
+             */
+            next_calls?: components["schemas"]["NextCall"][] | null;
             /**
              * Results
              * @description `search` only: one public source record per matching document, best first, with `location.file_id` and `location.version_id`, its `match` and `score`, and its best `passages`. Pass a record's or passage's `source_ref` to `POST /v1/artifacts/download-url` for the original file.
@@ -6018,6 +6032,17 @@ export interface components {
          */
         FileReadOut: {
             /**
+             * Agent Written
+             * @description True when Beakr wrote this file (a workflow output, an Ask notebook or an agent's document), as documents read marks it
+             * @default false
+             */
+            agent_written?: boolean;
+            /**
+             * Agent Written Note
+             * @description With agent_written: why it is not a source, and what to cite instead (the sentence documents read gives)
+             */
+            agent_written_note?: string | null;
+            /**
              * End
              * @description One past the last character of the window
              */
@@ -6030,6 +6055,13 @@ export interface components {
              * @example false
              */
             has_more: boolean;
+            /**
+             * Next Calls
+             * @description The calls that read on, as data ({tool, command, arguments, why}), so a client never builds one from next_offset and next_reference itself: read_file with the same reference and next_offset, then read_file with next_reference. Empty when nothing follows.
+             */
+            next_calls?: {
+                [key: string]: unknown;
+            }[];
             /**
              * Next Offset
              * @description The offset that continues this read with the same reference: through the file without a unit, or through the rest of the unit's page or sheet with one
@@ -8968,6 +9000,35 @@ export interface components {
              */
             window: "24h" | "7d" | "30d";
         };
+        /**
+         * NextCall
+         * @description One call a `next` step names, as data, so a client never parses the sentence.
+         */
+        NextCall: {
+            /**
+             * Arguments
+             * @description The call's exact arguments, as that REST request takes them: a Knowledge command's options flat, `scope` included; a documents command's options, with `project` beside them when the request named one; `reference` and `offset` for `read_file`. A value the caller must fill is the string `<name>`, e.g. `<page>` or `<section_id>`. A call that continues a partial result is the request's own arguments with `coverage.continue_with` over them.
+             */
+            arguments: {
+                [key: string]: unknown;
+            };
+            /**
+             * Command
+             * @description The tool's command: a `knowledge_base` or `documents` command (`cat`, `rows`, `grep`), the action of a `knowledge_base_write` (`add_finding`), `call` for `integrations`; null for a tool that has none.
+             */
+            command: string | null;
+            /**
+             * Tool
+             * @description The tool to call, by the name both MCP servers give it. Over REST: `knowledge_base` is `POST /v1/knowledge/wiki/command`, `knowledge_base_write` is `POST /v1/knowledge/wiki/write`, `documents` is `POST /v1/knowledge/documents`, `read_file` is `POST /v1/artifacts/read`, `research` is `POST /v1/knowledge/research`, `integrations` is the integrations call route, `show_proposal` and `accept_proposal` are the proposals routes and `list_projects` is `GET /v1/projects`.
+             * @enum {string}
+             */
+            tool: "knowledge_base" | "knowledge_base_write" | "documents" | "read_file" | "integrations" | "research" | "accept_proposal" | "show_proposal" | "list_projects";
+            /**
+             * Why
+             * @description What the call is for, in one short sentence.
+             */
+            why: string;
+        };
         /** ObjectPage */
         ObjectPage: {
             /**
@@ -10670,6 +10731,12 @@ export interface components {
              * @default null
              */
             next?: string[] | null;
+            /**
+             * Next Calls
+             * @description The calls the `next` steps name, as data, in the same order: a client turns each into its own syntax without reading the sentences. Empty when no step names a call. A partial result's first entry is the call that continues it.
+             * @default null
+             */
+            next_calls?: components["schemas"]["NextCall"][] | null;
             /**
              * Not Checked
              * @description The research agent's report of remaining evidence it did not examine.
@@ -12443,7 +12510,7 @@ export interface components {
         SourceLocation: {
             /**
              * Display Path
-             * @description Where the source lives, for a reader to go to: a Beakr file's path (the uploader's recorded path or `relative_path`, else its folder path in its project plus its name, e.g. `deals/acme/Closing/schedule.xlsx`), a connected file's path in its service, or a connected item's place there (`#channel`, `subject · from sender · date`, an issue's key and summary). Present only for sources the caller can read; for a file, `read_file` accepts it, alone or with ` › ` and the `unit_locator` (connected items are not stored as files: use the excerpt and `url`).
+             * @description Where the source lives, for a reader to go to: a Beakr file's path (the uploader's recorded path or `relative_path`, else its folder path in its project plus its name, e.g. `deals/acme/Closing/schedule.xlsx`), a connected file's path in its service, or a connected item's place there (`#channel`, `subject · from sender · date`, an issue's key and summary). Present only for sources the caller can read; for a file, `read_file` accepts it, alone or with ` › ` and the `unit_locator` (connected items are not files: re-read one with the `integrations` call in its `retrieval`).
              * @default null
              */
             display_path?: string | null;
@@ -13792,8 +13859,21 @@ export interface components {
              * @description What to do next, in order.
              */
             next: string[];
+            /**
+             * Next Calls
+             * @description The calls the `next` steps name, as data, in the same order: a client turns each into its own syntax without reading the sentences. Empty when no step names a call. A partial result's first entry is the call that continues it.
+             */
+            next_calls?: components["schemas"]["NextCall"][];
             /** @description How it turned out. */
             outcome: components["schemas"]["WikiToolOutcome"];
+            /**
+             * Outline
+             * @description `cat` with `outline` only: the page's outline as data (`title`, `page_type`, `revision`, `summary`, `sections` with each `section_id`, `title`, `lines`, `chars` and `citations`, and `edges`). The text prints the same outline as lines.
+             * @default null
+             */
+            outline?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * @description `query` only: the spec that ran and the window as columns and rows.
              * @default null
@@ -15029,6 +15109,12 @@ export interface components {
              * @description The wiki write's content.
              */
             content: components["schemas"]["TextContent"][];
+            /**
+             * Next Calls
+             * @description Whenever a proposal was staged: the calls that follow it, as data. `show_proposal` confirms what happened to it; `accept_proposal` is listed only while it waits (`pending`), and is made only when the person asks.
+             * @default null
+             */
+            next_calls?: components["schemas"]["NextCall"][] | null;
             /** @description How it turned out. */
             outcome: components["schemas"]["WikiToolOutcome"];
             /**
@@ -17955,7 +18041,7 @@ export interface operations {
                     rev2?: number;
                     /** @description Project name or id to read in. Omitted, a read covers every project you can see (a project-restricted credential: its own projects). */
                     scope?: string;
-                    /** @description cat only. Read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take. */
+                    /** @description cat and provenance. cat: read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take. provenance: that one section's citations, in the same shape. */
                     section_id?: string;
                     /** @description log, proposals: from this date (YYYY-MM-DD, a UTC day) or ISO time. */
                     since?: string;
