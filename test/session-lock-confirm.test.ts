@@ -6,7 +6,13 @@
  * pins the same behaviour.
  */
 import { describe, expect, it } from "vitest";
-import { CONFIRM_LOCK_HEADER, ConflictError, SessionLockConfirmError } from "../src/index.js";
+import {
+  CONFIRM_LOCK_HEADER,
+  ConflictError,
+  PermissionDeniedError,
+  SessionLockConfirmError,
+  SessionRouteUnavailableError,
+} from "../src/index.js";
 import { client, json, mockFetch } from "./helpers.js";
 
 const A = "4dd25154-0d80-44ab-b4c2-167319bfacb4";
@@ -70,5 +76,16 @@ describe("lock confirm", () => {
     const { beakr } = client(fetch);
     const error = (await beakr.me.get().catch((e: unknown) => e)) as SessionLockConfirmError;
     expect(await beakr.confirmingLock(error.confirmLock!).me.get()).toEqual({ id: "u1" });
+  });
+});
+
+describe("routes a session cannot call", () => {
+  it("throws SessionRouteUnavailableError with the session id", async () => {
+    const base = { code: "session_route_unavailable", message: "Not inside a session.", fix: "Ask as yourself." };
+    const { fetch } = mockFetch([json({ detail: { ...base, session_id: "s1" }, error: base }, 403)]);
+    const error = await client(fetch).beakr.me.get().catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(SessionRouteUnavailableError);
+    expect(error).toBeInstanceOf(PermissionDeniedError);
+    expect((error as SessionRouteUnavailableError).sessionId).toBe("s1");
   });
 });
