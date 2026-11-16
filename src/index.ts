@@ -1,5 +1,6 @@
 export { Beakr } from "./client.js";
 export {
+  BASE_URL_REQUIRED_MESSAGE,
   DEFAULT_BASE_URL,
   type ClientOptions,
   type FetchLike,
@@ -173,7 +174,10 @@ export {
   type UploadedPart,
 } from "./resources/uploads.js";
 export {
+  SKIPPED_FILE_CODES,
   type FolderEntry,
+  type FolderUploadResult,
+  type SkippedFolderFile,
   type UploadFolderOptions,
   type UploadedFolderFile,
 } from "./resources/folder-upload.js";

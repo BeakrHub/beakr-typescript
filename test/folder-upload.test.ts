@@ -3,7 +3,13 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { MULTIPART_THRESHOLD, detectArtifactType, guessMimeType } from "../src/index.js";
+import {
+  AuthenticationError,
+  MULTIPART_THRESHOLD,
+  PermissionDeniedError,
+  detectArtifactType,
+  guessMimeType,
+} from "../src/index.js";
 import { uploadRelativePath } from "../src/resources/folder-upload.js";
 import { client, type Recorded } from "./helpers.js";
 
@@ -367,5 +373,123 @@ describe("uploadRelativePath", () => {
     expect(uploadRelativePath("/abs/memo.pdf")).toBeUndefined();
     expect(uploadRelativePath("C:/abs/memo.pdf")).toBeUndefined();
     expect(uploadRelativePath("../outside/memo.pdf")).toBeUndefined();
+  });
+});
+
+/**
+ * BUGS.md, "`beakr upload <folder>` stops at the first unsupported file": one
+ * `.fcs` the server refused (400 unsupported_file_type) rejected the whole
+ * folder upload. A refusal about that one file now skips it and the rest go;
+ * a refusal of the request itself (a credential) still rejects.
+ */
+describe("folder uploads skip a file the server refuses for itself", () => {
+  let root: string | undefined;
+  afterEach(async () => {
+    if (root) await rm(root, { recursive: true, force: true });
+  });
+
+  /** The router, with `POST /v1/uploads` for `refused` answered by `status` and `code`. */
+  function refusing(refused: string, status: number, code: string, message: string) {
+    const inner = router();
+    const fetch = async (url: string, init: RequestInit): Promise<Response> => {
+      if (String(init.method) === "POST" && url.startsWith(API) && new URL(url).pathname === "/v1/uploads") {
+        const body = JSON.parse(String(init.body)) as { path: string };
+        if (body.path === refused) {
+          inner.calls.push({ url, method: "POST", headers: {}, body });
+          return new Response(JSON.stringify({ error: { code, message } }), {
+            status,
+            headers: { "content-type": "application/json" },
+          });
+        }
+      }
+      return inner.fetch(url, init);
+    };
+    return { ...inner, fetch };
+  }
+
+  async function plateFolder(): Promise<string> {
+    root = await mkdtemp(join(tmpdir(), "beakr-folder-"));
+    await writeFile(join(root, "a.md"), "# a");
+    await writeFile(join(root, "b_plate1.fcs"), "FCS3.0");
+    await writeFile(join(root, "c.md"), "# c");
+    return root;
+  }
+
+  it("uploadFolder uploads a and c, skips b with its reason", async () => {
+    const dir = await plateFolder();
+    await writeFile(join(dir, "d.txt"), "");
+    const { fetch, calls } = refusing("b_plate1.fcs", 400, "unsupported_file_type", "File type not supported for 'b_plate1.fcs'");
+    const { beakr } = client(fetch);
+    const result = await beakr.uploads.uploadFolder(dir, { projectId: "p1" });
+    expect(result.map((r) => basename(r.path))).toEqual(["a.md", "c.md"]);
+    expect(result.map((r) => (r.artifact as { id: string }).id)).toEqual(["a1", "a2"]);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result.uploaded.map((r) => basename(r.path))).toEqual(["a.md", "c.md"]);
+    expect(result.total).toBe(4);
+    expect(result.skipped.map(({ path, ...rest }) => ({ file: basename(path), ...rest }))).toEqual([
+      {
+        file: "b_plate1.fcs",
+        name: "b_plate1.fcs",
+        code: "unsupported_file_type",
+        message: expect.stringContaining("File type not supported for 'b_plate1.fcs'"),
+      },
+      { file: "d.txt", name: "d.txt", code: "empty_file", message: "Empty file; Beakr does not store empty files" },
+    ]);
+    expect(result.summary.split("\n")).toEqual([
+      "Uploaded 2 of 4 files.",
+      `- Failed: b_plate1.fcs: ${result.skipped[0]!.message}`,
+      "- Failed: d.txt: Empty file; Beakr does not store empty files",
+    ]);
+    // The empty file was never offered to the server; the refused one once.
+    expect(created(calls).map((b) => b.path)).toEqual(["a.md", "b_plate1.fcs", "c.md"]);
+    expect(completed(calls)).toHaveLength(2);
+    // The array serializes as before: the added properties are not enumerable.
+    expect(JSON.parse(JSON.stringify(result))).toHaveLength(2);
+    expect(Object.keys(result)).toEqual(["0", "1"]);
+  });
+
+  it("uploadEntries skips the same refusals", async () => {
+    const { fetch } = refusing("b.fcs", 400, "unsupported_file_type", "File type not supported for 'b.fcs'");
+    const { beakr } = client(fetch);
+    const text = (value: string) => new TextEncoder().encode(value);
+    const result = await beakr.uploads.uploadEntries(
+      [
+        { path: "a.md", data: text("a") },
+        { path: "b.fcs", data: text("b") },
+        { path: "c.md", data: text("c") },
+      ],
+      { projectId: "p1" },
+    );
+    expect(result.map((r) => r.path)).toEqual(["a.md", "c.md"]);
+    expect(result.skipped.map((s) => [s.path, s.code])).toEqual([["b.fcs", "unsupported_file_type"]]);
+    expect(result.summary.split("\n")[0]).toBe("Uploaded 2 of 3 files.");
+  });
+
+  it.each(["invalid_path", "content_rejected", "size_mismatch", "upload_failed"])("skips %s", async (code) => {
+    const dir = await plateFolder();
+    const { fetch } = refusing("b_plate1.fcs", 400, code, "refused");
+    const { beakr } = client(fetch);
+    const result = await beakr.uploads.uploadFolder(dir, { projectId: "p1" });
+    expect(result.map((r) => basename(r.path))).toEqual(["a.md", "c.md"]);
+    expect(result.skipped.map((s) => s.code)).toEqual([code]);
+  });
+
+  it("still rejects on a 401: the credential, not the file, was refused", async () => {
+    const dir = await plateFolder();
+    const { fetch } = refusing("b_plate1.fcs", 401, "unauthorized", "Invalid API key");
+    const { beakr } = client(fetch);
+    await expect(beakr.uploads.uploadFolder(dir, { projectId: "p1" })).rejects.toBeInstanceOf(AuthenticationError);
+  });
+
+  it("still rejects on a 403 and on profile_required", async () => {
+    const dir = await plateFolder();
+    const denied = refusing("b_plate1.fcs", 403, "forbidden", "No access to this project");
+    await expect(client(denied.fetch).beakr.uploads.uploadFolder(dir, { projectId: "p1" })).rejects.toBeInstanceOf(
+      PermissionDeniedError,
+    );
+    const profile = refusing("b_plate1.fcs", 409, "profile_required", "Set up a Knowledge profile first");
+    await expect(client(profile.fetch).beakr.uploads.uploadFolder(dir, { projectId: "p1" })).rejects.toMatchObject({
+      code: "profile_required",
+    });
   });
 });

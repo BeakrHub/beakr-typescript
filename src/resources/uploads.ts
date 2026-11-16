@@ -7,8 +7,8 @@ import {
   uploadEntries,
   uploadRelativePath,
   type FolderEntry,
+  type FolderUploadResult,
   type UploadFolderOptions,
-  type UploadedFolderFile,
 } from "./folder-upload.js";
 import { sha256Hex } from "../sha256.js";
 import { guessMimeType } from "./file-types.js";
@@ -246,8 +246,16 @@ export class Uploads extends Resource {
    * uploading two trees with shared sub-folder names, or the same tree again,
    * does not fail. Resolves to `[{ path, ...completion }]` in upload order,
    * like Python's `files.upload_folder()`.
+   *
+   * A file the server refuses for itself (an unsupported type such as `.fcs`,
+   * and the other per-file refusals in `SKIPPED_FILE_CODES`) and an empty
+   * file are skipped, and the rest are still uploaded: the result's `skipped`
+   * lists them (`path`, `name`, `code`, `message`) and `summary` reads
+   * "Uploaded N of M files." with a "- Failed: <name>: <reason>" line each.
+   * Any other refusal (credential, project access, a missing Knowledge
+   * profile, the network) rejects.
    */
-  async uploadFolder(directory: string, options: UploadFolderOptions): Promise<UploadedFolderFile[]> {
+  async uploadFolder(directory: string, options: UploadFolderOptions): Promise<FolderUploadResult> {
     const entries = await readDirectoryEntries(directory, { includeHidden: options.includeHidden });
     const nodePath = await nodeBuiltin<typeof import("node:path")>("node:path");
     const rootName = nodePath.basename(nodePath.resolve(directory));
@@ -271,7 +279,7 @@ export class Uploads extends Resource {
   uploadEntries(
     entries: Iterable<FolderEntry> | AsyncIterable<FolderEntry>,
     options: UploadFolderOptions,
-  ): Promise<UploadedFolderFile[]> {
+  ): Promise<FolderUploadResult> {
     return uploadEntries(this, this.transport, entries, options);
   }
 

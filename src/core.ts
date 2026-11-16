@@ -47,7 +47,21 @@ import { IDEMPOTENCY_RETRY_CODES, replaysIdempotencyKey } from "./replay.js";
 import type { Page } from "./types.js";
 import { VERSION } from "./version.js";
 
-export const DEFAULT_BASE_URL = "https://api.thebeakr.com";
+/**
+ * The self-hosted line has no default API: every deployment has its own URL,
+ * and a key must never go to Beakr's hosted cloud because nothing was set.
+ * Empty (falsy, and an origin no URL matches); kept so code that imports it
+ * still builds. A client with no URL configured throws
+ * {@link BASE_URL_REQUIRED_MESSAGE} instead.
+ */
+export const DEFAULT_BASE_URL = "";
+
+/**
+ * Thrown (as {@link AuthenticationError}, `code` `base_url_required`) when no
+ * API URL is configured: nothing is sent anywhere.
+ */
+export const BASE_URL_REQUIRED_MESSAGE =
+  "Set your deployment's URL: pass baseUrl or set BEAKR_BASE_URL (for example https://beakr.example.com).";
 export const DEFAULT_TIMEOUT_MS = 60_000;
 export const DEFAULT_MAX_RETRIES = 2;
 const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
@@ -128,8 +142,11 @@ export interface ClientOptions {
   /** When `apiKey` expires (epoch milliseconds), for `renewApiKey`. */
   apiKeyExpiresAt?: number;
   /**
-   * Defaults to `BEAKR_BASE_URL`, then `BEAKR_API_URL` (the name the CLI and
-   * the Python SDK also read, in the same order), then https://api.thebeakr.com.
+   * Your deployment's API URL. Defaults to `BEAKR_BASE_URL`, then
+   * `BEAKR_API_URL` (the name the CLI and the Python SDK also read, in the same
+   * order); with none of them set the constructor throws
+   * {@link AuthenticationError} (`code` `base_url_required`) and sends nothing.
+   * There is no hosted default.
    */
   baseUrl?: string;
   /** Sent as `X-Beakr-Client` (attribution only). */
@@ -205,6 +222,21 @@ function env(name: string): string | undefined {
   const proc = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process;
   const value = proc?.env?.[name];
   return value === undefined || value === "" ? undefined : value;
+}
+
+/**
+ * The configured API URL: `explicit`, then `BEAKR_BASE_URL`, then
+ * `BEAKR_API_URL`, without trailing slashes. There is no default on the
+ * self-hosted line: with none configured this throws
+ * {@link AuthenticationError} (`code` `base_url_required`) before anything is
+ * sent.
+ */
+function resolveBaseUrl(explicit: string | undefined): string {
+  for (const candidate of [explicit, env("BEAKR_BASE_URL"), env("BEAKR_API_URL")]) {
+    const url = candidate?.trim().replace(/\/+$/, "");
+    if (url) return url;
+  }
+  throw new AuthenticationError(BASE_URL_REQUIRED_MESSAGE, { code: "base_url_required" });
 }
 
 const SHARED_TRANSPORT = Symbol("beakr.sharedTransport");
@@ -337,7 +369,7 @@ export class Transport {
   private apiKeyExpiresAt: number | undefined;
 
   constructor(options: ClientOptions = {}) {
-    this.baseUrl = (options.baseUrl ?? env("BEAKR_BASE_URL") ?? env("BEAKR_API_URL") ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
+    this.baseUrl = resolveBaseUrl(options.baseUrl);
     this.clientName = options.clientName ?? `sdk-typescript/${VERSION}`;
     this.agent = options.agent;
     const session = options.session ?? env("BEAKR_SESSION");

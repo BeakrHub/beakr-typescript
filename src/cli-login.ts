@@ -31,7 +31,6 @@ import { normalizeOrigin } from "./service-account.js";
 
 /** Seconds before expiry at which a stored access token is treated as expired (the CLI's skew). */
 const REFRESH_SKEW_SECONDS = 60;
-const DEFAULT_BASE_URL = "https://api.thebeakr.com";
 
 /** A usable stored sign-in: the access token the CLI last saved for one origin. */
 export interface CliLogin {
@@ -106,10 +105,13 @@ function cliConfig(): Record<string, unknown> {
   return record(readJson("config.json")) ?? {};
 }
 
-/** The API the CLI is configured for: `BEAKR_BASE_URL`, `BEAKR_API_URL`, the config, then production. */
-function configuredBaseUrl(): string {
+/**
+ * The API the CLI is configured for: `BEAKR_BASE_URL`, `BEAKR_API_URL`, then
+ * the config; undefined when none is (there is no hosted default).
+ */
+function configuredBaseUrl(): string | undefined {
   const configured = cliConfig()["api_url"];
-  return env("BEAKR_BASE_URL") ?? env("BEAKR_API_URL") ?? (typeof configured === "string" && configured ? configured : DEFAULT_BASE_URL);
+  return env("BEAKR_BASE_URL") ?? env("BEAKR_API_URL") ?? (typeof configured === "string" && configured ? configured : undefined);
 }
 
 function loginFrom(entry: unknown): (CliLogin & { baseUrl?: string }) | undefined {
@@ -152,9 +154,11 @@ export function readCliLogin(origin: string): CliLogin | undefined {
     }
   } else if (!("logins" in data)) {
     // A version-1 payload: one bare pair, filed under the origin it records
-    // or, recording none, under the configured API.
+    // or, recording none, under the configured API (no one's when none is
+    // configured, never a default's).
     const legacy = loginFrom(data);
-    if (legacy && originOf(legacy.baseUrl ?? configuredBaseUrl()) === wanted) found = legacy;
+    const legacyUrl = legacy?.baseUrl ?? configuredBaseUrl();
+    if (legacy && legacyUrl && originOf(legacyUrl) === wanted) found = legacy;
   }
   if (!found) return undefined;
   const barrier = originBarriers()[wanted];
@@ -172,7 +176,9 @@ export function readCliSavedKey(origin: string): string | undefined {
   const config = cliConfig();
   const key = config["api_key"];
   if (typeof key !== "string" || !key) return undefined;
-  const apiUrl = typeof config["api_url"] === "string" && config["api_url"] ? config["api_url"] : DEFAULT_BASE_URL;
+  // A key an older CLI saved without its API's URL belongs to no known API here.
+  const apiUrl = typeof config["api_url"] === "string" && config["api_url"] ? config["api_url"] : undefined;
+  if (apiUrl === undefined) return undefined;
   const wanted = originOf(origin);
   return wanted !== undefined && originOf(apiUrl) === wanted ? key : undefined;
 }

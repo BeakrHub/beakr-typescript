@@ -150,7 +150,8 @@ describe("the CLI's stored sign-in", () => {
     await clientWith(fetch).me.get();
     expect(calls[0]!.headers.authorization).toBe("Bearer bk_live_saved");
 
-    // A key saved for production is not sent to another API.
+    // A key an older CLI saved without its API's URL belongs to no known API:
+    // it is not sent (there is no hosted default to file it under).
     beakrHome({ "config.json": { api_key: "bk_live_prod" } });
     const other = mockFetch([]);
     const error = await clientWith(other.fetch).me.get().catch((e: unknown) => e);

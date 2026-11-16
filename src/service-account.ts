@@ -5,7 +5,7 @@
  * JSON file written by `beakr org service-accounts key --credentials-file`:
  *
  *     {"type": "beakr_service_account", "api_key": "bk_live_...",
- *      "base_url": "https://api.thebeakr.com", "org_id": "...",
+ *      "base_url": "https://beakr.example.com", "org_id": "...",
  *      "service_account_id": "...", "key_id": "...", "name": "deploy"}
  *
  * Only `type` and `api_key` are required. `base_url`, when present, binds the
