@@ -26,13 +26,18 @@
  *   entry's own `relativePath`, else its `path` when that names directories.
  *   {@link Uploads.uploadFolder} sets it to the path from the directory's
  *   parent, so it starts with the directory's own name, as Python's does;
- * - the result is `[{ path, ...uploaded }]` in upload order; the first failure
- *   rejects the call, and files already uploaded stay uploaded (a resumable
- *   one rejects with `UploadInterruptedError`, whose `uploadId` resumes it).
+ * - the result is `[{ path, ...uploaded }]` in upload order (a
+ *   {@link FolderUploadResult}); a file the server refuses for itself
+ *   ({@link SKIPPED_FILE_CODES}, such as an unsupported type) and an empty file
+ *   are skipped, listed in its `skipped`, and the rest still go;
+ * - any other failure (a credential, the project, a missing Knowledge profile,
+ *   the network) rejects the call, and files already uploaded stay uploaded (a
+ *   resumable one rejects with `UploadInterruptedError`, whose `uploadId`
+ *   resumes it).
  */
 
 import { cleanBody, type Transport } from "../core.js";
-import { ValidationError } from "../errors.js";
+import { BeakrError, ValidationError } from "../errors.js";
 import type { JsonObject } from "../types.js";
 import { detectArtifactType, guessMimeType } from "./file-types.js";
 import type { FileBody, UploadFileOptions } from "./uploads.js";
@@ -96,6 +101,66 @@ export interface UploadedFolderFile extends JsonObject {
   job_id?: string;
 }
 
+/**
+ * Refusals of one file that say nothing about the others: a folder upload skips
+ * the file and goes on (`POST /v1/uploads` and its `complete`). Anything else
+ * (a credential, the project, the network, a missing Knowledge profile) stops
+ * it. The same set as Python's `SKIPPED_FILE_CODES`.
+ */
+export const SKIPPED_FILE_CODES: ReadonlySet<string> = new Set([
+  "unsupported_file_type",
+  "invalid_path",
+  "content_rejected",
+  "size_mismatch",
+  "upload_failed",
+]);
+
+/** A file a folder upload did not send, and why. */
+export interface SkippedFolderFile {
+  path: string;
+  /** The file's name (its last path segment). */
+  name: string;
+  /** One of {@link SKIPPED_FILE_CODES}, or `empty_file`. */
+  code: string;
+  message: string;
+}
+
+/**
+ * What a folder upload sent: the uploaded files' rows, as before (an array of
+ * {@link UploadedFolderFile} in upload order), with `skipped` listing the files
+ * not sent, `total` counting both, and `summary` saying it in one text:
+ * `Uploaded N of M files.` and a `- Failed: <name>: <reason>` line per skipped
+ * file. The added properties are not enumerable, so the array serializes and
+ * compares as before.
+ */
+export type FolderUploadResult = UploadedFolderFile[] & {
+  readonly skipped: SkippedFolderFile[];
+  /** The uploaded files' rows (a plain copy of the array). */
+  readonly uploaded: UploadedFolderFile[];
+  readonly total: number;
+  readonly summary: string;
+};
+
+function folderUploadResult(uploaded: UploadedFolderFile[], skipped: SkippedFolderFile[]): FolderUploadResult {
+  return Object.defineProperties(uploaded, {
+    skipped: { value: skipped, enumerable: false },
+    uploaded: { get: () => [...uploaded], enumerable: false },
+    total: { get: () => uploaded.length + skipped.length, enumerable: false },
+    summary: {
+      get: () =>
+        [
+          `Uploaded ${uploaded.length} of ${uploaded.length + skipped.length} files.`,
+          ...skipped.map((row) => `- Failed: ${row.name}: ${row.message}`),
+        ].join("\n"),
+      enumerable: false,
+    },
+  }) as FolderUploadResult;
+}
+
+function bodySize(body: FileBody): number {
+  return body instanceof Blob ? body.size : body.byteLength;
+}
+
 interface Uploader {
   upload(file: FileBody, options: UploadFileOptions): Promise<JsonObject>;
 }
@@ -134,7 +199,7 @@ export async function uploadEntries(
   options: UploadFolderOptions,
   displayPath: (entry: FolderEntry) => string = (entry) => entry.path,
   internal: UploadEntriesInternal = {},
-): Promise<UploadedFolderFile[]> {
+): Promise<FolderUploadResult> {
   const collected: { entry: FolderEntry; segments: string[] }[] = [];
   for await (const entry of entries as AsyncIterable<FolderEntry>) {
     const segments = segmentsOf(entry.path);
@@ -198,26 +263,43 @@ export async function uploadEntries(
   };
 
   const results: UploadedFolderFile[] = [];
+  const skipped: SkippedFolderFile[] = [];
   for (const { entry, segments } of collected) {
     const name = segments[segments.length - 1]!;
-    const target = mirror ? await ensureFolder([...leading, ...segments.slice(0, -1)]) : options.folderId;
     const body = await asFileBody(entry.data);
+    if (bodySize(body) === 0) {
+      skipped.push({
+        path: displayPath(entry),
+        name,
+        code: "empty_file",
+        message: "Empty file; Beakr does not store empty files",
+      });
+      continue;
+    }
+    const target = mirror ? await ensureFolder([...leading, ...segments.slice(0, -1)]) : options.folderId;
     const fileType = body instanceof Blob && body.type ? body.type : undefined;
     const contentType = entry.contentType ?? fileType ?? guessMimeType(name);
     const recorded = entry.relativePath ?? uploadRelativePath(segments.join("/"));
-    const uploaded = await uploader.upload(body, {
-      projectId: options.projectId,
-      path: name,
-      relativePath: recorded && recorded !== name ? recorded : undefined,
-      folderId: target,
-      contentType,
-      artifactType: detectArtifactType(contentType, name),
-      ingest: options.ingest ?? true,
-      signal: options.signal,
-    });
+    let uploaded: JsonObject;
+    try {
+      uploaded = await uploader.upload(body, {
+        projectId: options.projectId,
+        path: name,
+        relativePath: recorded && recorded !== name ? recorded : undefined,
+        folderId: target,
+        contentType,
+        artifactType: detectArtifactType(contentType, name),
+        ingest: options.ingest ?? true,
+        signal: options.signal,
+      });
+    } catch (error) {
+      if (!(error instanceof BeakrError) || error.code === undefined || !SKIPPED_FILE_CODES.has(error.code)) throw error;
+      skipped.push({ path: displayPath(entry), name, code: error.code, message: error.message });
+      continue;
+    }
     results.push({ path: displayPath(entry), ...uploaded });
   }
-  return results;
+  return folderUploadResult(results, skipped);
 }
 
 /**

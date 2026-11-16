@@ -589,7 +589,7 @@ function htmlPageReason(status: number, text: string): { reason: string; fix: st
   const fix =
     status >= 500
       ? "If the API URL (baseUrl, or BEAKR_BASE_URL) is right, a proxy in front of the API answered: retry shortly."
-      : "Check the API URL (baseUrl, or BEAKR_BASE_URL): it must be a Beakr API, such as https://api.thebeakr.com.";
+      : "Check the API URL (baseUrl, or BEAKR_BASE_URL): it must be your deployment's API URL.";
   return { reason: `The server answered with ${page}, not a Beakr API response`, fix };
 }
 

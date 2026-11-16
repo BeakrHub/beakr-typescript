@@ -22,7 +22,8 @@ there) and keep it in `BEAKR_API_KEY`.
 import { Beakr } from "@beakr/sdk";
 
 const beakr = new Beakr(); // reads BEAKR_API_KEY, or pass { apiKey }
-// The API: `baseUrl`, else BEAKR_BASE_URL, else BEAKR_API_URL, else production.
+// Your deployment's API: `baseUrl`, else BEAKR_BASE_URL, else BEAKR_API_URL.
+// With none set the constructor throws AuthenticationError (base_url_required).
 
 const me = await beakr.me.get();
 const projects = await beakr.projects.list(); // one page; beakr.projects.iter() follows every page
@@ -88,6 +89,9 @@ used until it expires and is not refreshed. To sign a person in, use the CLI
 ```ts
 // Node: walk a directory; sub-directories become folders, dotfiles are skipped.
 const uploaded = await beakr.uploads.uploadFolder("./docs", { projectId });
+// A file the server refuses for itself (an unsupported type, an empty file) is
+// skipped and the rest still go: uploaded.skipped lists it, and
+// uploaded.summary reads "Uploaded N of M files." with a "- Failed:" line each.
 
 // Browser or edge: the same, from entries (e.g. an <input webkitdirectory> list).
 await beakr.uploads.uploadEntries(
