@@ -11186,6 +11186,11 @@ export interface components {
              */
             read_project_ids?: string[];
             /**
+             * Session Id
+             * @description The person's own session these lists are for. What it has already done binds them: a project it touched that keeps its content in limits writes to it, and a project that takes no content from others can't be written after it read another. Such choices come back invalid with that reason.
+             */
+            session_id?: string | null;
+            /**
              * Write Project Ids
              * @description The write list chosen so far.
              */
@@ -11772,6 +11777,32 @@ export interface components {
              */
             picker_url: string;
             /**
+             * Proposed At
+             * @description When its agent asked; null when there is no proposal.
+             */
+            proposed_at?: string | null;
+            /**
+             * Proposed Read Everything
+             * @description Its agent asked to read everything, likewise.
+             * @default false
+             */
+            proposed_read_everything?: boolean;
+            /**
+             * Proposed Read Projects
+             * @description Read projects its agent asked for and only the person may grant (`403 session_widen_needs_person`). Never applied: the picker preselects them.
+             */
+            proposed_read_projects?: components["schemas"]["SessionProject"][];
+            /**
+             * Proposed Reasons
+             * @description Why the proposal could not be saved as it stands (a boundary, or what the session has already touched); empty when it can.
+             */
+            proposed_reasons?: components["schemas"]["SessionNote"][];
+            /**
+             * Proposed Write Projects
+             * @description Write projects its agent asked for, likewise.
+             */
+            proposed_write_projects?: components["schemas"]["SessionProject"][];
+            /**
              * Read Only At
              * @description When it became read-only.
              */
@@ -11813,7 +11844,7 @@ export interface components {
             status: string;
             /**
              * Summary
-             * @description The session's projects in one line.
+             * @description The session's projects in one line, and its lock once it has one.
              * @default
              */
             summary?: string;
