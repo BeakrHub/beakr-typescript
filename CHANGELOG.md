@@ -3,6 +3,49 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
+## @beakr/sdk 0.4.0 (2026-11-16)
+
+### Changes
+
+- `POST /v1/knowledge/wiki/command`: new read command `orient`. With `scope`
+  naming one project it returns that project's orientation map in about 3,000
+  characters: its knowledge profile, how many pages of each card type, what a
+  card of the dominant types looks like (title rule, sections with their
+  `section_id`s and sizes, Facts fields and Connections with the share of cards
+  stating each), the cards those cards link to most, and how `grep`, `sections`,
+  `hover` and `rows` behave at the project's size. Without `scope` it lists the
+  projects the caller can read, the largest first. Counts include only pages the
+  caller can read: a caller who reads the whole project gets the project's
+  stored measurement, dated, with a note when pages compiled since are not
+  counted; a caller who reads part of it gets counts of those
+  pages, measured on the call, and a part that could not be measured within its
+  time limit is named as left out.
+- `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
+  cites where the caller can read it now carries `knowledge_reference` (how
+  Knowledge's newest citation of it names it), and its `source_ref` is then the
+  item reference a Knowledge write accepts as a citation. Cite such an item by
+  that `source_ref`; cite any other item as an `external_record`. A credential
+  confined to some projects sees only citations on pages in those projects.
+- `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
+  page and section write operations: an API key or token can cite a record in
+  a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
+  Send `{source_type: "external_record", url, title, meta: {system, record_id,
+  excerpt}, stance}` in `citations` (a section's, the change's or a card row's).
+  `url` must be an `http` or `https` link with a host and no user name or
+  password, at most 2,048 characters; `meta.system` names the system (at most 60
+  characters), `meta.record_id` is the record's id there, and `title` (which may
+  be sent as `source_title`) its name, at most 300 characters; a record needs a
+  `record_id` or a `title`, and `meta.excerpt` holds at most 1,000 characters.
+  Anything else is refused with `citation_not_citeable`; nothing is trimmed.
+  Beakr stores the citation as you give it and never opens the link. Reads name
+  the record `(System › record_id)` in the text, for example `(CDD Vault ›
+  MOL-1234)`, with its link in the source record's `location.url` and on the
+  Sources line, and mark its excerpt `(unverified)`; a later write cites the
+  record by that reference again (in the prose, a row's `evidence` or a
+  citation's `reference`). One record is one citation, keyed `record:<hash>`; to
+  cite it in the prose by a name of your own, give it a `key` such as
+  `record:mol-1234` and write `{{record:mol-1234}}`.
+
 ## @beakr/sdk 0.3.0 (2026-11-15)
 
 ### Changes
