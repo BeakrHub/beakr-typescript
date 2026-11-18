@@ -6639,6 +6639,11 @@ export interface components {
              */
             filename?: string | null;
             /**
+             * Knowledge Reference
+             * @description Set when Knowledge already cites this item where the caller can read it: the name Knowledge's newest citation of it gives (`Slack: #deals`). Cite the item in a Knowledge write by `source_ref`, not as an `external_record`.
+             */
+            knowledge_reference?: string | null;
+            /**
              * Location
              * @description Where the source lives: `url`, `display_path`, `provider_item_id`.
              */
@@ -6669,7 +6674,7 @@ export interface components {
             source_kind?: string | null;
             /**
              * Source Ref
-             * @description Opaque reference to the source, reusable as a Knowledge citation.
+             * @description Opaque reference to the source. A Knowledge write accepts it as a citation when `knowledge_reference` is set; for any other item, cite an `external_record` (its url, `meta.system` the service, `meta.record_id` the item's own id).
              */
             source_ref?: string | null;
             /**
@@ -17981,7 +17986,7 @@ export interface operations {
                      * @description The command to run. `help` returns the guidance for every command or action, or for one with `topic`.
                      * @enum {string}
                      */
-                    command: "ls" | "cat" | "grep" | "sections" | "log" | "blame" | "diff" | "show" | "sources" | "provenance" | "links" | "timeline" | "rows" | "ontology" | "hover" | "references" | "diagnostics" | "completions" | "proposals" | "suggest_parent" | "help" | "query";
+                    command: "ls" | "cat" | "grep" | "sections" | "log" | "blame" | "diff" | "show" | "sources" | "provenance" | "links" | "timeline" | "rows" | "ontology" | "hover" | "references" | "diagnostics" | "completions" | "proposals" | "suggest_parent" | "help" | "query" | "orient";
                     /** @description rows: cards linked to this page. */
                     connected_to?: string;
                     /** @description For suggest_parent: the draft body of the page you are about to create. Any [[Page Title]] links in it are the strongest evidence of where the page belongs, so pass the draft whenever you have one. */
