@@ -1005,6 +1005,200 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/page-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List card types
+         * @description List active page-type ontology entries for the current org/project.
+         *
+         *     ``map_mode`` says the org's Knowledge is a map, and each type's ``card_type``
+         *     whether its pages are cards there, laid out as a card whatever starter
+         *     sections the type stores; both are false outside a map.
+         */
+        get: operations["list_wiki_page_types_v1_knowledge_wiki_page_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy card types between projects
+         * @description Copy card types one project defines into another project.
+         *
+         *     The destination gets its own copies, so later edits in either project stay
+         *     there. Only types the source project itself defines are copied; a type it
+         *     inherits is already available to the destination. ``skipped`` lists each
+         *     key not copied: ``not_found`` in the source, or ``exists`` in the
+         *     destination when ``replace`` is false. Cards are not copied or changed.
+         *     Requires being able to see the source and being an owner of the destination.
+         */
+        post: operations["copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote card types to the organization
+         * @description Copy card types one project defines up to the organization.
+         *
+         *     Every project without a copy of its own inherits a promoted type from then
+         *     on, and every member of the organization can read its definition, so this
+         *     takes an organization admin. ``skipped`` lists each key not promoted:
+         *     ``not_found`` in the source, or ``exists`` in the organization when
+         *     ``replace`` is false. The source project keeps its own copy.
+         */
+        post: operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a card type copy
+         * @description Drop a project's or organization's own copy of a type it also inherits.
+         *
+         *     The scope goes back to the broader type. A type defined only here cannot be
+         *     removed this way (its cards carry it): turn it off with ``status``.
+         */
+        delete: operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a card type
+         * @description Change a card type: its wording, its fields, card or row, or turn it off.
+         *
+         *     The change applies to the type as ``scope`` holds it. A scope that only
+         *     inherits the type (a project using a built-in or an organization's type)
+         *     gets its own copy first, so nobody else's ontology changes; the response's
+         *     ``overrides`` names the scope the copy now stands in front of. ``fields``
+         *     replaces the type's field list, each marked required or not. ``grain`` says
+         *     whether an instance is a card or a row on the card it belongs to.
+         *     ``status: deprecated`` turns the type off for the scope, and hides a broader
+         *     type of the same key from it.
+         *
+         *     Existing cards are not rewritten: the next compiles use the new definition.
+         */
+        patch: operations["update_wiki_page_type_v1_knowledge_wiki_page_types__key__patch"];
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/{key}/rename-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rename fields on existing cards
+         * @description Rename a card type's fields on the cards a project already has.
+         *
+         *     Changing a type's field list changes what later compiles write and rewrites
+         *     no card. This applies a mapping of old name to new name to the Facts rows
+         *     of every card of the type in one project: rows are renamed, two rows that
+         *     become the same field are merged with their citations kept, and the old
+         *     name is remembered so a later compile does not bring it back.
+         *
+         *     ``dry_run`` (the default) answers the counts and writes nothing. An apply
+         *     writes every card in one commit, whose id is ``commit_id``, and records one
+         *     row in the project's Activity, whose id is ``undo_event_id``: reverting that
+         *     row (``POST /wiki/ingestion-events/{id}/revert``) puts the cards' rows back.
+         *     ``refused`` lists renames the safety checks did
+         *     not accept (two names that differ by one word whose values disagree, or a
+         *     rename that drops a word such as "planned" or "actual"). Cards another
+         *     change touched meanwhile are counted in ``cards_conflicted`` and left as
+         *     they were. One call writes at most 500 cards; ``cards_remaining`` counts
+         *     the cards the mapping still changes afterwards. Send the same request
+         *     again to pick them up, as another commit with its own undo.
+         *
+         *     Answers 409 while Knowledge is running maintenance on the project.
+         */
+        post: operations["rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/{key}/retype-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move existing cards to another type
+         * @description Move the cards a project already has from this type to another.
+         *
+         *     Editing or turning off a type rewrites no card. This changes every live
+         *     card of the type in one project to ``to_type``, which must be an active
+         *     type of cards in that project. A card's text is not changed: its Facts
+         *     rows keep their field names and are read from then on through the target
+         *     type's recorded names, so rename fields on the target type afterwards if
+         *     the two types named a field differently.
+         *
+         *     ``dry_run`` (the default) answers the counts and writes nothing. An apply
+         *     writes up to 500 cards in one commit, whose id is ``commit_id``, and
+         *     records one row in the project's Activity, whose id is ``undo_event_id``:
+         *     reverting that row (``POST /wiki/ingestion-events/{id}/revert``) puts each
+         *     card back to this type. ``cards_remaining`` counts the cards still of this
+         *     type afterwards (past the per-call limit, or held by another writer and
+         *     counted in ``cards_skipped``); send the same request again to move them.
+         *
+         *     Answers 409 while Knowledge is running maintenance on the project, 422 for
+         *     a mapping that cannot be applied, and 404 for a type the project does not
+         *     know.
+         */
+        post: operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/pages": {
         parameters: {
             query?: never;
@@ -12377,6 +12571,22 @@ export interface components {
             sources?: components["schemas"]["SourceRecord"][];
         };
         /**
+         * WikiFieldRename
+         * @description One field's current name and the name its rows should carry.
+         */
+        WikiFieldRename: {
+            /**
+             * New
+             * @description The name to give it.
+             */
+            new: string;
+            /**
+             * Old
+             * @description The field's current name.
+             */
+            old: string;
+        };
+        /**
          * WikiIngestQueueResult
          * @description Stable caller-visible result of requesting Knowledge compilation.
          * @enum {string}
@@ -12786,6 +12996,422 @@ export interface components {
             view_hit_count?: number | null;
         } & {
             [key: string]: unknown;
+        };
+        /** WikiPageType */
+        WikiPageType: {
+            /**
+             * Key
+             * @description The key.
+             */
+            key: string;
+            /**
+             * Label
+             * @description Display label.
+             */
+            label: string;
+            /**
+             * Scope
+             * @description The scope it applies to.
+             */
+            scope: string;
+            /**
+             * Status
+             * @description Current status of the wiki page type.
+             */
+            status: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * WikiPageTypeCardsRetyped
+         * @description ``POST /v1/knowledge/wiki/page-types/{key}/retype-cards``.
+         */
+        WikiPageTypeCardsRetyped: {
+            /**
+             * Cards
+             * @description Live cards of the source type when the call started.
+             */
+            cards: number;
+            /**
+             * Cards Remaining
+             * @description Cards still of the source type after this call. One call moves at most 500; send the same request again for the rest.
+             */
+            cards_remaining: number;
+            /**
+             * Cards Retyped
+             * @description Cards this call moved; 0 for a dry run.
+             */
+            cards_retyped: number;
+            /**
+             * Cards Skipped
+             * @description Cards another change held or touched meanwhile; still of the source type.
+             */
+            cards_skipped: number;
+            /**
+             * Commit Id
+             * @description The one change holding every card moved; null when none was.
+             */
+            commit_id: string | null;
+            /**
+             * Dry Run
+             * @description True when nothing was written.
+             */
+            dry_run: boolean;
+            /**
+             * From Type
+             * @description The key of the type the cards had.
+             */
+            from_type: string;
+            /**
+             * To Type
+             * @description The key of the type the cards were moved to.
+             */
+            to_type: string;
+            /**
+             * Undo Event Id
+             * @description The activity row recorded for an applied change. Reverting it undoes the change; null for a dry run or when nothing was moved.
+             */
+            undo_event_id: string | null;
+        };
+        /**
+         * WikiPageTypeCopy
+         * @description Copy card types one project defines into another project.
+         */
+        WikiPageTypeCopy: {
+            /**
+             * From Project Id
+             * Format: uuid
+             * @description The project whose types to copy.
+             */
+            from_project_id: string;
+            /**
+             * Keys
+             * @description The keys of the types to copy.
+             */
+            keys: string[];
+            /**
+             * Replace
+             * @description Overwrite a type the destination already defines; otherwise it is skipped.
+             * @default false
+             */
+            replace?: boolean;
+            /**
+             * To Project Id
+             * Format: uuid
+             * @description The project that gets its own copies.
+             */
+            to_project_id: string;
+        };
+        /**
+         * WikiPageTypeFieldIn
+         * @description One field of a card type.
+         */
+        WikiPageTypeFieldIn: {
+            /**
+             * Name
+             * @description The Attribute name.
+             */
+            name: string;
+            /**
+             * Required
+             * @description Whether every card of this type should state it.
+             * @default false
+             */
+            required?: boolean;
+        };
+        /**
+         * WikiPageTypeFieldRenames
+         * @description Rename a card type's fields on the cards one project already has.
+         */
+        WikiPageTypeFieldRenames: {
+            /**
+             * Dry Run
+             * @description Count what would change and write nothing. Pass false to apply.
+             * @default true
+             */
+            dry_run?: boolean;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project whose cards to change.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /**
+             * Renames
+             * @description The fields to rename.
+             */
+            renames: components["schemas"]["WikiFieldRename"][];
+        };
+        /**
+         * WikiPageTypeFieldsRenamed
+         * @description ``POST /v1/knowledge/wiki/page-types/{key}/rename-fields``.
+         */
+        WikiPageTypeFieldsRenamed: {
+            /**
+             * Applied
+             * @description The renames accepted, old name to new name.
+             */
+            applied: {
+                [key: string]: string;
+            };
+            /**
+             * Cards
+             * @description Cards of the type in the project.
+             */
+            cards: number;
+            /**
+             * Cards Changed
+             * @description Cards the mapping changes.
+             */
+            cards_changed: number;
+            /**
+             * Cards Conflicted
+             * @description Cards another change touched meanwhile; left as they were.
+             */
+            cards_conflicted: number;
+            /**
+             * Cards Refused
+             * @description Cards whose table could not be rewritten safely; left for a person.
+             */
+            cards_refused: number;
+            /**
+             * Cards Remaining
+             * @description Cards the mapping still changes after this call. One call writes at most 500; send the same request again for the rest.
+             */
+            cards_remaining: number;
+            /**
+             * Cards Written
+             * @description Cards this call wrote; 0 for a dry run.
+             */
+            cards_written: number;
+            /**
+             * Commit Id
+             * @description The one change holding every card written; null when none was.
+             */
+            commit_id: string | null;
+            /**
+             * Dry Run
+             * @description True when nothing was written.
+             */
+            dry_run: boolean;
+            /**
+             * Page Type
+             * @description The key of the type whose cards were read.
+             */
+            page_type: string;
+            /**
+             * Refused
+             * @description The renames the safety checks did not accept, old name to new name.
+             */
+            refused: {
+                [key: string]: string;
+            };
+            /**
+             * Rows Merged
+             * @description Rows folded into another row that became the same field, citations kept.
+             */
+            rows_merged: number;
+            /**
+             * Rows Renamed
+             * @description Rows given a new field name.
+             */
+            rows_renamed: number;
+            /**
+             * Undo Event Id
+             * @description The activity row recorded for an applied change. Reverting it undoes the change; null for a dry run or when nothing was written.
+             */
+            undo_event_id: string | null;
+        };
+        /**
+         * WikiPageTypeList
+         * @description ``GET /v1/knowledge/wiki/page-types``: the card types a project uses.
+         */
+        WikiPageTypeList: {
+            /**
+             * Map Mode
+             * @description Whether this organization's Knowledge is a map of cards.
+             */
+            map_mode: boolean;
+            /**
+             * Page Types
+             * @description Each type as the narrowest scope that defines it holds it.
+             */
+            page_types: components["schemas"]["WikiPageType"][];
+        };
+        /**
+         * WikiPageTypeOverrideRemoved
+         * @description ``DELETE /v1/knowledge/wiki/page-types/{key}``.
+         */
+        WikiPageTypeOverrideRemoved: {
+            /**
+             * Key
+             * @description The key.
+             */
+            key: string;
+            /**
+             * Removed
+             * @description What was removed.
+             */
+            removed: boolean;
+            /**
+             * Scope
+             * @description The scope it applies to.
+             */
+            scope: string;
+        };
+        /**
+         * WikiPageTypePromote
+         * @description Copy card types one project defines up to the organization.
+         *
+         *     The source is ``source``, not ``from_project_id``, on purpose: the Knowledge
+         *     commit gate judges an agent's write by the projects a request names, and a
+         *     promotion changes what every project inherits. Naming no project makes the
+         *     gate read it as the organization-wide write it is.
+         */
+        WikiPageTypePromote: {
+            /**
+             * Keys
+             * @description The keys of the types to promote.
+             */
+            keys: string[];
+            /**
+             * Replace
+             * @description Overwrite a type the organization already defines; otherwise it is skipped.
+             * @default false
+             */
+            replace?: boolean;
+            /**
+             * Source
+             * Format: uuid
+             * @description The id of the project whose types to promote.
+             */
+            source: string;
+        };
+        /**
+         * WikiPageTypeRetypeCards
+         * @description Move the cards one project already has from one card type to another.
+         */
+        WikiPageTypeRetypeCards: {
+            /**
+             * Dry Run
+             * @description Count what would change and write nothing. Pass false to apply.
+             * @default true
+             */
+            dry_run?: boolean;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project whose cards to move.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /**
+             * To Type
+             * @description The key of the type the cards become: an active type of cards here.
+             */
+            to_type: string;
+        };
+        /** WikiPageTypeSkipped */
+        WikiPageTypeSkipped: {
+            /**
+             * Key
+             * @description The key.
+             */
+            key: string;
+            /**
+             * Reason
+             * @description not_found in the source, or exists at the destination
+             */
+            reason: string;
+        };
+        /** WikiPageTypeStatusResult */
+        WikiPageTypeStatusResult: {
+            /** @description The Knowledge page type. */
+            page_type: components["schemas"]["WikiPageType"];
+        };
+        /**
+         * WikiPageTypeUpdate
+         * @description Changes to one card type, as one scope holds it. A field left out is kept.
+         *
+         *     Editing a type the scope only inherits (a built-in from a project or an
+         *     organization, an organization's type from a project) makes that scope its own
+         *     copy and changes the copy.
+         */
+        WikiPageTypeUpdate: {
+            /**
+             * Aliases
+             * @description Other names people use for this type; replaces the list.
+             */
+            aliases?: string[] | null;
+            /**
+             * Description
+             * @description What a card of this type is about.
+             */
+            description?: string | null;
+            /**
+             * Fields
+             * @description The type's fields in order; replaces the list.
+             */
+            fields?: components["schemas"]["WikiPageTypeFieldIn"][] | null;
+            /**
+             * Grain
+             * @description `card`: each instance gets a card. `row`: each is a Facts row on the card it belongs to.
+             */
+            grain?: string | null;
+            /**
+             * Label
+             * @description The type's display name.
+             */
+            label?: string | null;
+            /**
+             * Project Id
+             * @description The project, with scope `project`; left out otherwise.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id?: string | null;
+            /**
+             * Scope
+             * @description Whose copy of the type to change: `project` (one project), `org` (every project in the organization that has no copy of its own) or `global` (the built-ins).
+             * @default project
+             */
+            scope?: string;
+            /**
+             * Status
+             * @description `deprecated` turns the type off for this scope, hiding a broader type of the same key.
+             */
+            status?: string | null;
+            /**
+             * When Not To Use
+             * @description What looks like this type but belongs to another, and which.
+             */
+            when_not_to_use?: string | null;
+            /**
+             * When To Use
+             * @description When a thing in a source should become a card of this type.
+             */
+            when_to_use?: string | null;
+        };
+        /**
+         * WikiPageTypesCopied
+         * @description ``POST /v1/knowledge/wiki/page-types/copy`` and ``.../promote``.
+         */
+        WikiPageTypesCopied: {
+            /**
+             * Copied
+             * @description Types the destination did not have.
+             */
+            copied: components["schemas"]["WikiPageType"][];
+            /**
+             * Replaced
+             * @description Types the destination had, overwritten because replace was true.
+             */
+            replaced: components["schemas"]["WikiPageType"][];
+            /**
+             * Skipped
+             * @description Keys not copied, each with why.
+             */
+            skipped: components["schemas"]["WikiPageTypeSkipped"][];
         };
         /**
          * WikiPatchIn
@@ -16454,6 +17080,370 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WikiCommandResult"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_wiki_page_types_v1_knowledge_wiki_page_types_get: {
+        parameters: {
+            query?: {
+                project_id?: string | null;
+                include_proposed?: boolean;
+                include_deprecated?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeList"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeCopy"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypesCopied"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypePromote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypesCopied"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete: {
+        parameters: {
+            query?: {
+                scope?: string;
+                project_id?: string | null;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeOverrideRemoved"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    update_wiki_page_type_v1_knowledge_wiki_page_types__key__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeStatusResult"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeFieldRenames"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeFieldsRenamed"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeRetypeCards"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeCardsRetyped"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

@@ -127,6 +127,54 @@ const profile = await beakr.projects.knowledgeProfile(projectId);
 `knowledgeProfile` throws `NotFoundError` (`code === "knowledge_profile_not_found"`)
 while the project has none.
 
+### Change a project's card types
+
+Card types are the kinds of cards Knowledge writes for a project. A change is
+held by one scope: `project` (the default) changes the type for one project
+only, giving it its own copy when it inherited the type; `org` changes it for
+every project in the organization without its own copy. A project's owners
+change its types and an organization's admins the organization's.
+
+```ts
+const { page_types } = await beakr.knowledge.listCardTypes({ projectId });
+const saved = await beakr.knowledge.updateCardType(
+  "deviation",
+  {
+    description: "One departure from a batch record",
+    fields: [{ name: "Root cause", required: true }, { name: "CAPA" }],
+  },
+  { projectId },
+);
+console.log(saved.page_type.overrides); // the scope this copy stands in front of
+await beakr.knowledge.removeCardTypeCopy("deviation", { projectId });
+```
+
+`fields` replaces the type's field list. Cards already written are not
+rewritten; later compiles use the new definition. `removeCardTypeCopy` throws
+`ConflictError` for a type defined only in that scope: turn it off with
+`updateCardType(key, { status: "deprecated" })` instead.
+
+`copyCardTypes(fromProjectId, toProjectId, keys)` copies the types one
+project defines into another project, and `promoteCardTypes(projectId, keys)`
+copies them up to the organization (an organization admin); both skip a type
+the destination already defines unless `{ replace: true }`.
+
+A change to a type does not rewrite the cards a project already has. Two calls
+do, and both are dry runs that write nothing until you pass `{ dryRun: false }`:
+
+```ts
+const preview = await beakr.knowledge.renameCardTypeFields("deviation", projectId, {
+  Cause: "Root cause",
+});
+console.log(preview.cards_changed, preview.applied, preview.refused);
+await beakr.knowledge.renameCardTypeFields("deviation", projectId, { Cause: "Root cause" }, { dryRun: false });
+await beakr.knowledge.retypeCards("deviation", projectId, "incident"); // dry run: counts only
+```
+
+One call changes at most 500 cards; `cards_remaining` says how many are left,
+and the same call again changes the next ones. An applied change shows in the
+project's activity, where an owner of the project can undo it.
+
 ### Skills
 
 A skill is a SKILL.md folder your agent loads on demand. `skills.list` covers
