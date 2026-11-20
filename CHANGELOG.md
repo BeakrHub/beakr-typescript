@@ -88,10 +88,10 @@ Each release lists the public API changes it supports, taken from the API change
   `{ page_type }`; and `knowledge.removeCardTypeCopy(key, { scope, projectId })`
   removes that scope's own copy, so it inherits the type again. `scope` is
   `project` unless given.
-- `knowledge.copyCardTypes(keys, { fromProjectId, toProjectId })` copies the
+- `knowledge.copyCardTypes(fromProjectId, toProjectId, keys)` copies the
   card types one project defines into another, and
-  `knowledge.promoteCardTypes(keys, { source })` copies them up to the
-  organization; both take `replace: true` to overwrite a type the destination
+  `knowledge.promoteCardTypes(projectId, keys)` copies them up to the
+  organization; both take `{ replace: true }` to overwrite a type the destination
   already defines and return `{ copied, replaced, skipped }`.
 
 ## @beakr/sdk 0.3.0 (2026-11-15)

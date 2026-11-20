@@ -88,22 +88,22 @@ describe("knowledge card types", () => {
     expect(error).toBeInstanceOf(ConflictError);
   });
 
-  it("copies types between two projects, leaving replace to the server", async () => {
+  it("copies types between two projects", async () => {
     const answer = { copied: [pageType], replaced: [], skipped: [] };
     const { fetch, calls } = mockFetch([json(answer)]);
     const { beakr } = client(fetch);
-    const copied = await beakr.knowledge.copyCardTypes(["deviation"], { fromProjectId: "p1", toProjectId: "p2" });
+    const copied = await beakr.knowledge.copyCardTypes("p1", "p2", ["deviation"]);
     expect(copied).toEqual(answer);
     expect(calls[0]!.method).toBe("POST");
     expect(path(calls[0]!.url)).toBe("/v1/knowledge/wiki/page-types/copy");
-    expect(calls[0]!.body).toEqual({ from_project_id: "p1", to_project_id: "p2", keys: ["deviation"] });
+    expect(calls[0]!.body).toEqual({ from_project_id: "p1", to_project_id: "p2", keys: ["deviation"], replace: false });
   });
 
-  it("promotes a project's types to the organization by source", async () => {
+  it("promotes a project's types, sending the project as source", async () => {
     const answer = { copied: [], replaced: [], skipped: [{ key: "capa", reason: "not_found" }] };
     const { fetch, calls } = mockFetch([json(answer)]);
     const { beakr } = client(fetch);
-    const promoted = await beakr.knowledge.promoteCardTypes(["deviation", "capa"], { source: "p1", replace: true });
+    const promoted = await beakr.knowledge.promoteCardTypes("p1", ["deviation", "capa"], { replace: true });
     expect(promoted.skipped).toEqual([{ key: "capa", reason: "not_found" }]);
     expect(path(calls[0]!.url)).toBe("/v1/knowledge/wiki/page-types/promote");
     expect(calls[0]!.body).toEqual({ source: "p1", keys: ["deviation", "capa"], replace: true });

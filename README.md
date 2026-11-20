@@ -154,10 +154,10 @@ rewritten; later compiles use the new definition. `removeCardTypeCopy` throws
 `ConflictError` for a type defined only in that scope: turn it off with
 `updateCardType(key, { status: "deprecated" })` instead.
 
-`copyCardTypes(keys, { fromProjectId, toProjectId })` copies the types one
-project defines into another project, and `promoteCardTypes(keys, { source })`
+`copyCardTypes(fromProjectId, toProjectId, keys)` copies the types one
+project defines into another project, and `promoteCardTypes(projectId, keys)`
 copies them up to the organization (an organization admin); both skip a type
-the destination already defines unless `replace: true`.
+the destination already defines unless `{ replace: true }`.
 
 ### Skills
 
