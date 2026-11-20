@@ -23,6 +23,13 @@ export {
   type ResearchResult,
   type DocumentsResult,
   type DocumentsSearchOptions,
+  type CardType,
+  type CardTypeChanges,
+  type CardTypeCopyRemoved,
+  type CardTypeList,
+  type CardTypeSaved,
+  type CardTypeScope,
+  type ListCardTypesQuery,
   type RowsOptions,
 } from "./resources/knowledge.js";
 export type {

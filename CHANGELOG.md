@@ -7,6 +7,26 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Card types (a project's ontology) can be read and changed with a `kb:read` or
+  `kb:write` scope.
+  `GET /v1/knowledge/wiki/page-types` lists the card types one project uses
+  (`project_id`), each with its `scope` (`project`, `org` or `global`) and, in
+  `metadata_schema`, its fields (`key_attributes`), which of them are required
+  (`required_attributes`) and whether an instance is a card or a row (`grain`).
+  `PATCH /v1/knowledge/wiki/page-types/{key}` changes a type as one `scope`
+  holds it: `label`, `description`, `when_to_use`, `when_not_to_use`, `aliases`,
+  `fields` (the list in order, each `{name, required}`), `grain` (`card` or
+  `row`) and `status` (`deprecated` turns the type off for that scope and hides
+  a broader type of the same key from it). Changing a type the scope only
+  inherits gives the scope its own copy, so no other project changes; the
+  response's `page_type.overrides` names the scope the copy stands in front of.
+  `DELETE /v1/knowledge/wiki/page-types/{key}` removes that copy (it answers
+  `{removed, key, scope}`) and the scope goes back to the type it inherits; a type defined only in that scope answers
+  `409` and is turned off with `status` instead. A project's types are changed
+  by the project's owners and an organization's by its admins; others get
+  `403`. A change with scope `org` or `global` must not carry `project_id`
+  (`400`). Cards already written are
+  not rewritten by a change: later compiles use the new definition.
 - `POST /v1/knowledge/wiki/command`: new read command `orient`. With `scope`
   naming one project it returns that project's orientation map in about 3,000
   characters: its knowledge profile, how many pages of each card type, what a
@@ -45,6 +65,17 @@ Each release lists the public API changes it supports, taken from the API change
   citation's `reference`). One record is one citation, keyed `record:<hash>`; to
   cite it in the prose by a name of your own, give it a `key` such as
   `record:mol-1234` and write `{{record:mol-1234}}`.
+
+### Client changes
+
+- Card types on the knowledge resource:
+  `knowledge.listCardTypes({ projectId })` returns `{ page_types, map_mode }`;
+  `knowledge.updateCardType(key, changes, { scope, projectId })` changes a type
+  as one scope holds it (`label`, `description`, `when_to_use`,
+  `when_not_to_use`, `aliases`, `fields`, `grain`, `status`) and returns
+  `{ page_type }`; and `knowledge.removeCardTypeCopy(key, { scope, projectId })`
+  removes that scope's own copy, so it inherits the type again. `scope` is
+  `project` unless given.
 
 ## @beakr/sdk 0.3.0 (2026-11-15)
 

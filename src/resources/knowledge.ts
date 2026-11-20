@@ -1,8 +1,8 @@
 import type { QuerySpec } from "./query-spec.js";
-import type { ResponseMeta } from "../core.js";
+import { cleanBody, type ResponseMeta } from "../core.js";
 import { KnowledgeCommandError } from "../errors.js";
 import { publicSource, type SourceRecord } from "../sources.js";
-import type { JsonObject, ResponseOf, components } from "../types.js";
+import type { BodyOf, JsonObject, ResponseOf, components } from "../types.js";
 import { Resource, enc } from "./base.js";
 
 /**
@@ -19,6 +19,38 @@ export type DocumentsResult = ResponseOf<"/v1/knowledge/documents", "post">;
 
 /** A research answer: `text`, `answer`, `sources`, `engine`, `stopped_early`, ... */
 export type ResearchResult = ResponseOf<"/v1/knowledge/research", "post">;
+
+/** The card types a project uses (`GET /v1/knowledge/wiki/page-types`): `{ page_types, map_mode }`. */
+export type CardTypeList = ResponseOf<"/v1/knowledge/wiki/page-types", "get">;
+/** One card type as the narrowest scope that defines it holds it. */
+export type CardType = CardTypeList["page_types"][number];
+/** A changed card type (`PATCH /v1/knowledge/wiki/page-types/{key}`): `{ page_type }`. */
+export type CardTypeSaved = ResponseOf<"/v1/knowledge/wiki/page-types/{key}", "patch">;
+/** A removed copy (`DELETE /v1/knowledge/wiki/page-types/{key}`): `{ removed, key, scope }`. */
+export type CardTypeCopyRemoved = ResponseOf<"/v1/knowledge/wiki/page-types/{key}", "delete">;
+/** The fields a {@link Knowledge.updateCardType} call changes; a field left out is kept. */
+export type CardTypeChanges = Omit<
+  BodyOf<"/v1/knowledge/wiki/page-types/{key}", "patch">,
+  "scope" | "project_id"
+>;
+
+/** Which card types `GET /v1/knowledge/wiki/page-types` lists. */
+export interface ListCardTypesQuery {
+  /** The project's id. */
+  projectId?: string;
+  /** Include types that are only proposed. */
+  includeProposed?: boolean;
+  /** Include types that are turned off. */
+  includeDeprecated?: boolean;
+}
+
+/** Whose copy of a card type a change or a removal applies to. */
+export interface CardTypeScope<S extends string = "project" | "org"> {
+  /** `project` (the default): one project. `org`: every project in the organization without its own copy. */
+  scope?: S;
+  /** The project's id, with scope `project`; left out otherwise. */
+  projectId?: string;
+}
 
 export interface DocumentsSearchOptions {
   /** Documents per page (default 8, max 25). */
@@ -409,6 +441,60 @@ export class Knowledge extends Resource {
         ...(quick ? { quick: true } : {}),
       },
       minTimeoutMs: quick ? QUICK_RESEARCH_TIMEOUT_MS : RESEARCH_TIMEOUT_MS,
+    });
+  }
+
+  /**
+   * The card types a project uses. Each type is as the narrowest scope that
+   * defines it holds it: `scope` is `project`, `org` or `global`, and
+   * `metadata_schema` holds its fields (`key_attributes`), which are required
+   * (`required_attributes`) and whether an instance is a card or a row (`grain`).
+   */
+  listCardTypes(query: ListCardTypesQuery = {}): Promise<CardTypeList> {
+    return this.transport.request({
+      method: "GET",
+      path: "/v1/knowledge/wiki/page-types",
+      query: {
+        project_id: query.projectId,
+        include_proposed: query.includeProposed,
+        include_deprecated: query.includeDeprecated,
+      },
+    });
+  }
+
+  /**
+   * Change a card type as one scope holds it. A field left out is kept; a list
+   * given replaces that list. `fields` is the type's fields in order, each
+   * `{ name, required }`; `grain` is `card` or `row`; `status: "deprecated"`
+   * turns the type off for the scope. Changing a type the scope only inherits
+   * gives the scope its own copy, and `page_type.overrides` names the scope that
+   * copy stands in front of ({@link removeCardTypeCopy} drops it). A project's
+   * owners change its types and an organization's admins the organization's.
+   * Cards already written are not rewritten; later compiles use the new
+   * definition.
+   */
+  updateCardType(
+    key: string,
+    changes: CardTypeChanges,
+    where: CardTypeScope<"project" | "org" | "global"> = {},
+  ): Promise<CardTypeSaved> {
+    return this.transport.request({
+      method: "PATCH",
+      path: `/v1/knowledge/wiki/page-types/${enc(key)}`,
+      body: cleanBody({ scope: where.scope ?? "project", project_id: where.projectId, ...changes }),
+    });
+  }
+
+  /**
+   * Remove a scope's own copy of a card type, so the scope goes back to the type
+   * it inherits. A type defined only in that scope throws `ConflictError`: turn
+   * it off with `updateCardType(key, { status: "deprecated" })` instead.
+   */
+  removeCardTypeCopy(key: string, where: CardTypeScope = {}): Promise<CardTypeCopyRemoved> {
+    return this.transport.request({
+      method: "DELETE",
+      path: `/v1/knowledge/wiki/page-types/${enc(key)}`,
+      query: { scope: where.scope ?? "project", project_id: where.projectId },
     });
   }
 }
