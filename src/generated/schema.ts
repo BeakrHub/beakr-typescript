@@ -1019,6 +1019,14 @@ export interface paths {
          *     ``map_mode`` says the org's Knowledge is a map, and each type's ``card_type``
          *     whether its pages are cards there, laid out as a card whatever starter
          *     sections the type stores; both are false outside a map.
+         *
+         *     With ``project_id`` the answer also carries the project's card type
+         *     ``settings`` (``inherit``, ``agent_may_change``) and ``kept_types``, the
+         *     built-in types it is offered whatever it chooses (listed under ``own``).
+         *     ``include_counts`` adds ``card_count`` to every type and ``unlisted_types``:
+         *     ``{key, card_count}`` for each type the project's live cards carry that is
+         *     not in the list (a type the settings hide, one turned off, or one with no
+         *     definition), so a client can offer to move those cards.
          */
         get: operations["list_wiki_page_types_v1_knowledge_wiki_page_types_get"];
         put?: never;
@@ -1056,6 +1064,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/page-types/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List card type changes
+         * @description List the recorded changes to a project's or the organization's card types.
+         *
+         *     Each entry names the type (``key``, ``label``), what happened (``kind``,
+         *     ``title``, ``changed``), the definition ``before`` and ``after``, who did
+         *     it and when, and whether it can still be undone (``undoable``;
+         *     ``undone_by`` names the entry that undid it). Newest first. ``state`` is
+         *     null for a change; suggestions appear only with ``include_suggestions``.
+         */
+        get: operations["list_card_type_history_v1_knowledge_wiki_page_types_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/page-types/promote": {
         parameters: {
             query?: never;
@@ -1076,6 +1110,100 @@ export interface paths {
          *     ``replace`` is false. The source project keeps its own copy.
          */
         post: operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change a project's card type settings
+         * @description Preview or apply a change to one project's card type settings.
+         *
+         *     ``inherit`` says which broader card types the project is offered:
+         *     ``organization`` (the organization's and the built-in types, the default),
+         *     ``builtin`` (the built-in types only) or ``own`` (only the types the project
+         *     itself defines, plus the built-in types that are always kept, listed in
+         *     ``kept_types``). ``agent_may_change`` says whether Beakr itself may
+         *     add or change the project's types.
+         *
+         *     With ``dry_run`` (the default) nothing is written: the answer lists in
+         *     ``types_dropped`` every type that would leave the project's ontology, with
+         *     how many live cards carry it. Applying never changes a card and is never
+         *     refused because cards exist: a card of a dropped type keeps its type and
+         *     stays readable, and one suggestion to move those cards is recorded per
+         *     dropped type that still has cards (``suggestions``). ``keep_types_in_use``
+         *     makes each dropped type that has cards the project's own type instead
+         *     (``types_kept``). Switching back offers every type again.
+         *
+         *     ``own`` is refused with 422 while the project would have no card type of its
+         *     own to use. Only the project's owners may change the settings.
+         */
+        put: operations["change_card_type_settings_v1_knowledge_wiki_page_types_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List card type suggestions
+         * @description List a project's pending card type suggestions, newest first.
+         *
+         *     Each item is a type history entry with ``state`` ``pending``. ``kind`` is
+         *     ``held_back`` (a type Beakr wanted to add; ``after`` is the definition it
+         *     proposed and ``details.reason`` why) or ``retype_suggested`` (cards that
+         *     may want moving: ``details.from_type``, ``details.to_type`` when a
+         *     successor is known, ``details.reason`` and ``details.cards``, the number of
+         *     live cards of the type now).
+         */
+        get: operations["list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss a card type suggestion
+         * @description Dismiss one pending suggestion; nothing else changes.
+         *
+         *     The suggestion is kept with ``state`` ``dismissed`` and the person who
+         *     dismissed it, and the project's Activity gets one row. Beakr does not make
+         *     the same suggestion for that type again: a held-back type is suggested
+         *     again only with a different definition, a move only for a different reason
+         *     or once a type that had no cards has some. Answers 404 for an id that is
+         *     not a suggestion of this project and 409 for one already applied or
+         *     dismissed.
+         */
+        post: operations["dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1188,9 +1316,20 @@ export interface paths {
          *     type afterwards (past the per-call limit, or held by another writer and
          *     counted in ``cards_skipped``); send the same request again to move them.
          *
+         *     The source may be a type no row defines (a legacy or hand-written type, or
+         *     one the project's card type settings hide) as long as the project has a
+         *     live card carrying it.
+         *
+         *     ``suggestion_id`` names the pending suggestion this move answers (``GET
+         *     /wiki/page-types/suggestions``). It must be a pending suggestion to move
+         *     this type's cards in this project, or the request is refused before
+         *     anything runs. An apply that moves at least one card and leaves none of
+         *     the type (``cards_remaining`` 0) marks it applied; while cards remain it
+         *     stays pending for the next call.
+         *
          *     Answers 409 while Knowledge is running maintenance on the project, 422 for
-         *     a mapping that cannot be applied, and 404 for a type the project does not
-         *     know.
+         *     a mapping that cannot be applied or a suggestion that is not this one, and
+         *     404 for a type the project neither knows nor has cards of.
          */
         post: operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"];
         delete?: never;
@@ -4216,6 +4355,317 @@ export interface components {
              * @description Title of the canvas.
              */
             title: string;
+        };
+        /**
+         * CardTypeHistoryEntry
+         * @description One change to a card type, or one suggestion (pending, applied or dismissed).
+         */
+        CardTypeHistoryEntry: {
+            /**
+             * Actor Name
+             * @description Which part of Beakr, when Beakr made it.
+             * @default null
+             */
+            actor_name?: string | null;
+            /**
+             * Actor Type
+             * @description `user` for a person, `agent` for Beakr itself.
+             */
+            actor_type: string;
+            /**
+             * Actor User Id
+             * @description The person, when a person made it.
+             * @default null
+             */
+            actor_user_id?: string | null;
+            /**
+             * After
+             * @description The definition after.
+             * @default null
+             */
+            after?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Before
+             * @description The definition before.
+             * @default null
+             */
+            before?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Changed
+             * @description The definition fields that differ.
+             */
+            changed: string[];
+            /**
+             * Created At
+             * @description When it was created (ISO 8601, UTC).
+             * @default null
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at?: string | null;
+            /**
+             * Details
+             * @description What the kind adds: a suggestion's types and count, and the project a copy came from when the reader can see that project.
+             */
+            details: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             * @description Unique id of this card type history entry.
+             */
+            id: string;
+            /**
+             * Key
+             * @description The type's key; empty for a settings change.
+             */
+            key: string;
+            /**
+             * Kind
+             * @description edited, turned_off, turned_on, created, copy_removed, copied_in, promoted, settings_changed, undone, held_back or retype_suggested.
+             */
+            kind: string;
+            /**
+             * Label
+             * @description Display label.
+             */
+            label: string;
+            /**
+             * Project Id
+             * @description Id of the project it belongs to, or the project to act in.
+             * @default null
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id?: string | null;
+            /**
+             * Scope
+             * @description `project` or `org`.
+             */
+            scope: string;
+            /**
+             * State
+             * @description For a suggestion: pending, applied or dismissed.
+             * @default null
+             */
+            state?: string | null;
+            /**
+             * Title
+             * @description One readable line.
+             */
+            title: string;
+            /**
+             * Undoable
+             * @description Whether an owner can still undo it.
+             */
+            undoable: boolean;
+            /**
+             * Undone By
+             * @description The entry that undid it, once undone.
+             * @default null
+             */
+            undone_by?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** CardTypeHistoryPage */
+        CardTypeHistoryPage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["CardTypeHistoryEntry"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @example false
+             */
+            has_more: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @default null
+             * @example null
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * CardTypeSettings
+         * @description A project's two choices about its card types.
+         */
+        CardTypeSettings: {
+            /**
+             * Agent May Change
+             * @description Whether Beakr itself may add or change the project's card types.
+             */
+            agent_may_change: boolean;
+            /**
+             * Inherit
+             * @description Which broader types the project is offered: `organization` (the organization's and the built-in ones), `builtin` (the built-in ones only) or `own` (only its own).
+             */
+            inherit: string;
+        };
+        /**
+         * CardTypeSettingsChangeOut
+         * @description What a change to a project's card type settings would do, or did.
+         */
+        CardTypeSettingsChangeOut: {
+            /** @description The settings before this request. */
+            current: components["schemas"]["CardTypeSettingsOut"];
+            /**
+             * Dry Run
+             * @description True when nothing was written.
+             */
+            dry_run: boolean;
+            /**
+             * History Id
+             * @description The type history entry recording an applied change; null on a dry run.
+             */
+            history_id?: string | null;
+            /**
+             * Kept Types
+             * @description Built-in types the project is offered whatever it chooses, listed when the requested choice is `own`: the page types that are not cards, and `person` and `organization`.
+             */
+            kept_types: string[];
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /** @description The settings this request asks for; the project's settings once applied. */
+            requested: components["schemas"]["CardTypeSettingsOut"];
+            /**
+             * Suggestions
+             * @description How many suggestions to move cards were recorded: one per dropped type that still has cards.
+             * @default 0
+             */
+            suggestions?: number;
+            /**
+             * Types Dropped
+             * @description Types the project is offered now and would not be after the change. Their cards are not changed and stay readable.
+             */
+            types_dropped: components["schemas"]["CardTypeSettingsDroppedType"][];
+            /**
+             * Types Kept
+             * @description With `keep_types_in_use`: types that would have dropped out and are made the project's own instead, because cards carry them.
+             */
+            types_kept: components["schemas"]["CardTypeSettingsDroppedType"][];
+            /**
+             * Undo Event Id
+             * @description The Activity entry of an applied change; null on a dry run.
+             */
+            undo_event_id?: string | null;
+            /**
+             * Usable Own Types
+             * @description Keys of the project's own active types whose instances are cards, after the change. `own` needs at least one.
+             */
+            usable_own_types: string[];
+        };
+        /**
+         * CardTypeSettingsDroppedType
+         * @description One card type a settings change takes out of, or keeps in, the project's ontology.
+         */
+        CardTypeSettingsDroppedType: {
+            /**
+             * Key
+             * @description The type's key.
+             */
+            key: string;
+            /**
+             * Label
+             * @description The type's display name.
+             */
+            label: string;
+            /**
+             * Live Cards
+             * @description How many of the project's cards that are not archived carry this type.
+             */
+            live_cards: number;
+            /**
+             * Scope
+             * @description Where the type is defined: `org` (the organization) or `global` (built-in).
+             */
+            scope: string;
+        };
+        /**
+         * CardTypeSettingsOut
+         * @description A project's two choices about its card types.
+         */
+        CardTypeSettingsOut: {
+            /**
+             * Agent May Change
+             * @description Whether Beakr itself may add or change the project's card types.
+             */
+            agent_may_change: boolean;
+            /**
+             * Inherit
+             * @description Which broader card types the project is offered: `organization` (the organization's and the built-in types, the default), `builtin` (the built-in types only) or `own` (only the types the project itself defines).
+             */
+            inherit: string;
+        };
+        /**
+         * CardTypeSettingsUpdate
+         * @description A change to one project's card type settings. A choice left out is kept.
+         */
+        CardTypeSettingsUpdate: {
+            /**
+             * Agent May Change
+             * @description Whether Beakr itself may add or change the project's card types.
+             */
+            agent_may_change?: boolean | null;
+            /**
+             * Dry Run
+             * @description Answer what would change and write nothing. Pass false to apply.
+             * @default true
+             */
+            dry_run?: boolean;
+            /**
+             * Inherit
+             * @description `organization`: the organization's and the built-in types. `builtin`: the built-in types only. `own`: only the types the project itself defines, which takes a project with at least one card type of its own.
+             */
+            inherit?: string | null;
+            /**
+             * Keep Types In Use
+             * @description Before switching, make every type that would drop out and still has cards one of the project's own types, so those cards keep a type the project offers.
+             * @default false
+             */
+            keep_types_in_use?: boolean;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project whose settings to change.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+        };
+        /**
+         * CardTypeSuggestionDismiss
+         * @description Dismiss one pending card type suggestion of a project.
+         */
+        CardTypeSuggestionDismiss: {
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project the suggestion belongs to.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+        };
+        /** CardTypeSuggestionDismissed */
+        CardTypeSuggestionDismissed: {
+            /**
+             * Activity Event Id
+             * @description The activity row recorded for the dismissal.
+             * @default null
+             */
+            activity_event_id?: string | null;
+            /** @description The entry as it stands now, with `state` `dismissed`. */
+            suggestion: components["schemas"]["CardTypeHistoryEntry"];
         };
         /** CompoundIn */
         CompoundIn: {
@@ -9141,6 +9591,90 @@ export interface components {
          */
         PrincipalType: "user" | "group" | "org" | "service" | "link";
         /**
+         * ProjectCardTypeFieldIn
+         * @description One field of a card type defined with a new project.
+         */
+        ProjectCardTypeFieldIn: {
+            /**
+             * Name
+             * @description The Attribute name.
+             */
+            name: string;
+            /**
+             * Required
+             * @description Whether every card of this type should state it.
+             * @default false
+             */
+            required?: boolean;
+        };
+        /**
+         * ProjectCardTypeIn
+         * @description One card type a new project defines for itself.
+         */
+        ProjectCardTypeIn: {
+            /**
+             * Description
+             * @description What a card of this type is about.
+             */
+            description?: string | null;
+            /**
+             * Fields
+             * @description The type's fields, in order.
+             */
+            fields?: components["schemas"]["ProjectCardTypeFieldIn"][] | null;
+            /**
+             * Grain
+             * @description `card` (the default): each instance gets a card. `row`: each is a Facts row on the card it belongs to.
+             */
+            grain?: ("card" | "row") | null;
+            /**
+             * Key
+             * @description The type's key: lowercase letters, digits and underscores.
+             */
+            key: string;
+            /**
+             * Label
+             * @description The type's display name.
+             */
+            label: string;
+        };
+        /**
+         * ProjectCardTypesCreate
+         * @description A new project's card type settings, and the card types it starts with.
+         *
+         *     Left out entirely, the project is offered the organization's and the
+         *     built-in card types. `inherit: own` is accepted only when this request
+         *     brings at least one type whose instances are cards (`copy_from_project_id`
+         *     or `types`).
+         */
+        ProjectCardTypesCreate: {
+            /**
+             * Agent May Change
+             * @description Whether Beakr itself may add or change the project's card types. On by default.
+             */
+            agent_may_change?: boolean | null;
+            /**
+             * Copy From Project Id
+             * @description A project you can see whose own card types to copy into the new project. Cards are not copied.
+             */
+            copy_from_project_id?: string | null;
+            /**
+             * Copy Keys
+             * @description With `copy_from_project_id`: the keys to copy. Left out, every type that project itself defines is copied.
+             */
+            copy_keys?: string[] | null;
+            /**
+             * Inherit
+             * @description Which broader card types the project is offered: `organization` (the organization's and the built-in types, the default), `builtin` (the built-in types only) or `own` (only the types the project itself defines).
+             */
+            inherit?: ("organization" | "builtin" | "own") | null;
+            /**
+             * Types
+             * @description Card types to define for the new project.
+             */
+            types?: components["schemas"]["ProjectCardTypeIn"][] | null;
+        };
+        /**
          * ProjectCreate
          * @description Request payload for creating a project.
          *
@@ -9150,6 +9684,7 @@ export interface components {
          *         tags: List of tags stored in `projects.tags`.
          *         group_id: Legacy space (group) this project belongs to. New projects
          *                   should omit this and remain standalone.
+         *         card_types: Optional card type settings and starting card types.
          * @example {
          *       "description": "Assay protocols, validation runs and their results.",
          *       "name": "Assay development",
@@ -9160,6 +9695,8 @@ export interface components {
          *     }
          */
         ProjectCreate: {
+            /** @description The project's card type settings and the card types it starts with. Left out, the project is offered the organization's and the built-in types. */
+            card_types?: components["schemas"]["ProjectCardTypesCreate"] | null;
             /**
              * Description
              * @description Optional long-form project description.
@@ -12064,6 +12601,19 @@ export interface components {
              */
             name: string;
         };
+        /** UnlistedCardType */
+        UnlistedCardType: {
+            /**
+             * Card Count
+             * @description Live cards of that type in the project.
+             */
+            card_count: number;
+            /**
+             * Key
+             * @description The type the cards carry.
+             */
+            key: string;
+        };
         /** UploadCompletePart */
         UploadCompletePart: {
             /**
@@ -13229,15 +13779,32 @@ export interface components {
          */
         WikiPageTypeList: {
             /**
+             * Kept Types
+             * @description Built-in types the project is offered whatever it chooses (the page types that are not cards, and `person` and `organization`); listed when `inherit` is `own`, empty otherwise.
+             * @default null
+             */
+            kept_types?: string[] | null;
+            /**
              * Map Mode
              * @description Whether this organization's Knowledge is a map of cards.
              */
             map_mode: boolean;
             /**
              * Page Types
-             * @description Each type as the narrowest scope that defines it holds it.
+             * @description Each type as the narrowest scope that defines it holds it. With `include_counts` each carries `card_count`, its live cards in the project.
              */
             page_types: components["schemas"]["WikiPageType"][];
+            /**
+             * @description The project's card type settings; present when a project is named.
+             * @default null
+             */
+            settings?: components["schemas"]["CardTypeSettings"] | null;
+            /**
+             * Unlisted Types
+             * @description With `include_counts`: types the project's live cards carry that are not in `page_types` (turned off, no longer offered, or never defined).
+             * @default null
+             */
+            unlisted_types?: components["schemas"]["UnlistedCardType"][] | null;
         };
         /**
          * WikiPageTypeOverrideRemoved
@@ -13306,6 +13873,11 @@ export interface components {
              * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
              */
             project_id: string;
+            /**
+             * Suggestion Id
+             * @description The pending suggestion this move answers, from the card type suggestions list. It must be a suggestion to move this type's cards in this project. An apply that leaves no card of the type marks it applied.
+             */
+            suggestion_id?: string | null;
             /**
              * To Type
              * @description The key of the type the cards become: an active type of cards here.
@@ -17117,6 +17689,8 @@ export interface operations {
                 project_id?: string | null;
                 include_proposed?: boolean;
                 include_deprecated?: boolean;
+                /** @description With `project_id`: add each type's `card_count` (the project's cards that are not archived) and `unlisted_types`, the types cards carry that are not listed. */
+                include_counts?: boolean;
             };
             header?: never;
             path?: never;
@@ -17213,6 +17787,66 @@ export interface operations {
             };
         };
     };
+    list_card_type_history_v1_knowledge_wiki_page_types_history_get: {
+        parameters: {
+            query?: {
+                /** @description The project whose card type history. */
+                project_id?: string | null;
+                /** @description `org` for the organization's card types; `project` goes with project_id. */
+                scope?: string | null;
+                /** @description Only the entries of this card type. */
+                key?: string | null;
+                /** @description Also list Beakr's suggestions (`held_back`, `retype_suggested`), each with its `state`: `pending`, `applied` or `dismissed`. They are not changes. */
+                include_suggestions?: boolean;
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardTypeHistoryPage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post: {
         parameters: {
             query?: never;
@@ -17233,6 +17867,164 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WikiPageTypesCopied"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    change_card_type_settings_v1_knowledge_wiki_page_types_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CardTypeSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardTypeSettingsChangeOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get: {
+        parameters: {
+            query?: {
+                /** @description The project whose pending suggestions. */
+                project_id?: string | null;
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardTypeHistoryPage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CardTypeSuggestionDismiss"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardTypeSuggestionDismissed"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

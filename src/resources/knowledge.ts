@@ -55,6 +55,52 @@ export interface ExistingCardsOptions {
   dryRun?: boolean;
 }
 
+/** {@link Knowledge.retypeCards}' options. */
+export interface RetypeCardsOptions extends ExistingCardsOptions {
+  /** The pending suggestion this move answers; an apply that leaves no card of the type marks it applied. */
+  suggestionId?: string;
+}
+
+/** A project's card type settings: `{ inherit, agent_may_change }`. */
+export type CardTypeSettings = NonNullable<CardTypeList["settings"]>;
+/** What a settings change would do or did (`PUT /v1/knowledge/wiki/page-types/settings`). */
+export type CardTypeSettingsChange = ResponseOf<"/v1/knowledge/wiki/page-types/settings", "put">;
+/** One page of card type history: `{ data, next_cursor, has_more }`. */
+export type CardTypeHistoryPage = ResponseOf<"/v1/knowledge/wiki/page-types/history", "get">;
+/** One change to a card type, or a suggestion. */
+export type CardTypeHistoryEntry = CardTypeHistoryPage["data"][number];
+/** A dismissed suggestion: `{ suggestion, activity_event_id }`. */
+export type CardTypeSuggestionDismissed = ResponseOf<
+  "/v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss",
+  "post"
+>;
+
+/** The settings a {@link Knowledge.setCardTypeSettings} call changes. */
+export interface CardTypeSettingsInput {
+  /** `organization` (the organization's and the built-in types), `builtin` or `own` (only the project's). */
+  inherit?: "organization" | "builtin" | "own";
+  /** Whether Beakr itself may add or change the project's card types. */
+  agentMayChange?: boolean;
+  /** Make every type that would drop out and still has cards one of the project's own. */
+  keepTypesInUse?: boolean;
+  /** `false` writes the change. Left out or `true`: a dry run that lists what would drop out. */
+  dryRun?: boolean;
+}
+
+/** Which changes `GET /v1/knowledge/wiki/page-types/history` lists. */
+export interface CardTypeHistoryQuery {
+  /** A project's changes (its id). */
+  projectId?: string;
+  /** `org` for the organization's changes. */
+  scope?: "org" | "project";
+  /** Only this type's changes. */
+  key?: string;
+  /** Add suggestions, each with its `state`. */
+  includeSuggestions?: boolean;
+  cursor?: string;
+  limit?: number;
+}
+
 /** Which card types `GET /v1/knowledge/wiki/page-types` lists. */
 export interface ListCardTypesQuery {
   /** The project's id. */
@@ -63,6 +109,8 @@ export interface ListCardTypesQuery {
   includeProposed?: boolean;
   /** Include types that are turned off. */
   includeDeprecated?: boolean;
+  /** Add `card_count` (live cards) to each type, and `unlisted_types`. */
+  includeCounts?: boolean;
 }
 
 /** Whose copy of a card type a change or a removal applies to. */
@@ -479,6 +527,7 @@ export class Knowledge extends Resource {
         project_id: query.projectId,
         include_proposed: query.includeProposed,
         include_deprecated: query.includeDeprecated,
+        include_counts: query.includeCounts,
       },
     });
   }
@@ -604,12 +653,127 @@ export class Knowledge extends Resource {
     key: string,
     projectId: string,
     toType: string,
-    options: ExistingCardsOptions = {},
+    options: RetypeCardsOptions = {},
   ): Promise<CardsRetyped> {
     return this.transport.request({
       method: "POST",
       path: `/v1/knowledge/wiki/page-types/${enc(key)}/retype-cards`,
-      body: { project_id: projectId, to_type: toType, dry_run: options.dryRun ?? true },
+      body: cleanBody({
+        project_id: projectId,
+        to_type: toType,
+        dry_run: options.dryRun ?? true,
+        suggestion_id: options.suggestionId,
+      }),
     });
   }
+
+  /**
+   * A project's card type settings, or `null` when the list names none:
+   * `inherit` (`organization`, `builtin` or `own`) and `agent_may_change`. Read
+   * from {@link listCardTypes}, which answers them beside the types.
+   */
+  async cardTypeSettings(projectId: string): Promise<CardTypeSettings | null> {
+    const listing = await this.listCardTypes({ projectId });
+    return listing.settings ?? null;
+  }
+
+  /**
+   * Change where a project's card types come from, or who may change them: a
+   * dry run unless `{ dryRun: false }`. A dry run writes nothing and answers
+   * `current`, `requested` and `types_dropped`, each type the project would stop
+   * being offered with its `live_cards`. `inherit: "own"` needs the project to
+   * define at least one active type whose instances are cards. Applying never
+   * changes or removes a card or a type: a dropped type that still has cards
+   * gets a suggestion to move them ({@link cardTypeSuggestions}), or with
+   * `keepTypesInUse` becomes one of the project's own types. Only the project's
+   * owners may.
+   */
+  setCardTypeSettings(projectId: string, settings: CardTypeSettingsInput): Promise<CardTypeSettingsChange> {
+    return this.transport.request({
+      method: "PUT",
+      path: "/v1/knowledge/wiki/page-types/settings",
+      body: cleanBody({
+        project_id: projectId,
+        inherit: settings.inherit,
+        agent_may_change: settings.agentMayChange,
+        keep_types_in_use: settings.keepTypesInUse ?? false,
+        dry_run: settings.dryRun ?? true,
+      }),
+    });
+  }
+
+  /**
+   * One page of the changes to card types, newest first: a project's
+   * (`projectId`) or the organization's (`scope: "org"`), narrowed to one type
+   * with `key`. Each entry says who, when, the `kind`, a `title`, the fields that
+   * `changed` and the definition `before` and `after`.
+   * {@link iterCardTypeHistory} follows every page.
+   */
+  cardTypeHistory(query: CardTypeHistoryQuery = {}): Promise<CardTypeHistoryPage> {
+    return this.transport.request({
+      method: "GET",
+      path: "/v1/knowledge/wiki/page-types/history",
+      query: historyQuery(query),
+    });
+  }
+
+  /** Every entry {@link cardTypeHistory} lists, following cursors. */
+  iterCardTypeHistory(
+    query: Omit<CardTypeHistoryQuery, "cursor" | "limit"> = {},
+    pageSize?: number,
+  ): AsyncGenerator<CardTypeHistoryEntry> {
+    return this.transport.paginate(
+      { method: "GET", path: "/v1/knowledge/wiki/page-types/history", query: historyQuery(query) },
+      pageSize,
+    );
+  }
+
+  /**
+   * One page of what waits for a person in a project: `held_back` (a type Beakr
+   * was not allowed to add) and `retype_suggested` (cards to move, with
+   * `details.from_type` and `details.cards`). Answer a move with
+   * {@link retypeCards} and its `suggestionId`, or
+   * {@link dismissCardTypeSuggestion}.
+   */
+  cardTypeSuggestions(
+    projectId: string,
+    page: { cursor?: string; limit?: number } = {},
+  ): Promise<CardTypeHistoryPage> {
+    return this.transport.request({
+      method: "GET",
+      path: "/v1/knowledge/wiki/page-types/suggestions",
+      query: { project_id: projectId, cursor: page.cursor, limit: page.limit },
+    });
+  }
+
+  /** Every suggestion {@link cardTypeSuggestions} lists, following cursors. */
+  iterCardTypeSuggestions(projectId: string, pageSize?: number): AsyncGenerator<CardTypeHistoryEntry> {
+    return this.transport.paginate(
+      { method: "GET", path: "/v1/knowledge/wiki/page-types/suggestions", query: { project_id: projectId } },
+      pageSize,
+    );
+  }
+
+  /**
+   * Dismiss one suggestion of a project. Only the project's owners may;
+   * `ConflictError` if it was already answered.
+   */
+  dismissCardTypeSuggestion(suggestionId: string, projectId: string): Promise<CardTypeSuggestionDismissed> {
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/knowledge/wiki/page-types/suggestions/${enc(suggestionId)}/dismiss`,
+      body: { project_id: projectId },
+    });
+  }
+}
+
+function historyQuery(query: CardTypeHistoryQuery): Record<string, string | number | boolean | undefined> {
+  return {
+    project_id: query.projectId,
+    scope: query.scope,
+    key: query.key,
+    include_suggestions: query.includeSuggestions,
+    cursor: query.cursor,
+    limit: query.limit,
+  };
 }
