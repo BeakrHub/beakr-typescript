@@ -29,6 +29,9 @@ export {
   type CardTypeList,
   type CardTypeSaved,
   type CardTypeScope,
+  type CardTypesCopied,
+  type CopyCardTypesOptions,
+  type PromoteCardTypesOptions,
   type ListCardTypesQuery,
   type RowsOptions,
 } from "./resources/knowledge.js";

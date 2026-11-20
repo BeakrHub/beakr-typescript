@@ -1029,6 +1029,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/page-types/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy card types between projects
+         * @description Copy card types one project defines into another project.
+         *
+         *     The destination gets its own copies, so later edits in either project stay
+         *     there. Only types the source project itself defines are copied; a type it
+         *     inherits is already available to the destination. ``skipped`` lists each
+         *     key not copied: ``not_found`` in the source, or ``exists`` in the
+         *     destination when ``replace`` is false. Cards are not copied or changed.
+         *     Requires being able to see the source and being an owner of the destination.
+         */
+        post: operations["copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote card types to the organization
+         * @description Copy card types one project defines up to the organization.
+         *
+         *     Every project without a copy of its own inherits a promoted type from then
+         *     on, and every member of the organization can read its definition, so this
+         *     takes an organization admin. ``skipped`` lists each key not promoted:
+         *     ``not_found`` in the source, or ``exists`` in the organization when
+         *     ``replace`` is false. The source project keeps its own copy.
+         */
+        post: operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/page-types/{key}": {
         parameters: {
             query?: never;
@@ -12875,6 +12928,35 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * WikiPageTypeCopy
+         * @description Copy card types one project defines into another project.
+         */
+        WikiPageTypeCopy: {
+            /**
+             * From Project Id
+             * Format: uuid
+             * @description The project whose types to copy.
+             */
+            from_project_id: string;
+            /**
+             * Keys
+             * @description The keys of the types to copy.
+             */
+            keys: string[];
+            /**
+             * Replace
+             * @description Overwrite a type the destination already defines; otherwise it is skipped.
+             * @default false
+             */
+            replace?: boolean;
+            /**
+             * To Project Id
+             * Format: uuid
+             * @description The project that gets its own copies.
+             */
+            to_project_id: string;
+        };
+        /**
          * WikiPageTypeFieldIn
          * @description One field of a card type.
          */
@@ -12927,6 +13009,47 @@ export interface components {
              * @description The scope it applies to.
              */
             scope: string;
+        };
+        /**
+         * WikiPageTypePromote
+         * @description Copy card types one project defines up to the organization.
+         *
+         *     The source is ``source``, not ``from_project_id``, on purpose: the Knowledge
+         *     commit gate judges an agent's write by the projects a request names, and a
+         *     promotion changes what every project inherits. Naming no project makes the
+         *     gate read it as the organization-wide write it is.
+         */
+        WikiPageTypePromote: {
+            /**
+             * Keys
+             * @description The keys of the types to promote.
+             */
+            keys: string[];
+            /**
+             * Replace
+             * @description Overwrite a type the organization already defines; otherwise it is skipped.
+             * @default false
+             */
+            replace?: boolean;
+            /**
+             * Source
+             * Format: uuid
+             * @description The id of the project whose types to promote.
+             */
+            source: string;
+        };
+        /** WikiPageTypeSkipped */
+        WikiPageTypeSkipped: {
+            /**
+             * Key
+             * @description The key.
+             */
+            key: string;
+            /**
+             * Reason
+             * @description not_found in the source, or exists at the destination
+             */
+            reason: string;
         };
         /** WikiPageTypeStatusResult */
         WikiPageTypeStatusResult: {
@@ -12994,6 +13117,27 @@ export interface components {
              * @description When a thing in a source should become a card of this type.
              */
             when_to_use?: string | null;
+        };
+        /**
+         * WikiPageTypesCopied
+         * @description ``POST /v1/knowledge/wiki/page-types/copy`` and ``.../promote``.
+         */
+        WikiPageTypesCopied: {
+            /**
+             * Copied
+             * @description Types the destination did not have.
+             */
+            copied: components["schemas"]["WikiPageType"][];
+            /**
+             * Replaced
+             * @description Types the destination had, overwritten because replace was true.
+             */
+            replaced: components["schemas"]["WikiPageType"][];
+            /**
+             * Skipped
+             * @description Keys not copied, each with why.
+             */
+            skipped: components["schemas"]["WikiPageTypeSkipped"][];
         };
         /**
          * WikiPatchIn
@@ -16713,6 +16857,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WikiPageTypeList"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeCopy"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypesCopied"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypePromote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypesCopied"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

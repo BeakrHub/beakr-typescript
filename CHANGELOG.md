@@ -7,6 +7,18 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Card types can be carried between projects and up to the organization
+  (`kb:write`).
+  `POST /v1/knowledge/wiki/page-types/copy` copies the types one project
+  defines (`from_project_id`, `keys`) into another (`to_project_id`), which gets
+  its own copies; the caller must see the source and be an owner of the
+  destination. `POST /v1/knowledge/wiki/page-types/promote` copies a project's
+  types (`source`, `keys`) to the organization, where every project without a
+  copy of its own inherits them; it takes an organization admin. Both answer
+  `{copied, replaced, skipped}`: a key the source project does not itself
+  define is skipped as `not_found`, and one the destination already defines is
+  skipped as `exists` unless `replace` is true. Cards are not copied or
+  changed.
 - Card types (a project's ontology) can be read and changed with a `kb:read` or
   `kb:write` scope.
   `GET /v1/knowledge/wiki/page-types` lists the card types one project uses
@@ -76,6 +88,11 @@ Each release lists the public API changes it supports, taken from the API change
   `{ page_type }`; and `knowledge.removeCardTypeCopy(key, { scope, projectId })`
   removes that scope's own copy, so it inherits the type again. `scope` is
   `project` unless given.
+- `knowledge.copyCardTypes(keys, { fromProjectId, toProjectId })` copies the
+  card types one project defines into another, and
+  `knowledge.promoteCardTypes(keys, { source })` copies them up to the
+  organization; both take `replace: true` to overwrite a type the destination
+  already defines and return `{ copied, replaced, skipped }`.
 
 ## @beakr/sdk 0.3.0 (2026-11-15)
 

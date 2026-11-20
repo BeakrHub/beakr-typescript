@@ -62,6 +62,8 @@ export const OPERATIONS = {
   "knowledge.listWikiPageTypes": { method: "GET", path: "/v1/knowledge/wiki/page-types" },
   "knowledge.updateWikiPageType": { method: "PATCH", path: "/v1/knowledge/wiki/page-types/{key}" },
   "knowledge.removeWikiPageTypeOverride": { method: "DELETE", path: "/v1/knowledge/wiki/page-types/{key}" },
+  "knowledge.copyWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/copy" },
+  "knowledge.promoteWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/promote" },
   "knowledge.listWikiPages": { method: "GET", path: "/v1/knowledge/wiki/pages" },
   "knowledge.getWikiPage": { method: "GET", path: "/v1/knowledge/wiki/pages/{page_id}" },
   "knowledge.getWikiPageRevisions": { method: "GET", path: "/v1/knowledge/wiki/pages/{page_id}/revisions" },
@@ -633,6 +635,18 @@ export class KnowledgeApi {
   /** DELETE /v1/knowledge/wiki/page-types/{key} (Remove a card type copy) */
   removeWikiPageTypeOverride(args: { path: operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"]["parameters"]["path"]; query?: NonNullable<operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"]>> {
     const request: RequestOptions = { method: "DELETE", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/copy (Copy card types between projects) */
+  copyWikiPageTypes(args: { body: NonNullable<operations["copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/knowledge/wiki/page-types/copy", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/promote (Promote card types to the organization) */
+  promoteWikiPageTypes(args: { body: NonNullable<operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/knowledge/wiki/page-types/promote", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 

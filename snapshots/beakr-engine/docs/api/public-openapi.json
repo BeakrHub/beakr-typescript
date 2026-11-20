@@ -18254,6 +18254,47 @@
         "title": "WikiPageType",
         "type": "object"
       },
+      "WikiPageTypeCopy": {
+        "additionalProperties": false,
+        "description": "Copy card types one project defines into another project.",
+        "properties": {
+          "from_project_id": {
+            "description": "The project whose types to copy.",
+            "format": "uuid",
+            "title": "From Project Id",
+            "type": "string"
+          },
+          "keys": {
+            "description": "The keys of the types to copy.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Keys",
+            "type": "array"
+          },
+          "replace": {
+            "default": false,
+            "description": "Overwrite a type the destination already defines; otherwise it is skipped.",
+            "title": "Replace",
+            "type": "boolean"
+          },
+          "to_project_id": {
+            "description": "The project that gets its own copies.",
+            "format": "uuid",
+            "title": "To Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_project_id",
+          "to_project_id",
+          "keys"
+        ],
+        "title": "WikiPageTypeCopy",
+        "type": "object"
+      },
       "WikiPageTypeFieldIn": {
         "description": "One field of a card type.",
         "properties": {
@@ -18326,6 +18367,60 @@
           "scope"
         ],
         "title": "WikiPageTypeOverrideRemoved",
+        "type": "object"
+      },
+      "WikiPageTypePromote": {
+        "additionalProperties": false,
+        "description": "Copy card types one project defines up to the organization.\n\nThe source is ``source``, not ``from_project_id``, on purpose: the Knowledge\ncommit gate judges an agent's write by the projects a request names, and a\npromotion changes what every project inherits. Naming no project makes the\ngate read it as the organization-wide write it is.",
+        "properties": {
+          "keys": {
+            "description": "The keys of the types to promote.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Keys",
+            "type": "array"
+          },
+          "replace": {
+            "default": false,
+            "description": "Overwrite a type the organization already defines; otherwise it is skipped.",
+            "title": "Replace",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "The id of the project whose types to promote.",
+            "format": "uuid",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "keys"
+        ],
+        "title": "WikiPageTypePromote",
+        "type": "object"
+      },
+      "WikiPageTypeSkipped": {
+        "properties": {
+          "key": {
+            "description": "The key.",
+            "title": "Key",
+            "type": "string"
+          },
+          "reason": {
+            "description": "not_found in the source, or exists at the destination",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "reason"
+        ],
+        "title": "WikiPageTypeSkipped",
         "type": "object"
       },
       "WikiPageTypeStatusResult": {
@@ -18481,6 +18576,42 @@
           }
         },
         "title": "WikiPageTypeUpdate",
+        "type": "object"
+      },
+      "WikiPageTypesCopied": {
+        "description": "``POST /v1/knowledge/wiki/page-types/copy`` and ``.../promote``.",
+        "properties": {
+          "copied": {
+            "description": "Types the destination did not have.",
+            "items": {
+              "$ref": "#/components/schemas/WikiPageType"
+            },
+            "title": "Copied",
+            "type": "array"
+          },
+          "replaced": {
+            "description": "Types the destination had, overwritten because replace was true.",
+            "items": {
+              "$ref": "#/components/schemas/WikiPageType"
+            },
+            "title": "Replaced",
+            "type": "array"
+          },
+          "skipped": {
+            "description": "Keys not copied, each with why.",
+            "items": {
+              "$ref": "#/components/schemas/WikiPageTypeSkipped"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "copied",
+          "replaced",
+          "skipped"
+        ],
+        "title": "WikiPageTypesCopied",
         "type": "object"
       },
       "WikiPatchIn": {
@@ -25019,6 +25150,144 @@
           "knowledge"
         ],
         "x-beakr-scope": "kb:read"
+      }
+    },
+    "/v1/knowledge/wiki/page-types/copy": {
+      "post": {
+        "description": "Copy card types one project defines into another project.\n\nThe destination gets its own copies, so later edits in either project stay\nthere. Only types the source project itself defines are copied; a type it\ninherits is already available to the destination. ``skipped`` lists each\nkey not copied: ``not_found`` in the source, or ``exists`` in the\ndestination when ``replace`` is false. Cards are not copied or changed.\nRequires being able to see the source and being an owner of the destination.",
+        "operationId": "copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikiPageTypeCopy"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiPageTypesCopied"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Copy card types between projects",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:write"
+      }
+    },
+    "/v1/knowledge/wiki/page-types/promote": {
+      "post": {
+        "description": "Copy card types one project defines up to the organization.\n\nEvery project without a copy of its own inherits a promoted type from then\non, and every member of the organization can read its definition, so this\ntakes an organization admin. ``skipped`` lists each key not promoted:\n``not_found`` in the source, or ``exists`` in the organization when\n``replace`` is false. The source project keeps its own copy.",
+        "operationId": "promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikiPageTypePromote"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiPageTypesCopied"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Promote card types to the organization",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:write"
       }
     },
     "/v1/knowledge/wiki/page-types/{key}": {

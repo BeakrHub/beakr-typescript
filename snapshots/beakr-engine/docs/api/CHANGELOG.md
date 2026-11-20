@@ -11,11 +11,23 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=905aa7681a6de28b29469179a9d8a6c081e08dc293ce357308fb932c3d4162fe changelog sha256=42738e8f0700a3743a03107935668904186a24e9aac18fdc7a9f4b8476e98509 -->
+<!-- contract-stamp: public-openapi sha256=e7b824fa47aa9b88b94cc8d10c322d516dcf522350256780b1675eca4dd7926a changelog sha256=d806c3f1049659fec1299450c45f944add4f8e681460ead7890b60e0eb03b92a -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- Card types can be carried between projects and up to the organization
+  (`kb:write`).
+  `POST /v1/knowledge/wiki/page-types/copy` copies the types one project
+  defines (`from_project_id`, `keys`) into another (`to_project_id`), which gets
+  its own copies; the caller must see the source and be an owner of the
+  destination. `POST /v1/knowledge/wiki/page-types/promote` copies a project's
+  types (`source`, `keys`) to the organization, where every project without a
+  copy of its own inherits them; it takes an organization admin. Both answer
+  `{copied, replaced, skipped}`: a key the source project does not itself
+  define is skipped as `not_found`, and one the destination already defines is
+  skipped as `exists` unless `replace` is true. Cards are not copied or
+  changed.
 - Card types (a project's ontology) can be read and changed with a `kb:read` or
   `kb:write` scope.
   `GET /v1/knowledge/wiki/page-types` lists the card types one project uses

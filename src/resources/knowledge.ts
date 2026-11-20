@@ -33,6 +33,26 @@ export type CardTypeChanges = Omit<
   BodyOf<"/v1/knowledge/wiki/page-types/{key}", "patch">,
   "scope" | "project_id"
 >;
+/** What a copy or a promotion did: `{ copied, replaced, skipped }`. */
+export type CardTypesCopied = ResponseOf<"/v1/knowledge/wiki/page-types/copy", "post">;
+
+/** Which card types to copy from one project into another. */
+export interface CopyCardTypesOptions {
+  /** The project whose types to copy (its id). */
+  fromProjectId: string;
+  /** The project that gets its own copies (its id). */
+  toProjectId: string;
+  /** Overwrite a type the destination already defines; otherwise it is skipped. */
+  replace?: boolean;
+}
+
+/** Which project's card types to promote to the organization. */
+export interface PromoteCardTypesOptions {
+  /** The id of the project whose types to promote. */
+  source: string;
+  /** Overwrite a type the organization already defines; otherwise it is skipped. */
+  replace?: boolean;
+}
 
 /** Which card types `GET /v1/knowledge/wiki/page-types` lists. */
 export interface ListCardTypesQuery {
@@ -495,6 +515,41 @@ export class Knowledge extends Resource {
       method: "DELETE",
       path: `/v1/knowledge/wiki/page-types/${enc(key)}`,
       query: { scope: where.scope ?? "project", project_id: where.projectId },
+    });
+  }
+
+  /**
+   * Copy card types one project defines into another project, which gets its own
+   * copies. The caller must see the source project and own the destination. A
+   * key the source does not itself define is skipped as `not_found`, and one the
+   * destination already defines as `exists` unless `replace` is true. Cards are
+   * not copied or changed.
+   */
+  copyCardTypes(keys: string[], options: CopyCardTypesOptions): Promise<CardTypesCopied> {
+    return this.transport.request({
+      method: "POST",
+      path: "/v1/knowledge/wiki/page-types/copy",
+      body: cleanBody({
+        from_project_id: options.fromProjectId,
+        to_project_id: options.toProjectId,
+        keys: [...keys],
+        replace: options.replace,
+      }),
+    });
+  }
+
+  /**
+   * Copy card types a project defines up to the organization, where every
+   * project without a copy of its own inherits them. Needs an organization
+   * admin. A key the project does not itself define is skipped as `not_found`,
+   * and one the organization already defines as `exists` unless `replace` is
+   * true.
+   */
+  promoteCardTypes(keys: string[], options: PromoteCardTypesOptions): Promise<CardTypesCopied> {
+    return this.transport.request({
+      method: "POST",
+      path: "/v1/knowledge/wiki/page-types/promote",
+      body: cleanBody({ source: options.source, keys: [...keys], replace: options.replace }),
     });
   }
 }
