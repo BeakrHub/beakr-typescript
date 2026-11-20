@@ -1,7 +1,7 @@
 /**
  * A project's card types (Python's `tests/test_knowledge_card_types.py`):
  * `knowledge.listCardTypes`, `updateCardType`, `removeCardTypeCopy`,
- * `copyCardTypes`, `promoteCardTypes`.
+ * `copyCardTypes`, `promoteCardTypes`, `renameCardTypeFields`, `retypeCards`.
  */
 import { describe, expect, it } from "vitest";
 import { ConflictError } from "../src/index.js";
@@ -107,5 +107,41 @@ describe("knowledge card types", () => {
     expect(promoted.skipped).toEqual([{ key: "capa", reason: "not_found" }]);
     expect(path(calls[0]!.url)).toBe("/v1/knowledge/wiki/page-types/promote");
     expect(calls[0]!.body).toEqual({ source: "p1", keys: ["deviation", "capa"], replace: true });
+  });
+
+  it("renames fields as a dry run unless asked to write", async () => {
+    // The write changes up to 500 cards a call: dry_run false is sent only on request.
+    const renamed = { page_type: "deviation", dry_run: true, cards: 12, cards_changed: 9, applied: { Cause: "Root cause" } };
+    const { fetch, calls } = mockFetch([json(renamed), json(renamed)]);
+    const { beakr } = client(fetch);
+    const preview = await beakr.knowledge.renameCardTypeFields("deviation", "p1", { Cause: "Root cause" });
+    expect(preview.cards_changed).toBe(9);
+    expect(calls[0]!.method).toBe("POST");
+    expect(path(calls[0]!.url)).toBe("/v1/knowledge/wiki/page-types/deviation/rename-fields");
+    expect(calls[0]!.body).toEqual({
+      project_id: "p1",
+      renames: [{ old: "Cause", new: "Root cause" }],
+      dry_run: true,
+    });
+    await beakr.knowledge.renameCardTypeFields("deviation", "p1", [{ old: "Cause", new: "Root cause" }], {
+      dryRun: false,
+    });
+    expect(calls[1]!.body).toEqual({
+      project_id: "p1",
+      renames: [{ old: "Cause", new: "Root cause" }],
+      dry_run: false,
+    });
+  });
+
+  it("retypes cards as a dry run unless asked to write", async () => {
+    const answer = { from_type: "deviation", to_type: "incident", dry_run: true, cards: 12 };
+    const { fetch, calls } = mockFetch([json(answer), json(answer)]);
+    const { beakr } = client(fetch);
+    const preview = await beakr.knowledge.retypeCards("deviation", "p1", "incident");
+    expect(preview.cards).toBe(12);
+    expect(path(calls[0]!.url)).toBe("/v1/knowledge/wiki/page-types/deviation/retype-cards");
+    expect(calls[0]!.body).toEqual({ project_id: "p1", to_type: "incident", dry_run: true });
+    await beakr.knowledge.retypeCards("deviation", "p1", "incident", { dryRun: false });
+    expect(calls[1]!.body).toEqual({ project_id: "p1", to_type: "incident", dry_run: false });
   });
 });

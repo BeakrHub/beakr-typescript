@@ -1120,6 +1120,85 @@ export interface paths {
         patch: operations["update_wiki_page_type_v1_knowledge_wiki_page_types__key__patch"];
         trace?: never;
     };
+    "/v1/knowledge/wiki/page-types/{key}/rename-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rename fields on existing cards
+         * @description Rename a card type's fields on the cards a project already has.
+         *
+         *     Changing a type's field list changes what later compiles write and rewrites
+         *     no card. This applies a mapping of old name to new name to the Facts rows
+         *     of every card of the type in one project: rows are renamed, two rows that
+         *     become the same field are merged with their citations kept, and the old
+         *     name is remembered so a later compile does not bring it back.
+         *
+         *     ``dry_run`` (the default) answers the counts and writes nothing. An apply
+         *     writes every card in one commit, whose id is ``commit_id``, and records one
+         *     row in the project's Activity, whose id is ``undo_event_id``: reverting that
+         *     row (``POST /wiki/ingestion-events/{id}/revert``) puts the cards' rows back.
+         *     ``refused`` lists renames the safety checks did
+         *     not accept (two names that differ by one word whose values disagree, or a
+         *     rename that drops a word such as "planned" or "actual"). Cards another
+         *     change touched meanwhile are counted in ``cards_conflicted`` and left as
+         *     they were. One call writes at most 500 cards; ``cards_remaining`` counts
+         *     the cards the mapping still changes afterwards. Send the same request
+         *     again to pick them up, as another commit with its own undo.
+         *
+         *     Answers 409 while Knowledge is running maintenance on the project.
+         */
+        post: operations["rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/{key}/retype-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move existing cards to another type
+         * @description Move the cards a project already has from this type to another.
+         *
+         *     Editing or turning off a type rewrites no card. This changes every live
+         *     card of the type in one project to ``to_type``, which must be an active
+         *     type of cards in that project. A card's text is not changed: its Facts
+         *     rows keep their field names and are read from then on through the target
+         *     type's recorded names, so rename fields on the target type afterwards if
+         *     the two types named a field differently.
+         *
+         *     ``dry_run`` (the default) answers the counts and writes nothing. An apply
+         *     writes up to 500 cards in one commit, whose id is ``commit_id``, and
+         *     records one row in the project's Activity, whose id is ``undo_event_id``:
+         *     reverting that row (``POST /wiki/ingestion-events/{id}/revert``) puts each
+         *     card back to this type. ``cards_remaining`` counts the cards still of this
+         *     type afterwards (past the per-call limit, or held by another writer and
+         *     counted in ``cards_skipped``); send the same request again to move them.
+         *
+         *     Answers 409 while Knowledge is running maintenance on the project, 422 for
+         *     a mapping that cannot be applied, and 404 for a type the project does not
+         *     know.
+         */
+        post: operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/pages": {
         parameters: {
             query?: never;
@@ -12492,6 +12571,22 @@ export interface components {
             sources?: components["schemas"]["SourceRecord"][];
         };
         /**
+         * WikiFieldRename
+         * @description One field's current name and the name its rows should carry.
+         */
+        WikiFieldRename: {
+            /**
+             * New
+             * @description The name to give it.
+             */
+            new: string;
+            /**
+             * Old
+             * @description The field's current name.
+             */
+            old: string;
+        };
+        /**
          * WikiIngestQueueResult
          * @description Stable caller-visible result of requesting Knowledge compilation.
          * @enum {string}
@@ -12928,6 +13023,57 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * WikiPageTypeCardsRetyped
+         * @description ``POST /v1/knowledge/wiki/page-types/{key}/retype-cards``.
+         */
+        WikiPageTypeCardsRetyped: {
+            /**
+             * Cards
+             * @description Live cards of the source type when the call started.
+             */
+            cards: number;
+            /**
+             * Cards Remaining
+             * @description Cards still of the source type after this call. One call moves at most 500; send the same request again for the rest.
+             */
+            cards_remaining: number;
+            /**
+             * Cards Retyped
+             * @description Cards this call moved; 0 for a dry run.
+             */
+            cards_retyped: number;
+            /**
+             * Cards Skipped
+             * @description Cards another change held or touched meanwhile; still of the source type.
+             */
+            cards_skipped: number;
+            /**
+             * Commit Id
+             * @description The one change holding every card moved; null when none was.
+             */
+            commit_id: string | null;
+            /**
+             * Dry Run
+             * @description True when nothing was written.
+             */
+            dry_run: boolean;
+            /**
+             * From Type
+             * @description The key of the type the cards had.
+             */
+            from_type: string;
+            /**
+             * To Type
+             * @description The key of the type the cards were moved to.
+             */
+            to_type: string;
+            /**
+             * Undo Event Id
+             * @description The activity row recorded for an applied change. Reverting it undoes the change; null for a dry run or when nothing was moved.
+             */
+            undo_event_id: string | null;
+        };
+        /**
          * WikiPageTypeCopy
          * @description Copy card types one project defines into another project.
          */
@@ -12972,6 +13118,110 @@ export interface components {
              * @default false
              */
             required?: boolean;
+        };
+        /**
+         * WikiPageTypeFieldRenames
+         * @description Rename a card type's fields on the cards one project already has.
+         */
+        WikiPageTypeFieldRenames: {
+            /**
+             * Dry Run
+             * @description Count what would change and write nothing. Pass false to apply.
+             * @default true
+             */
+            dry_run?: boolean;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project whose cards to change.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /**
+             * Renames
+             * @description The fields to rename.
+             */
+            renames: components["schemas"]["WikiFieldRename"][];
+        };
+        /**
+         * WikiPageTypeFieldsRenamed
+         * @description ``POST /v1/knowledge/wiki/page-types/{key}/rename-fields``.
+         */
+        WikiPageTypeFieldsRenamed: {
+            /**
+             * Applied
+             * @description The renames accepted, old name to new name.
+             */
+            applied: {
+                [key: string]: string;
+            };
+            /**
+             * Cards
+             * @description Cards of the type in the project.
+             */
+            cards: number;
+            /**
+             * Cards Changed
+             * @description Cards the mapping changes.
+             */
+            cards_changed: number;
+            /**
+             * Cards Conflicted
+             * @description Cards another change touched meanwhile; left as they were.
+             */
+            cards_conflicted: number;
+            /**
+             * Cards Refused
+             * @description Cards whose table could not be rewritten safely; left for a person.
+             */
+            cards_refused: number;
+            /**
+             * Cards Remaining
+             * @description Cards the mapping still changes after this call. One call writes at most 500; send the same request again for the rest.
+             */
+            cards_remaining: number;
+            /**
+             * Cards Written
+             * @description Cards this call wrote; 0 for a dry run.
+             */
+            cards_written: number;
+            /**
+             * Commit Id
+             * @description The one change holding every card written; null when none was.
+             */
+            commit_id: string | null;
+            /**
+             * Dry Run
+             * @description True when nothing was written.
+             */
+            dry_run: boolean;
+            /**
+             * Page Type
+             * @description The key of the type whose cards were read.
+             */
+            page_type: string;
+            /**
+             * Refused
+             * @description The renames the safety checks did not accept, old name to new name.
+             */
+            refused: {
+                [key: string]: string;
+            };
+            /**
+             * Rows Merged
+             * @description Rows folded into another row that became the same field, citations kept.
+             */
+            rows_merged: number;
+            /**
+             * Rows Renamed
+             * @description Rows given a new field name.
+             */
+            rows_renamed: number;
+            /**
+             * Undo Event Id
+             * @description The activity row recorded for an applied change. Reverting it undoes the change; null for a dry run or when nothing was written.
+             */
+            undo_event_id: string | null;
         };
         /**
          * WikiPageTypeList
@@ -13037,6 +13287,30 @@ export interface components {
              * @description The id of the project whose types to promote.
              */
             source: string;
+        };
+        /**
+         * WikiPageTypeRetypeCards
+         * @description Move the cards one project already has from one card type to another.
+         */
+        WikiPageTypeRetypeCards: {
+            /**
+             * Dry Run
+             * @description Count what would change and write nothing. Pass false to apply.
+             * @default true
+             */
+            dry_run?: boolean;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project whose cards to move.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /**
+             * To Type
+             * @description The key of the type the cards become: an active type of cards here.
+             */
+            to_type: string;
         };
         /** WikiPageTypeSkipped */
         WikiPageTypeSkipped: {
@@ -17064,6 +17338,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WikiPageTypeStatusResult"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeFieldRenames"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeFieldsRenamed"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeRetypeCards"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeCardsRetyped"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

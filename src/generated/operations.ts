@@ -62,6 +62,8 @@ export const OPERATIONS = {
   "knowledge.listWikiPageTypes": { method: "GET", path: "/v1/knowledge/wiki/page-types" },
   "knowledge.updateWikiPageType": { method: "PATCH", path: "/v1/knowledge/wiki/page-types/{key}" },
   "knowledge.removeWikiPageTypeOverride": { method: "DELETE", path: "/v1/knowledge/wiki/page-types/{key}" },
+  "knowledge.renameWikiPageTypeFields": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/rename-fields" },
+  "knowledge.retypeWikiPageTypeCards": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/retype-cards" },
   "knowledge.copyWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/copy" },
   "knowledge.promoteWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/promote" },
   "knowledge.listWikiPages": { method: "GET", path: "/v1/knowledge/wiki/pages" },
@@ -635,6 +637,18 @@ export class KnowledgeApi {
   /** DELETE /v1/knowledge/wiki/page-types/{key} (Remove a card type copy) */
   removeWikiPageTypeOverride(args: { path: operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"]["parameters"]["path"]; query?: NonNullable<operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"]>> {
     const request: RequestOptions = { method: "DELETE", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/{key}/rename-fields (Rename fields on existing cards) */
+  renameWikiPageTypeFields(args: { path: operations["rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post"]["parameters"]["path"]; body: NonNullable<operations["rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}/rename-fields`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/{key}/retype-cards (Move existing cards to another type) */
+  retypeWikiPageTypeCards(args: { path: operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]["parameters"]["path"]; body: NonNullable<operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}/retype-cards`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 

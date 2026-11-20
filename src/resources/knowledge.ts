@@ -42,6 +42,19 @@ export interface CopyCardTypesOptions {
   replace?: boolean;
 }
 
+/** What a field rename would change or changed on a type's existing cards. */
+export type CardTypeFieldsRenamed = ResponseOf<"/v1/knowledge/wiki/page-types/{key}/rename-fields", "post">;
+/** What a retype would move or moved. */
+export type CardsRetyped = ResponseOf<"/v1/knowledge/wiki/page-types/{key}/retype-cards", "post">;
+/** Field renames: `{ old: new }`, or the route's own list of `{ old, new }`. */
+export type CardTypeFieldRenames = Record<string, string> | Array<{ old: string; new: string }>;
+
+/** Whether a change to a project's existing cards is written. */
+export interface ExistingCardsOptions {
+  /** `false` writes the change. Left out or `true`: a dry run that answers the counts and writes nothing. */
+  dryRun?: boolean;
+}
+
 /** Which card types `GET /v1/knowledge/wiki/page-types` lists. */
 export interface ListCardTypesQuery {
   /** The project's id. */
@@ -548,6 +561,55 @@ export class Knowledge extends Resource {
       method: "POST",
       path: "/v1/knowledge/wiki/page-types/promote",
       body: { source: projectId, keys: [...keys], replace: options.replace ?? false },
+    });
+  }
+
+  /**
+   * Rename fields on every card of a type in one project: a dry run unless
+   * `{ dryRun: false }`. The type's field list is renamed with the cards, and
+   * rows that become the same field are merged with their citations kept. A dry
+   * run writes nothing and answers the counts (`cards`, `cards_changed`,
+   * `rows_renamed`, `rows_merged`) and the renames it would have `applied` and
+   * `refused`. A write changes at most 500 cards a call; `cards_remaining` says
+   * how many are left, and the same call again changes the next ones. An applied
+   * change answers `commit_id` and `undo_event_id` and shows in the project's
+   * activity, where an owner can undo it. Only the project's owners may;
+   * `ConflictError` while Knowledge runs maintenance on the project.
+   */
+  renameCardTypeFields(
+    key: string,
+    projectId: string,
+    renames: CardTypeFieldRenames,
+    options: ExistingCardsOptions = {},
+  ): Promise<CardTypeFieldsRenamed> {
+    const pairs = Array.isArray(renames)
+      ? renames.map((pair) => ({ old: pair.old, new: pair.new }))
+      : Object.entries(renames).map(([from, to]) => ({ old: from, new: to }));
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/knowledge/wiki/page-types/${enc(key)}/rename-fields`,
+      body: { project_id: projectId, renames: pairs, dry_run: options.dryRun ?? true },
+    });
+  }
+
+  /**
+   * Move every card of a type in one project to another type: a dry run unless
+   * `{ dryRun: false }`. `toType` must be an active type in the project whose
+   * instances are cards. A write moves at most 500 cards a call
+   * (`cards_retyped`, `cards_skipped`, `cards_remaining`). A card's text is not
+   * changed: if the two types name a field differently, rename the fields on
+   * the target type afterwards ({@link renameCardTypeFields}).
+   */
+  retypeCards(
+    key: string,
+    projectId: string,
+    toType: string,
+    options: ExistingCardsOptions = {},
+  ): Promise<CardsRetyped> {
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/knowledge/wiki/page-types/${enc(key)}/retype-cards`,
+      body: { project_id: projectId, to_type: toType, dry_run: options.dryRun ?? true },
     });
   }
 }
