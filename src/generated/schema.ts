@@ -1277,7 +1277,9 @@ export interface paths {
          *     change touched meanwhile are counted in ``cards_conflicted`` and left as
          *     they were. One call writes at most 500 cards; ``cards_remaining`` counts
          *     the cards the mapping still changes afterwards. Send the same request
-         *     again to pick them up, as another commit with its own undo.
+         *     again with ``continue_event_id`` set to the ``undo_event_id`` this call
+         *     answered: the next cards are another commit on the same Activity row, so
+         *     the whole rename stays one entry and one undo.
          *
          *     Answers 409 while Knowledge is running maintenance on the project.
          */
@@ -1314,7 +1316,9 @@ export interface paths {
          *     reverting that row (``POST /wiki/ingestion-events/{id}/revert``) puts each
          *     card back to this type. ``cards_remaining`` counts the cards still of this
          *     type afterwards (past the per-call limit, or held by another writer and
-         *     counted in ``cards_skipped``); send the same request again to move them.
+         *     counted in ``cards_skipped``); send the same request again to move them,
+         *     with ``continue_event_id`` set to the ``undo_event_id`` this call answered
+         *     so the whole move stays one Activity entry and one undo.
          *
          *     The source may be a type no row defines (a legacy or hand-written type, or
          *     one the project's card type settings hide) as long as the project has a
@@ -13675,6 +13679,11 @@ export interface components {
          */
         WikiPageTypeFieldRenames: {
             /**
+             * Continue Event Id
+             * @description The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.
+             */
+            continue_event_id?: string | null;
+            /**
              * Dry Run
              * @description Count what would change and write nothing. Pass false to apply.
              * @default true
@@ -13860,6 +13869,11 @@ export interface components {
          * @description Move the cards one project already has from one card type to another.
          */
         WikiPageTypeRetypeCards: {
+            /**
+             * Continue Event Id
+             * @description The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.
+             */
+            continue_event_id?: string | null;
             /**
              * Dry Run
              * @description Count what would change and write nothing. Pass false to apply.

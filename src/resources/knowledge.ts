@@ -53,6 +53,12 @@ export type CardTypeFieldRenames = Record<string, string> | Array<{ old: string;
 export interface ExistingCardsOptions {
   /** `false` writes the change. Left out or `true`: a dry run that answers the counts and writes nothing. */
   dryRun?: boolean;
+  /**
+   * The `undo_event_id` an earlier apply of this same change answered. This
+   * call's cards join that activity entry, so a change that takes several calls
+   * (one call writes at most 500 cards) is one entry and one undo.
+   */
+  continueEventId?: string;
 }
 
 /** {@link Knowledge.retypeCards}' options. */
@@ -637,7 +643,12 @@ export class Knowledge extends Resource {
     return this.transport.request({
       method: "POST",
       path: `/v1/knowledge/wiki/page-types/${enc(key)}/rename-fields`,
-      body: { project_id: projectId, renames: pairs, dry_run: options.dryRun ?? true },
+      body: cleanBody({
+        project_id: projectId,
+        renames: pairs,
+        dry_run: options.dryRun ?? true,
+        continue_event_id: options.continueEventId,
+      }),
     });
   }
 
@@ -663,6 +674,7 @@ export class Knowledge extends Resource {
         to_type: toType,
         dry_run: options.dryRun ?? true,
         suggestion_id: options.suggestionId,
+        continue_event_id: options.continueEventId,
       }),
     });
   }
