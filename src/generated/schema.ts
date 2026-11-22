@@ -1345,6 +1345,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/page-types/{key}/to-field": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a row type a field
+         * @description Make the row type `key` a field of another card type. Make the row type ``key`` a field of another card type.
+         *
+         *     ``on_type`` gains the field ``name`` with ``description`` saying what to
+         *     record under it. The row type is turned off for the scope and becomes an
+         *     ordinary card type, so it stays out of use and cannot come back as rows.
+         *     Cards and rows already written are not changed.
+         *
+         *     422 when ``key`` is not a row type here, or ``on_type`` is not a card type
+         *     in use here. A project's types are changed by its owners, an organization's
+         *     by its admins.
+         */
+        post: operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/pages": {
         parameters: {
             query?: never;
@@ -2322,6 +2351,56 @@ export interface paths {
          * @description Change a project's name, description, status or tags; fields left out are kept. Project admins and owners only.
          */
         patch: operations["update_project_route_v1_projects__project_id__patch"];
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/interviews/from-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft an interview from review flags
+         * @description Draft an interview from review flags.
+         *
+         *     Beakr writes one plain-language key question per open review flag in the
+         *     project, naming its specifics (the values that disagree, the cards, the
+         *     dates, where each came from), and saves them as an interview; the
+         *     interviewer gets each flag's background (`supporting_info`). By default it
+         *     asks about every open review flag (contradictions, ambiguities and the
+         *     rest), newest first, up to `max_questions` (30, the interview's cap); flags
+         *     past it come back in `skipped` as `over_question_limit`. `kinds` narrows
+         *     the kinds, or `proposal_ids` names the flags.
+         *
+         *     With a `participant` (a member's `user_id`, or a name and/or email), the
+         *     interview also gets that person's link, made exactly as
+         *     `POST /v1/interview/sendables/{sendable_id}/links` makes it: Beakr sends
+         *     nothing, and `link_url` (shown once) is for you to deliver. So one call goes
+         *     from open flags to a link, for example from a scheduled job with an API key.
+         *     Without one, it is a draft: a person edits it (`edit_url`) and sends it.
+         *
+         *     Each flag records the question that asks about it. When a link of this
+         *     interview finishes, Beakr attaches each answer to its flag as a suggestion
+         *     (`interview_answers` on `GET /v1/knowledge/wiki/proposals/{proposal_id}`),
+         *     with the drafted resolution it matches; a person applies it with the
+         *     resolve routes. Nothing is ever applied automatically.
+         *
+         *     A project with nothing to ask about answers 200 with `interview: null` and
+         *     `empty_reason`. One model call; when no model answers, each question is
+         *     built from its flag (`questions_written_by: template`). Needs the
+         *     `interviews:write` and `kb:read` scopes. PHI organizations are refused
+         *     (403 `outside_interviews_unavailable`); a `user_id` that is not a member
+         *     answers 404 `participant_not_found`; past the daily link limit, 429
+         *     `interview_link_limit`.
+         */
+        post: operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/projects/{project_id}/invite": {
@@ -7065,6 +7144,96 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * InterviewFromReviewsBody
+         * @description Which flags to ask about, and who the interview is for.
+         */
+        InterviewFromReviewsBody: {
+            /**
+             * Goals
+             * @description The interview's goals, in place of the drafted ones.
+             */
+            goals?: string | null;
+            /**
+             * Kinds
+             * @description Ask only about flags of these kinds (`contradiction`, `ambiguity`, `unverifiable`, `likely_error`, `other`). Omitted: every kind. Ignored with `proposal_ids`.
+             */
+            kinds?: ("contradiction" | "ambiguity" | "unverifiable" | "likely_error" | "other")[];
+            /**
+             * Link Expires In Days
+             * @description How long the participant's link works, in days.
+             * @default 14
+             */
+            link_expires_in_days?: number;
+            /**
+             * Max Questions
+             * @description The most flags to ask about, one question each; 30, the interview's own cap, by default. Flags past it are listed in `skipped` as `over_question_limit`.
+             * @default 30
+             */
+            max_questions?: number;
+            /** @description Who the interview is for. Given, the interview also gets that person's link (`link`, `link_url`), made as `POST /v1/interview/sendables/{sendable_id}/links` makes it: Beakr sends nothing, you deliver the link. Omitted: a draft only. */
+            participant?: components["schemas"]["ParticipantIn"] | null;
+            /**
+             * Proposal Ids
+             * @description The review flags to ask about (proposal ids), in order. Omitted: every open review flag of the project, newest first (narrowed by `kinds`).
+             */
+            proposal_ids?: string[];
+            /**
+             * Title
+             * @description The interview's title, in place of the drafted one.
+             */
+            title?: string | null;
+        };
+        /**
+         * InterviewFromReviewsOut
+         * @description The drafted interview, which flag each question asks about, and the participant's link.
+         */
+        InterviewFromReviewsOut: {
+            /**
+             * Edit Url
+             * @description Where a person opens the draft in Beakr to edit and send it.
+             */
+            edit_url?: string | null;
+            /**
+             * Empty Reason
+             * @description Why nothing was drafted: `no_open_flags` (the project has none), `no_matching_flags` (none of the kinds asked for), `no_askable_flags` (none of the named flags is open here). Null when an interview was drafted.
+             */
+            empty_reason?: ("no_open_flags" | "no_matching_flags" | "no_askable_flags") | null;
+            /** @description The saved interview. Without a participant it has no links: edit it, then send it with `POST /v1/interview/sendables/{sendable_id}/links`. Null when there was nothing to ask. */
+            interview: components["schemas"]["SendableInterviewOut"] | null;
+            /** @description The participant's link, when a participant was given. */
+            link?: components["schemas"]["InterviewLinkMadeOut"] | null;
+            /**
+             * Link Url
+             * @description The link anyone can open to take the interview, with no Beakr account. Shown once. Shown on the first response only; absent from an idempotent replay.
+             */
+            link_url?: string | null;
+            /**
+             * Message
+             * @description A sentence saying why nothing was drafted.
+             */
+            message?: string | null;
+            /**
+             * Questions
+             * @description One per flag asked about, in the interview's order.
+             */
+            questions: components["schemas"]["ReviewQuestionOut"][];
+            /**
+             * Questions Written By
+             * @description `model` when the model wrote every question, `template` when any was built from its flag; null when nothing was drafted.
+             */
+            questions_written_by?: ("model" | "template") | null;
+            /**
+             * Secret Redacted
+             * @description True on an idempotent replay (`Idempotent-Replayed` header): the one-time secret was not stored, so this response omits it. Absent on the first response.
+             */
+            secret_redacted?: boolean | null;
+            /**
+             * Skipped
+             * @description Flags not asked about, and why (including open flags past the question cap).
+             */
+            skipped?: components["schemas"]["SkippedFlagOut"][];
+        };
+        /**
          * InterviewLinkCreated
          * @description The interview and its link.
          * @example {
@@ -7112,6 +7281,36 @@ export interface components {
              * @description The link to give the participant. Anyone holding it can take the interview, so treat it as a secret. Shown on the first response only; absent from an idempotent replay.
              */
             url?: string | null;
+        };
+        /**
+         * InterviewLinkMadeOut
+         * @description The participant's link, made with the interview.
+         */
+        InterviewLinkMadeOut: {
+            /**
+             * Expires At
+             * Format: date-time
+             * @description When the link stops working.
+             * @example 2026-10-03T09:30:42Z
+             */
+            expires_at: string;
+            /**
+             * Label
+             * @description Who it is for, as shown beside the link in Beakr.
+             */
+            label: string;
+            /**
+             * Link Id
+             * Format: uuid
+             * @description Id of the link.
+             * @example 0f1e2d3c-4b5a-4c6d-9e8f-7a6b5c4d3e2f
+             */
+            link_id: string;
+            /**
+             * Result Url
+             * @description Where to read the interview's progress and answers (the link result route).
+             */
+            result_url?: string | null;
         };
         /**
          * InterviewLinkRecipient
@@ -9660,6 +9859,28 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * ParticipantIn
+         * @description Who the interview is for: a member of the organization, or a name and/or email.
+         */
+        ParticipantIn: {
+            /**
+             * Email
+             * @description The person's email, shown beside the link in Beakr. Beakr sends nothing to it.
+             * @example dana@example.com
+             */
+            email?: string | null;
+            /**
+             * Name
+             * @description The person's name, shown beside the link in Beakr.
+             */
+            name?: string | null;
+            /**
+             * User Id
+             * @description A member of your organization (user id); their name and email label the link.
+             */
+            user_id?: string | null;
+        };
+        /**
          * PendingMemberInvitationOut
          * @description Pending membership invitation shown alongside real members.
          */
@@ -9917,6 +10138,24 @@ export interface components {
          * @enum {string}
          */
         PrincipalType: "user" | "group" | "org" | "service" | "link";
+        /** ProfileTypeAsDetail */
+        ProfileTypeAsDetail: {
+            /**
+             * Field
+             * @description The field it is listed under on those cards.
+             */
+            field: string;
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Page Type
+             * @description The key of the type whose cards it is listed on.
+             */
+            page_type: string;
+        };
         /** ProfileTypeMatch */
         ProfileTypeMatch: {
             /**
@@ -9958,6 +10197,11 @@ export interface components {
          * @description What Beakr did with the kinds of thing a project's profile names.
          */
         ProfileTypesOutcome: {
+            /**
+             * As Details
+             * @description Names that are entries on another type's cards: no type was made, and the type gained a field for them.
+             */
+            as_details: components["schemas"]["ProfileTypeAsDetail"][];
             /**
              * Made
              * @description Keys of the types it created.
@@ -10023,7 +10267,7 @@ export interface components {
             fields?: components["schemas"]["ProjectCardTypeFieldIn"][] | null;
             /**
              * Grain
-             * @description `card` (the default): each instance gets a card. `row`: each is a Facts row on the card it belongs to.
+             * @description `card` (the default): each instance gets a card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.
              */
             grain?: ("card" | "row") | null;
             /**
@@ -11100,6 +11344,70 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * ReviewQuestionOut
+         * @description One drafted key question and the review flag it asks about.
+         */
+        ReviewQuestionOut: {
+            /**
+             * Asked Revision
+             * @description The card's revision the question was asked against. An answer to a card whose flagged text changed since is marked stale.
+             */
+            asked_revision?: number | null;
+            /**
+             * Kind
+             * @description The flag's kind: `contradiction`, `ambiguity`, `unverifiable`, `likely_error`, or `other` for an older flag that names none.
+             */
+            kind: string;
+            /**
+             * Linked
+             * @description Whether the flag records the question, so the answer can be attached to it. False when the caller may read the flag but not change it.
+             */
+            linked: boolean;
+            /**
+             * Number
+             * @description The question's place in the interview, from 1.
+             */
+            number: number;
+            /**
+             * Page Id
+             * @description Id of the card the flag is on.
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id?: string | null;
+            /**
+             * Page Title
+             * @description Title of the card the flag is on.
+             */
+            page_title: string;
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description Id of the review flag (proposal) it asks about.
+             */
+            proposal_id: string;
+            /**
+             * Question
+             * @description The key question, as saved on the interview.
+             */
+            question: string;
+            /**
+             * Reason
+             * @description Why the flag was raised.
+             */
+            reason: string;
+            /**
+             * Section Id
+             * @description The flagged section, when it names one.
+             */
+            section_id?: string | null;
+            /**
+             * Written By
+             * @description `model` when Beakr's model wrote the question, `template` when it was built from the flag because no model answer covered it.
+             * @enum {string}
+             */
+            written_by: "model" | "template";
+        };
+        /**
          * RunAnswer
          * @description A completed run's answer: readable text, the raw text and its cited sources.
          */
@@ -12169,6 +12477,24 @@ export interface components {
              * @description Name of the skill script.
              */
             name: string;
+        };
+        /**
+         * SkippedFlagOut
+         * @description A flag that was not asked about, and why.
+         */
+        SkippedFlagOut: {
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description Id of the flag.
+             */
+            proposal_id: string;
+            /**
+             * Reason
+             * @description `not_found` (no such flag in this project, or not visible to you), `not_open` (already resolved or dismissed), `not_a_review_flag` (another kind of proposal), `over_question_limit` (an open flag left out because the interview was full).
+             * @enum {string}
+             */
+            reason: "not_found" | "not_open" | "not_a_review_flag" | "over_question_limit";
         };
         /**
          * SourceExcerpt
@@ -14639,6 +14965,16 @@ export interface components {
             unlisted_types?: components["schemas"]["UnlistedCardType"][] | null;
         };
         /**
+         * WikiPageTypeMadeField
+         * @description ``POST /v1/knowledge/wiki/page-types/{key}/to-field``.
+         */
+        WikiPageTypeMadeField: {
+            /** @description The type that was recorded as rows, now turned off and a card type. */
+            former_row_type: components["schemas"]["WikiPageType"];
+            /** @description The type that gained the field. */
+            page_type: components["schemas"]["WikiPageType"];
+        };
+        /**
          * WikiPageTypeOverrideRemoved
          * @description ``DELETE /v1/knowledge/wiki/page-types/{key}``.
          */
@@ -14740,6 +15076,39 @@ export interface components {
             page_type: components["schemas"]["WikiPageType"];
         };
         /**
+         * WikiPageTypeToField
+         * @description Make a card type recorded as rows a field of the type its rows belong on.
+         */
+        WikiPageTypeToField: {
+            /**
+             * Description
+             * @description What to record under the field, for example 'one row per run'.
+             */
+            description?: string | null;
+            /**
+             * Name
+             * @description The field to add to that type.
+             */
+            name: string;
+            /**
+             * On Type
+             * @description The key of the card type whose cards these rows belong on.
+             */
+            on_type: string;
+            /**
+             * Project Id
+             * @description The project, with scope `project`; left out otherwise.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id?: string | null;
+            /**
+             * Scope
+             * @description Whose types to change: `project` (one project) or `org`.
+             * @default project
+             */
+            scope?: string;
+        };
+        /**
          * WikiPageTypeUpdate
          * @description Changes to one card type, as one scope holds it. A field left out is kept.
          *
@@ -14765,7 +15134,7 @@ export interface components {
             fields?: components["schemas"]["WikiPageTypeFieldIn"][] | null;
             /**
              * Grain
-             * @description `card`: each instance gets a card. `row`: each is a Facts row on the card it belongs to.
+             * @description `card` gives each instance of a type that was recorded as rows its own card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.
              */
             grain?: string | null;
             /**
@@ -19104,6 +19473,59 @@ export interface operations {
             };
         };
     };
+    convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeToField"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeMadeField"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     list_wiki_pages_v1_knowledge_wiki_pages_get: {
         parameters: {
             query?: {
@@ -22494,6 +22916,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewFromReviewsBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewFromReviewsOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

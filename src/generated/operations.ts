@@ -64,6 +64,7 @@ export const OPERATIONS = {
   "knowledge.removeWikiPageTypeOverride": { method: "DELETE", path: "/v1/knowledge/wiki/page-types/{key}" },
   "knowledge.renameWikiPageTypeFields": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/rename-fields" },
   "knowledge.retypeWikiPageTypeCards": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/retype-cards" },
+  "knowledge.convertRowTypeToField": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/to-field" },
   "knowledge.copyWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/copy" },
   "knowledge.listCardTypeHistory": { method: "GET", path: "/v1/knowledge/wiki/page-types/history" },
   "knowledge.promoteWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/promote" },
@@ -131,6 +132,7 @@ export const OPERATIONS = {
   "projects.getProject": { method: "GET", path: "/v1/projects/{project_id}" },
   "projects.updateProject": { method: "PATCH", path: "/v1/projects/{project_id}" },
   "projects.deleteProject": { method: "DELETE", path: "/v1/projects/{project_id}" },
+  "interviews.draftInterviewFromReviews": { method: "POST", path: "/v1/projects/{project_id}/interviews/from-reviews" },
   "projects.createProjectMembershipInvitation": { method: "POST", path: "/v1/projects/{project_id}/invite" },
   "projects.getProjectKnowledgeProfile": { method: "GET", path: "/v1/projects/{project_id}/knowledge-profile" },
   "projects.putProjectKnowledgeProfile": { method: "PUT", path: "/v1/projects/{project_id}/knowledge-profile" },
@@ -587,6 +589,12 @@ export class InterviewsApi {
     const request: RequestOptions = { method: "POST", path: `/v1/interview/sendables/links/${enc(String(args.path.link_id))}/revoke`, idempotent: true, responseType: "none", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
+
+  /** POST /v1/projects/{project_id}/interviews/from-reviews (Draft an interview from review flags) */
+  draftInterviewFromReviews(args: { path: operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"]["parameters"]["path"]; body: NonNullable<operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/interviews/from-reviews`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
 }
 
 /** Public operations tagged jobs. */
@@ -667,6 +675,12 @@ export class KnowledgeApi {
   /** POST /v1/knowledge/wiki/page-types/{key}/retype-cards (Move existing cards to another type) */
   retypeWikiPageTypeCards(args: { path: operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]["parameters"]["path"]; body: NonNullable<operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}/retype-cards`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/{key}/to-field (Make a row type a field) */
+  convertRowTypeToField(args: { path: operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"]["parameters"]["path"]; body: NonNullable<operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}/to-field`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
