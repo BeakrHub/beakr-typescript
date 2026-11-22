@@ -1594,7 +1594,7 @@ export interface paths {
         put?: never;
         /**
          * Resolve a review flag
-         * @description Rewrite the flagged section and clear the flag: send a drafted option's `new_section_body` (or your own Markdown for the section) with the flag's `section_id` and the `expected_revision` you drafted or read against. The page changes at once, as the caller's own edit, and the flag becomes `resolved`. A page that changed since that revision answers `409` and nothing is applied: draft the options again and choose again. A card's Facts or Connections table is not rewritten this way (use `POST .../resolve-rows`). In a project that requires a person to accept proposals, an API key or token is refused with `403 person_review_required` unless the key holds `proposals:accept`, as for accepting a proposal. A flag that is no longer pending answers 400.
+         * @description Rewrite the flagged section and clear the flag: send a drafted option's `new_section_body` (or your own Markdown for the section) with the flag's `section_id` and the `expected_revision` you drafted or read against. The page changes at once, as the caller's own edit, and the flag becomes `resolved`. A page that changed since that revision answers `409` and nothing is applied: draft the options again and choose again. A card's Facts or Connections table is not rewritten this way (use `POST .../resolve-rows`). In a project that requires a person to accept proposals, a person, or a key with the `proposals:accept` (reviewer) permission, must apply it: any other key or token is refused with `403 person_review_required`, as for accepting a proposal. A scheduled job closes flags with a reviewer key. A flag that is no longer pending answers 400.
          */
         post: operations["resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post"];
         delete?: never;
@@ -1614,7 +1614,7 @@ export interface paths {
         put?: never;
         /**
          * Resolve a contradiction everywhere
-         * @description Settle a contradiction review on every card it lists with one `outcome`: `keep_disputed` (the value the card stated stands; the disputing row is deleted), `adopt_disputing` (the disputing value stands; the row it disputed is deleted) or `both_valid` (both rows stand). Each card is changed as the caller's own row edit, pinned to its revision; a card that changed since the review, or that the caller cannot write, is skipped and listed in `skipped`. The review is resolved when any card changed (`status: resolved`); with none changed it stays pending (`status: unchanged`). Only a contradiction review raised from citation stances lists cards; any other answers 400. Person-only where a person must accept proposals (`403 person_review_required`).
+         * @description Settle a contradiction review on every card it lists with one `outcome`: `keep_disputed` (the value the card stated stands; the disputing row is deleted), `adopt_disputing` (the disputing value stands; the row it disputed is deleted) or `both_valid` (both rows stand). Each card is changed as the caller's own row edit, pinned to its revision; a card that changed since the review, or that the caller cannot write, is skipped and listed in `skipped`. The review is resolved when any card changed (`status: resolved`); with none changed it stays pending (`status: unchanged`). Only a contradiction review raised from citation stances lists cards; any other answers 400. Where a person must accept proposals, a person, or a key with the `proposals:accept` (reviewer) permission, must apply it (`403 person_review_required` otherwise).
          */
         post: operations["resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post"];
         delete?: never;
@@ -1634,7 +1634,7 @@ export interface paths {
         put?: never;
         /**
          * Resolve a flag with rows
-         * @description Apply one drafted row option (`option_id`) to a flagged card's Facts or Connections table and clear the flag. The option must be one `POST .../resolutions` returned for `expected_revision`; it is decided again by the table's row rules and written as the caller's own row edit, pinned to that revision. A card that changed since answers `409` and nothing is applied: draft the options again. An `option_id` not among the drafts answers 404. Person-only where a person must accept proposals (`403 person_review_required`), as for accepting. A flag that is no longer pending answers 400.
+         * @description Apply one drafted row option (`option_id`) to a flagged card's Facts or Connections table and clear the flag. The option must be one `POST .../resolutions` returned for `expected_revision`; it is decided again by the table's row rules and written as the caller's own row edit, pinned to that revision. A card that changed since answers `409` and nothing is applied: draft the options again. An `option_id` not among the drafts answers 404. Where a person must accept proposals, a person, or a key with the `proposals:accept` (reviewer) permission, must apply it (`403 person_review_required` otherwise). A flag that is no longer pending answers 400.
          */
         post: operations["resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post"];
         delete?: never;
@@ -19392,6 +19392,8 @@ export interface operations {
                 status?: string;
                 /** @description Restrict to one proposal source. Omitted, a pending listing hides the sources reviewed elsewhere (an interview's proposals are reviewed on that interview's wrap-up, not in this queue). */
                 source?: string | null;
+                /** @description Restrict to one kind of proposal. `review` lists only review flags: sections Knowledge flagged as contradicted, unverifiable or unclear, which are resolved with `POST .../resolve` (and its row and card variants) rather than accepted. Other kinds include `create`, `edit`, `archive`, `mv` and `find_replace`. */
+                proposal_type?: string | null;
                 /** @description Opaque cursor from a previous page's `next_cursor`. */
                 cursor?: string | null;
                 /** @description Page size, 1 to 200. */

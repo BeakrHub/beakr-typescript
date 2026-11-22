@@ -59,6 +59,19 @@ function route(call: Recorded): [string, string] {
 }
 
 describe("review flags (proposals.conflict / resolutionOptions / resolve / resolveOnEveryCard)", () => {
+  it("lists only review flags with proposal_type=review", async () => {
+    const page = { data: [{ id: "f1", proposal_type: "review", status: "pending" }], has_more: false, next_cursor: null };
+    const { fetch, calls } = mockFetch([json(page), json({ data: [], has_more: false, next_cursor: null })]);
+    const { beakr } = client(fetch);
+    const flags = await beakr.knowledge.proposals.reviewFlags({ projectId: "p1" });
+    expect(flags.data.map((flag) => flag.id)).toEqual(["f1"]);
+    const params = new URL(calls[0]!.url).searchParams;
+    expect(params.get("proposal_type")).toBe("review");
+    expect(params.get("project_id")).toBe("p1");
+    await beakr.knowledge.proposals.list();
+    expect(new URL(calls[1]!.url).searchParams.has("proposal_type")).toBe(false);
+  });
+
   it("reads a flag and drafts its options", async () => {
     const { fetch, calls } = mockFetch([json(FLAG), json(drafted())]);
     const { beakr } = client(fetch);

@@ -372,6 +372,11 @@ export interface ListProposalsQuery {
   /** The proposals one write batch staged. */
   batchId?: string;
   source?: string;
+  /**
+   * One kind of proposal: `review` lists only review flags ({@link Proposals.reviewFlags});
+   * others include `create`, `edit`, `archive`, `mv` and `find_replace`.
+   */
+  proposalType?: string;
   cursor?: string;
   limit?: number;
 }
@@ -384,6 +389,7 @@ function proposalsQuery(query: ListProposalsQuery): Record<string, string | numb
     label_id: query.labelId,
     batch_id: query.batchId,
     source: query.source,
+    proposal_type: query.proposalType,
     cursor: query.cursor,
     limit: query.limit,
   };
@@ -393,6 +399,15 @@ class Proposals extends Resource {
   /** One page of proposals (pending by default); {@link iter} follows every page. */
   list(query: ListProposalsQuery = {}): Promise<WikiProposalPage> {
     return this.transport.request({ method: "GET", path: "/v1/knowledge/wiki/proposals", query: proposalsQuery(query) });
+  }
+
+  /**
+   * One page of review flags only (`proposal_type=review`), open ones unless
+   * `status` says otherwise: sections Knowledge flagged as contradicted,
+   * unverifiable or unclear. Resolve one with {@link resolutionOptions} and {@link resolve}.
+   */
+  reviewFlags(query: Omit<ListProposalsQuery, "proposalType"> = {}): Promise<WikiProposalPage> {
+    return this.list({ ...query, proposalType: "review" });
   }
 
   /** Every proposal matching the filters, following cursors. */
@@ -458,9 +473,10 @@ class Proposals extends Resource {
    * other as a section rewrite (`POST .../resolve`). The page's revision is read
    * first, and a page that changed since rejects with `ConflictError` before
    * anything is sent, so options drafted for a newer revision are never applied
-   * unseen. Where a person must accept proposals, an API key without
-   * `proposals:accept` is refused (`PersonReviewRequiredError`), as for
-   * {@link accept}.
+   * unseen. Where the project requires a person to accept proposals, a person,
+   * or a key with the `proposals:accept` (reviewer) permission, must apply it, as
+   * for {@link accept}: any other key or token is refused with
+   * `PersonReviewRequiredError` (403). A scheduled job closes flags with a reviewer key.
    */
   async resolve(proposalId: string, options: ResolveReviewOptions): Promise<ReviewFlagResolved> {
     const { expectedRevision, optionId, sectionBody } = options;
@@ -521,7 +537,8 @@ class Proposals extends Resource {
    * Settle a contradiction review on every card it lists with one `outcome`.
    * A card that changed since the review, or that you cannot write, is skipped
    * and listed in `skipped`; with no card changed `status` is `unchanged` and the
-   * review stays pending.
+   * review stays pending. Where the project requires a person, a person or a
+   * `proposals:accept` (reviewer) key must apply it (`PersonReviewRequiredError` otherwise).
    */
   resolveOnEveryCard(proposalId: string, outcome: ContradictionOutcome): Promise<ContradictionResolved> {
     return this.transport.request({
