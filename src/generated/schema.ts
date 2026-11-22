@@ -1022,7 +1022,10 @@ export interface paths {
          *
          *     With ``project_id`` the answer also carries the project's card type
          *     ``settings`` (``inherit``, ``agent_may_change``) and ``kept_types``, the
-         *     built-in types it is offered whatever it chooses (listed under ``own``).
+         *     built-in types it is offered whatever it chooses (listed under ``own``),
+         *     and ``profile_types``: what Beakr did with the kinds of thing the project's
+         *     profile names (``made``, ``matched`` to an existing type, ``suggested``,
+         *     ``skipped`` with the reason) and whether it is still ``working`` on them.
          *     ``include_counts`` adds ``card_count`` to every type and ``unlisted_types``:
          *     ``{key, card_count}`` for each type the project's live cards carry that is
          *     not in the list (a type the settings hide, one turned off, or one with no
@@ -9914,6 +9917,73 @@ export interface components {
          * @enum {string}
          */
         PrincipalType: "user" | "group" | "org" | "service" | "link";
+        /** ProfileTypeMatch */
+        ProfileTypeMatch: {
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Page Type
+             * @description The key of the existing type that covers it.
+             */
+            page_type: string;
+            /**
+             * Reason
+             * @description Why that type covers it; may be empty.
+             */
+            reason: string;
+            /**
+             * Scope
+             * @description Where that type is defined: `global` (built-in), `org` or `project`.
+             */
+            scope: string;
+        };
+        /** ProfileTypeSkipped */
+        ProfileTypeSkipped: {
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Reason
+             * @description Why no type was made for it.
+             */
+            reason: string;
+        };
+        /**
+         * ProfileTypesOutcome
+         * @description What Beakr did with the kinds of thing a project's profile names.
+         */
+        ProfileTypesOutcome: {
+            /**
+             * Made
+             * @description Keys of the types it created.
+             */
+            made: string[];
+            /**
+             * Matched
+             * @description Names an existing type already covers; no separate type was made.
+             */
+            matched: components["schemas"]["ProfileTypeMatch"][];
+            /**
+             * Skipped
+             * @description Names that got no type, and why.
+             */
+            skipped: components["schemas"]["ProfileTypeSkipped"][];
+            /**
+             * Suggested
+             * @description Keys kept as suggestions, in a project whose types only people change (`agent_may_change` false).
+             */
+            suggested: string[];
+            /**
+             * Working
+             * @description Whether Beakr is still defining types from the profile; the lists may change.
+             */
+            working: boolean;
+        };
         /**
          * ProjectCardTypeFieldIn
          * @description One field of a card type defined with a new project.
@@ -14551,6 +14621,11 @@ export interface components {
              * @description Each type as the narrowest scope that defines it holds it. With `include_counts` each carries `card_count`, its live cards in the project.
              */
             page_types: components["schemas"]["WikiPageType"][];
+            /**
+             * @description What Beakr did with the kinds of thing the project's profile names; present when a project is named.
+             * @default null
+             */
+            profile_types?: components["schemas"]["ProfileTypesOutcome"] | null;
             /**
              * @description The project's card type settings; present when a project is named.
              * @default null
