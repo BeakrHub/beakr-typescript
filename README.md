@@ -107,6 +107,21 @@ Many files or whole directories go up as one batch with one indexing job:
 `const batch = await beakr.uploads.uploadMany(["results", "summary.pdf"], { projectId })`,
 then `await beakr.jobs.wait(batch)` (or pass `wait: true`).
 
+Uploading to a folder that already holds a file with the same name adds a
+version to that file, and the Knowledge built from it is updated, instead of
+making a second file (`uploads.upload`, `uploadFolder` and `uploadEntries`; a
+`uploadMany` batch always makes new files):
+
+```ts
+const again = await beakr.uploads.upload(bytes, { projectId, path: "q3.pdf" });
+again.result; // "created", "versioned", "restored" (an earlier version's bytes) or "unchanged"
+await beakr.uploads.upload(bytes, { projectId, path: "q3.pdf", onExisting: "new" }); // always a new file
+await beakr.uploads.upload(bytes, { projectId, path: "summary.md", writtenByAgent: true }); // an agent's work
+```
+
+Several files of that name in the folder reject with a `ConflictError` whose
+`code` is `ambiguous_path`.
+
 ### Tell Knowledge what a project is about
 
 A project's Knowledge profile steers how Beakr compiles its files: what the

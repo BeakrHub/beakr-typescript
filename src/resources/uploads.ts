@@ -65,6 +65,21 @@ export interface UploadSession extends JsonObject {
   uploaded_parts: UploadedPart[] | null;
 }
 
+/**
+ * What completing an upload did to the file at its path: `created` (a new
+ * file), `versioned` (a new version of the file already there), `restored`
+ * (the bytes match an earlier version, which is current again) or `unchanged`
+ * (the bytes are already the current version).
+ */
+export type UploadResult = "created" | "versioned" | "restored" | "unchanged";
+
+/**
+ * When the folder already holds a file with this file's name: `version` (the
+ * server's default) adds the upload to it as a new version and updates the
+ * Knowledge built from it; `new` always creates a separate file.
+ */
+export type OnExisting = "version" | "new";
+
 export interface UploadComplete extends JsonObject {
   upload: UploadSession;
   artifact: JsonObject & {
@@ -72,6 +87,12 @@ export interface UploadComplete extends JsonObject {
     version_id: string;
     job_id: string | null;
   };
+  /** Absent from an engine that predates versioned uploads (always a new file there). */
+  result?: UploadResult;
+  /** The number of `artifact.version_id` within its file (1 = first). */
+  version_no?: number;
+  /** Whether `artifact.version_id` is marked as written by an agent. */
+  written_by_agent?: boolean;
   job_id: string;
   /** `/v1/jobs/{job_id}`: the indexing job for this file. */
   status_url: string;
@@ -97,6 +118,15 @@ export interface UploadFileOptions {
    * It never places the file. Sent on completion.
    */
   relativePath?: string;
+  /**
+   * When the folder already holds a file with this name (`title`, else the
+   * path's last part): `"version"` (the server's default) adds this upload to
+   * it as a new version; `"new"` always creates a separate file. Sent on
+   * completion; the result's `result` says which happened.
+   */
+  onExisting?: OnExisting;
+  /** Mark this upload as an agent's work rather than a person's. Sent on completion. */
+  writtenByAgent?: boolean;
   partSize?: number;
   signal?: AbortSignal;
 }
@@ -136,7 +166,10 @@ function asBlob(body: FileBody): Blob {
  */
 export class Uploads extends Resource {
   create(
-    options: Omit<UploadFileOptions, "title" | "artifactType" | "description" | "signal"> & {
+    options: Omit<
+      UploadFileOptions,
+      "title" | "artifactType" | "description" | "signal" | "onExisting" | "writtenByAgent"
+    > & {
       contentLength: number;
       contentHash?: string;
     },
@@ -187,6 +220,8 @@ export class Uploads extends Resource {
       artifactType?: string;
       description?: string;
       relativePath?: string;
+      onExisting?: OnExisting;
+      writtenByAgent?: boolean;
     } = {},
   ): Promise<UploadComplete> {
     return this.transport.request({
@@ -198,6 +233,8 @@ export class Uploads extends Resource {
         artifact_type: options.artifactType,
         description: options.description,
         relative_path: options.relativePath,
+        on_existing: options.onExisting,
+        written_by_agent: options.writtenByAgent,
       }),
       idempotent: true,
     });
@@ -212,9 +249,13 @@ export class Uploads extends Resource {
 
   /**
    * Upload one file through the resumable upload (`/v1/uploads`; a small file
-   * is one part) and resolve to the completion (`artifact`, `job_id`,
-   * `status_url`). An interrupted upload rejects with
+   * is one part) and resolve to the completion (`artifact`, `result`,
+   * `job_id`, `status_url`). An interrupted upload rejects with
    * {@link UploadInterruptedError}; pass its `uploadId` to {@link resume}.
+   *
+   * A file already in the folder under the same name gets this upload as a new
+   * version (`result: "versioned"`) unless `onExisting: "new"`; several such
+   * files reject with a `ConflictError` whose code is `ambiguous_path`.
    */
   async upload(file: FileBody, options: UploadFileOptions): Promise<UploadComplete> {
     const blob = asBlob(file);
@@ -381,7 +422,13 @@ export class Uploads extends Resource {
     file: FileBody,
     options: Pick<
       UploadFileOptions,
-      "title" | "artifactType" | "description" | "relativePath" | "signal"
+      | "title"
+      | "artifactType"
+      | "description"
+      | "relativePath"
+      | "onExisting"
+      | "writtenByAgent"
+      | "signal"
     > = {},
   ): Promise<UploadComplete> {
     return this.sendParts(uploadId, asBlob(file), options);
@@ -392,7 +439,13 @@ export class Uploads extends Resource {
     blob: Blob,
     options: Pick<
       UploadFileOptions,
-      "title" | "artifactType" | "description" | "relativePath" | "signal"
+      | "title"
+      | "artifactType"
+      | "description"
+      | "relativePath"
+      | "onExisting"
+      | "writtenByAgent"
+      | "signal"
     > & {
       path?: string;
     },
@@ -429,6 +482,8 @@ export class Uploads extends Resource {
         artifactType: options.artifactType,
         description: options.description,
         relativePath: options.relativePath,
+        onExisting: options.onExisting,
+        writtenByAgent: options.writtenByAgent,
       });
     } catch (error) {
       if (resumable(error)) throw new UploadInterruptedError(uploadId, error);

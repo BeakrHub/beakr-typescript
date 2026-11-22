@@ -1022,7 +1022,10 @@ export interface paths {
          *
          *     With ``project_id`` the answer also carries the project's card type
          *     ``settings`` (``inherit``, ``agent_may_change``) and ``kept_types``, the
-         *     built-in types it is offered whatever it chooses (listed under ``own``).
+         *     built-in types it is offered whatever it chooses (listed under ``own``),
+         *     and ``profile_types``: what Beakr did with the kinds of thing the project's
+         *     profile names (``made``, ``matched`` to an existing type, ``suggested``,
+         *     ``skipped`` with the reason) and whether it is still ``working`` on them.
          *     ``include_counts`` adds ``card_count`` to every type and ``unlisted_types``:
          *     ``{key, card_count}`` for each type the project's live cards carry that is
          *     not in the list (a type the settings hide, one turned off, or one with no
@@ -2893,7 +2896,17 @@ export interface paths {
         put?: never;
         /**
          * Complete an upload
-         * @description Assemble the parts and create the file; answers with its indexing job.
+         * @description Assemble the parts and create the file, or add it as a version.
+         *
+         *     When the upload's folder already holds a file with the name this file would
+         *     get, ``on_existing`` (default ``version``) adds the upload to that file as a
+         *     new version and updates the Knowledge built from it, instead of creating a
+         *     second file; ``new`` always creates one. ``result`` says which happened
+         *     (``created``, ``versioned``, ``restored`` or ``unchanged``). Several files of
+         *     that name in the folder answer ``409 ambiguous_path``, and a file the caller
+         *     cannot change answers ``403 file_not_writable``; either way nothing is created
+         *     and the upload stays open to complete again. ``written_by_agent`` marks the
+         *     upload as an agent's work. Answers with the file's indexing job.
          */
         post: operations["complete_upload_v1_uploads__upload_id__complete_post"];
         delete?: never;
@@ -9814,11 +9827,83 @@ export interface components {
          * @enum {string}
          */
         PrincipalType: "user" | "group" | "org" | "service" | "link";
+        /** ProfileTypeMatch */
+        ProfileTypeMatch: {
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Page Type
+             * @description The key of the existing type that covers it.
+             */
+            page_type: string;
+            /**
+             * Reason
+             * @description Why that type covers it; may be empty.
+             */
+            reason: string;
+            /**
+             * Scope
+             * @description Where that type is defined: `global` (built-in), `org` or `project`.
+             */
+            scope: string;
+        };
+        /** ProfileTypeSkipped */
+        ProfileTypeSkipped: {
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Reason
+             * @description Why no type was made for it.
+             */
+            reason: string;
+        };
+        /**
+         * ProfileTypesOutcome
+         * @description What Beakr did with the kinds of thing a project's profile names.
+         */
+        ProfileTypesOutcome: {
+            /**
+             * Made
+             * @description Keys of the types it created.
+             */
+            made: string[];
+            /**
+             * Matched
+             * @description Names an existing type already covers; no separate type was made.
+             */
+            matched: components["schemas"]["ProfileTypeMatch"][];
+            /**
+             * Skipped
+             * @description Names that got no type, and why.
+             */
+            skipped: components["schemas"]["ProfileTypeSkipped"][];
+            /**
+             * Suggested
+             * @description Keys kept as suggestions, in a project whose types only people change (`agent_may_change` false).
+             */
+            suggested: string[];
+            /**
+             * Working
+             * @description Whether Beakr is still defining types from the profile; the lists may change.
+             */
+            working: boolean;
+        };
         /**
          * ProjectCardTypeFieldIn
          * @description One field of a card type defined with a new project.
          */
         ProjectCardTypeFieldIn: {
+            /**
+             * Description
+             * @description What to record under this field, when the name alone does not say: what counts, or that there is one row for each of many.
+             */
+            description?: string | null;
             /**
              * Name
              * @description The Attribute name.
@@ -12888,7 +12973,9 @@ export interface components {
          * @description Finish an upload. Omit ``parts`` to let the server use every part S3 holds.
          * @example {
          *       "artifact_type": "protocol",
-         *       "title": "protocol.pdf"
+         *       "on_existing": "version",
+         *       "title": "protocol.pdf",
+         *       "written_by_agent": false
          *     }
          */
         UploadCompleteRequest: {
@@ -12902,6 +12989,13 @@ export interface components {
              * @description Description of the upload complete, in plain text.
              */
             description?: string | null;
+            /**
+             * On Existing
+             * @description What to do when the upload's folder already holds a file with the name this file would get (`title`, else the last part of `path`; exact, case-sensitive match). `version` (the default) adds this upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. `new` always creates a separate file.
+             * @default version
+             * @enum {string}
+             */
+            on_existing?: "version" | "new";
             /**
              * Parts
              * @description The parts.
@@ -12917,6 +13011,12 @@ export interface components {
              * @description Defaults to the file name
              */
             title?: string | null;
+            /**
+             * Written By Agent
+             * @description Mark this upload as written by an agent rather than a person. The mark is kept on the version this upload creates; when the upload creates the file, the file is also marked as Beakr-written (`is_ai_generated`), so search and agents treat it as an agent's output rather than a source.
+             * @default false
+             */
+            written_by_agent?: boolean;
         };
         /**
          * UploadCompleteResponse
@@ -12933,6 +13033,7 @@ export interface components {
          *       "batch_status_url": "/v1/jobs/a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
          *       "folders": [],
          *       "job_id": "a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
+         *       "result": "versioned",
          *       "status_url": "/v1/jobs/a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
          *       "upload": {
          *         "artifact_id": "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40",
@@ -12948,7 +13049,9 @@ export interface components {
          *         "path": "protocol.pdf",
          *         "project_id": "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d",
          *         "status": "completed"
-         *       }
+         *       },
+         *       "version_no": 2,
+         *       "written_by_agent": false
          *     }
          */
         UploadCompleteResponse: {
@@ -12967,10 +13070,17 @@ export interface components {
             /**
              * Job Id
              * Format: uuid
-             * @description The new file's processing job (kind artifact_index in GET /v1/jobs)
+             * @description The file's processing job (kind artifact_index in GET /v1/jobs). When `result` is `unchanged` and nothing needed processing, the job that processed that version earlier.
              * @example a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63
              */
             job_id: string;
+            /**
+             * Result
+             * @description `created`: a new file. `versioned`: a new version of the file already at this path (`artifact.id`), now its current version. `restored`: the bytes match an earlier version of that file, which is current again; no version is added. `unchanged`: the bytes match the file's current version; no version is added. Detecting identical bytes needs `content_hash` on the upload; without it, identical bytes are added as a new version.
+             * @default created
+             * @enum {string}
+             */
+            result?: "created" | "versioned" | "restored" | "unchanged";
             /**
              * Status Url
              * @description GET /v1/jobs/{job_id}: poll this until it is final
@@ -12978,6 +13088,18 @@ export interface components {
             status_url: string;
             /** @description The finished upload session. */
             upload: components["schemas"]["UploadSessionOut"];
+            /**
+             * Version No
+             * @description The number of `artifact.version_id` within its file (1 = first)
+             * @default 1
+             */
+            version_no?: number;
+            /**
+             * Written By Agent
+             * @description Whether `artifact.version_id` is marked as written by an agent
+             * @default false
+             */
+            written_by_agent?: boolean;
         };
         /** UploadPartUrl */
         UploadPartUrl: {
@@ -13914,6 +14036,11 @@ export interface components {
          */
         WikiPageTypeFieldIn: {
             /**
+             * Description
+             * @description What to record under this field, when the name alone does not say: what counts, or that there is one row for each of many.
+             */
+            description?: string | null;
+            /**
              * Name
              * @description The Attribute name.
              */
@@ -14055,6 +14182,11 @@ export interface components {
              * @description Each type as the narrowest scope that defines it holds it. With `include_counts` each carries `card_count`, its live cards in the project.
              */
             page_types: components["schemas"]["WikiPageType"][];
+            /**
+             * @description What Beakr did with the kinds of thing the project's profile names; present when a project is named.
+             * @default null
+             */
+            profile_types?: components["schemas"]["ProfileTypesOutcome"] | null;
             /**
              * @description The project's card type settings; present when a project is named.
              * @default null
@@ -23621,6 +23753,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description With `on_existing: "version"`, the file already at this path is one you cannot change, so no version was added and no second file was created. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description The upload does not exist or belongs to someone else, or the target project cannot be found. */
             404: {
                 headers: {
@@ -23630,7 +23771,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description The upload is completing, completed, aborted or expired, so it takes no more parts; or another request finished it first. Some parts have not arrived; `missing_parts` lists up to 100 of them. S3 no longer holds the uploaded data, so the file cannot be assembled. The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted. */
+            /** @description The upload is completing, completed, aborted or expired, so it takes no more parts; or another request finished it first. Some parts have not arrived; `missing_parts` lists up to 100 of them. S3 no longer holds the uploaded data, so the file cannot be assembled. The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted. With `on_existing: "version"`, the upload's folder holds more than one file with that name (or more than one folder of a name on its path), so Beakr cannot tell which file to add the version to. Nothing was created. */
             409: {
                 headers: {
                     [name: string]: unknown;

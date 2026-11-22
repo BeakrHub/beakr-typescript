@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { MULTIPART_THRESHOLD, UploadInterruptedError } from "../src/index.js";
+import { ConflictError, MULTIPART_THRESHOLD, UploadInterruptedError } from "../src/index.js";
 import { client, json, mockFetch, type Recorded } from "./helpers.js";
 
 const path = (url: string) => url.replace("https://api.example.test", "");
@@ -156,5 +156,69 @@ describe("uploads", () => {
     expect((await beakr.uploads.abort("u1")).status).toBe("aborted");
     await beakr.uploads.get("u1");
     expect(calls.map((c) => `${c.method} ${path(c.url)}`)).toEqual(["DELETE /v1/uploads/u1", "GET /v1/uploads/u1"]);
+  });
+
+  it("sends onExisting and writtenByAgent on completion, not on start", async () => {
+    const { fetch, calls } = mockFetch([
+      json(session({ part_count: 1, part_size: 25 }), 201),
+      json(session({ part_count: 1, part_size: 25 })),
+      presigned([1]),
+      etag(1),
+      json({
+        upload: session({ status: "completed" }),
+        artifact: { id: "a1", version_id: "v2", job_id: "j2" },
+        result: "versioned",
+        version_no: 2,
+        written_by_agent: true,
+        job_id: "j2",
+        status_url: "/v1/jobs/j2",
+      }),
+    ]);
+    const { beakr } = client(fetch);
+    const done = await beakr.uploads.upload(new Uint8Array(25), {
+      projectId: "p1",
+      path: "notes/summary.md",
+      onExisting: "version",
+      writtenByAgent: true,
+    });
+    expect(done.result).toBe("versioned");
+    expect(done.version_no).toBe(2);
+    const start = calls[0]!.body as Record<string, unknown>;
+    expect(start).not.toHaveProperty("on_existing");
+    expect(start).not.toHaveProperty("written_by_agent");
+    const complete = calls[4]!.body as Record<string, unknown>;
+    expect(complete.on_existing).toBe("version");
+    expect(complete.written_by_agent).toBe(true);
+    expect(complete.title).toBe("summary.md");
+  });
+
+  it("leaves them out when unset, so the server's default applies", async () => {
+    const { fetch, calls } = mockFetch([
+      json(session({ part_count: 1, part_size: 25 })),
+      presigned([1]),
+      etag(1),
+      json({ upload: session(), artifact: { id: "a1", version_id: "v1" }, job_id: "j1", status_url: "/v1/jobs/j1" }),
+    ]);
+    const { beakr } = client(fetch);
+    await beakr.uploads.resume("u1", new Uint8Array(25));
+    const complete = calls[3]!.body as Record<string, unknown>;
+    expect(complete).not.toHaveProperty("on_existing");
+    expect(complete).not.toHaveProperty("written_by_agent");
+  });
+
+  it("passes them through complete() and reports an ambiguous path as a conflict", async () => {
+    const { fetch, calls } = mockFetch([
+      json(
+        { error: { code: "ambiguous_path", message: "2 files named 'a.pdf' are in 'x'" } },
+        409,
+      ),
+    ]);
+    const { beakr } = client(fetch, { maxRetries: 0 });
+    const error = await beakr.uploads
+      .complete("u1", { onExisting: "version", writtenByAgent: false })
+      .catch((e: unknown) => e);
+    expect(calls[0]!.body).toEqual({ on_existing: "version", written_by_agent: false });
+    expect(error).toBeInstanceOf(ConflictError);
+    expect((error as ConflictError).code).toBe("ambiguous_path");
   });
 });
