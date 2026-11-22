@@ -42,6 +42,9 @@ export {
   type CardTypeHistoryPage,
   type CardTypeHistoryQuery,
   type CardTypeSuggestionDismissed,
+  type CompileQueue,
+  type CompileSource,
+  type CompilesCancelled,
   type CopyCardTypesOptions,
   type ListCardTypesQuery,
   type RowsOptions,
@@ -98,6 +101,7 @@ export type {
   IntegrationTool,
   IntegrationToolPage,
   IntegrationToolResult,
+  SourceSyncCancelled,
   ToolsQuery,
 } from "./resources/integrations.js";
 export type {

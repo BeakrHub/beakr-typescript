@@ -196,6 +196,22 @@ Applying a settings change never changes or removes a card or a type. A new
 project on `inherit: "own"` needs its types in the same call:
 `copy_from_project_id` (with optional `copy_keys`) or `types`.
 
+### Stop queued work
+
+Compiles wait in a queue per project. Cancel the queued ones for the whole
+project or one source to stop paying for them; compiles already running finish,
+and what Knowledge wrote stays. Cancelling a source's compiles (or the whole
+project's) also stops the running syncs it covers:
+
+```ts
+console.log(await beakr.knowledge.compileQueue(projectId)); // { queued, running, last_cancel }
+const cancel = await beakr.knowledge.cancelQueuedCompiles(projectId, { attachmentId: sourceId });
+console.log(cancel.will_be_skipped, cancel.already_running, cancel.next_sync);
+
+const stopped = await beakr.integrations.cancelSourceSync(projectId, sourceId); // ConflictError if none runs
+console.log((await beakr.jobs.get(stopped.sync_job_id)).status); // running (cancelling), then cancelled
+```
+
 ### Skills
 
 A skill is a SKILL.md folder your agent loads on demand. `skills.list` covers
