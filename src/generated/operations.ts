@@ -65,6 +65,7 @@ export const OPERATIONS = {
   "knowledge.removeWikiPageTypeOverride": { method: "DELETE", path: "/v1/knowledge/wiki/page-types/{key}" },
   "knowledge.renameWikiPageTypeFields": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/rename-fields" },
   "knowledge.retypeWikiPageTypeCards": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/retype-cards" },
+  "knowledge.convertRowTypeToField": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/to-field" },
   "knowledge.copyWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/copy" },
   "knowledge.listCardTypeHistory": { method: "GET", path: "/v1/knowledge/wiki/page-types/history" },
   "knowledge.promoteWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/promote" },
@@ -680,6 +681,12 @@ export class KnowledgeApi {
   /** POST /v1/knowledge/wiki/page-types/{key}/retype-cards (Move existing cards to another type) */
   retypeWikiPageTypeCards(args: { path: operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]["parameters"]["path"]; body: NonNullable<operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}/retype-cards`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/{key}/to-field (Make a row type a field) */
+  convertRowTypeToField(args: { path: operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"]["parameters"]["path"]; body: NonNullable<operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}/to-field`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
