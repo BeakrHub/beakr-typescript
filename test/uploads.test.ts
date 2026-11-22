@@ -221,4 +221,20 @@ describe("uploads", () => {
     expect(error).toBeInstanceOf(ConflictError);
     expect((error as ConflictError).code).toBe("ambiguous_path");
   });
+
+  it("sends versionOf as artifact_id and lists a file's versions", async () => {
+    const { fetch, calls } = mockFetch([
+      json(session({ part_count: 1, part_size: 25 })),
+      presigned([1]),
+      etag(1),
+      json({ upload: session(), artifact: { id: "a9", version_id: "v2" }, job_id: "j", status_url: "/v1/jobs/j" }),
+      json({ data: [{ id: "v1", version_no: 1, written_by_agent: true }], next_cursor: null, has_more: false }),
+    ]);
+    const { beakr } = client(fetch);
+    await beakr.uploads.resume("u1", new Uint8Array(25), { versionOf: "a9" });
+    expect((calls[3]!.body as Record<string, unknown>).artifact_id).toBe("a9");
+    const page = await beakr.files.versions("a9", { limit: 10 });
+    expect(path(calls[4]!.url)).toBe("/v1/artifacts/a9/versions?limit=10");
+    expect(page.data[0]!.written_by_agent).toBe(true);
+  });
 });

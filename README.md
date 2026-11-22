@@ -117,6 +117,8 @@ const again = await beakr.uploads.upload(bytes, { projectId, path: "q3.pdf" });
 again.result; // "created", "versioned", "restored" (an earlier version's bytes) or "unchanged"
 await beakr.uploads.upload(bytes, { projectId, path: "q3.pdf", onExisting: "new" }); // always a new file
 await beakr.uploads.upload(bytes, { projectId, path: "summary.md", writtenByAgent: true }); // an agent's work
+await beakr.uploads.upload(bytes, { projectId, path: "q3-final.pdf", versionOf: fileId }); // a version of one file
+const versions = await beakr.files.versions(fileId); // each with version_no and written_by_agent
 ```
 
 Several files of that name in the folder reject with a `ConflictError` whose

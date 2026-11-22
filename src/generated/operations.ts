@@ -16,6 +16,7 @@ export const OPERATIONS = {
   "files.createKnowledgeFromArtifact": { method: "POST", path: "/v1/artifacts/{artifact_id}/knowledge" },
   "files.approveArtifactKnowledge": { method: "POST", path: "/v1/artifacts/{artifact_id}/knowledge/approve" },
   "files.moveArtifact": { method: "POST", path: "/v1/artifacts/{artifact_id}/move" },
+  "files.listArtifactVersions": { method: "GET", path: "/v1/artifacts/{artifact_id}/versions" },
   "files.downloadUrl": { method: "POST", path: "/v1/artifacts/download-url" },
   "files.readFile": { method: "POST", path: "/v1/artifacts/read" },
   "uploads.getDownloadUrl": { method: "GET", path: "/v1/artifacts/versions/{version_id}/download-url" },
@@ -404,6 +405,18 @@ export class FilesApi {
   moveArtifact(args: { path: operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]["parameters"]["path"]; body: NonNullable<operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["move_artifact_route_v1_artifacts__artifact_id__move_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/artifacts/${enc(String(args.path.artifact_id))}/move`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
+  }
+
+  /** GET /v1/artifacts/{artifact_id}/versions (List a file's versions) */
+  listArtifactVersions(args: { path: operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]["parameters"]["path"]; query?: NonNullable<operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/artifacts/${enc(String(args.path.artifact_id))}/versions`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/artifacts/{artifact_id}/versions, following its cursor. */
+  listArtifactVersionsAll(args: { path: operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]["parameters"]["path"]; query?: NonNullable<operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/artifacts/${enc(String(args.path.artifact_id))}/versions`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
   }
 
   /** POST /v1/artifacts/download-url (Get a download link by reference) */

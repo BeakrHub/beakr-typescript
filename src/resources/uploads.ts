@@ -127,6 +127,11 @@ export interface UploadFileOptions {
   onExisting?: OnExisting;
   /** Mark this upload as an agent's work rather than a person's. Sent on completion. */
   writtenByAgent?: boolean;
+  /**
+   * Add this upload as a new version of this file (an id in the same project),
+   * whatever the upload is called. Sent on completion as `artifact_id`.
+   */
+  versionOf?: string;
   partSize?: number;
   signal?: AbortSignal;
 }
@@ -168,7 +173,13 @@ export class Uploads extends Resource {
   create(
     options: Omit<
       UploadFileOptions,
-      "title" | "artifactType" | "description" | "signal" | "onExisting" | "writtenByAgent"
+      | "title"
+      | "artifactType"
+      | "description"
+      | "signal"
+      | "onExisting"
+      | "writtenByAgent"
+      | "versionOf"
     > & {
       contentLength: number;
       contentHash?: string;
@@ -222,6 +233,8 @@ export class Uploads extends Resource {
       relativePath?: string;
       onExisting?: OnExisting;
       writtenByAgent?: boolean;
+      /** Add the upload as a new version of this file (`artifact_id`). */
+      artifactId?: string;
     } = {},
   ): Promise<UploadComplete> {
     return this.transport.request({
@@ -235,6 +248,7 @@ export class Uploads extends Resource {
         relative_path: options.relativePath,
         on_existing: options.onExisting,
         written_by_agent: options.writtenByAgent,
+        artifact_id: options.artifactId,
       }),
       idempotent: true,
     });
@@ -428,6 +442,7 @@ export class Uploads extends Resource {
       | "relativePath"
       | "onExisting"
       | "writtenByAgent"
+      | "versionOf"
       | "signal"
     > = {},
   ): Promise<UploadComplete> {
@@ -445,6 +460,7 @@ export class Uploads extends Resource {
       | "relativePath"
       | "onExisting"
       | "writtenByAgent"
+      | "versionOf"
       | "signal"
     > & {
       path?: string;
@@ -484,6 +500,7 @@ export class Uploads extends Resource {
         relativePath: options.relativePath,
         onExisting: options.onExisting,
         writtenByAgent: options.writtenByAgent,
+        artifactId: options.versionOf,
       });
     } catch (error) {
       if (resumable(error)) throw new UploadInterruptedError(uploadId, error);

@@ -196,6 +196,7 @@ export type {
   DownloadedReference,
   FileRead,
   ReadFileOptions,
+  FileVersions,
 } from "./resources/files.js";
 export type {
   BodyOf,
