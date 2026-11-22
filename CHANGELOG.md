@@ -48,6 +48,28 @@ Each release lists the public API changes it supports, taken from the API change
   `name` and `reason`). The lists are empty for a project whose profile has
   named nothing, and a `matched` item's `reason` may be empty. `profile_types`
   is left out when no project is named.
+- A review flag (a proposal of type `review`: a section Knowledge flagged as
+  contradicted, unverifiable or unclear) can be resolved through the API, not
+  only accepted or dismissed. `GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict`
+  (`kb:read`) reads the flag: the section and its current text, why it was
+  flagged, the sources on each side and the page's `current_revision`.
+  `POST .../resolutions` (`kb:write`) drafts up to a few resolutions, each with
+  what it changes; they are kept for the page revision they were drafted
+  against, so asking again returns them at once (`cached: true`). Apply one with
+  `POST .../resolve` (a section rewrite: `section_id`, `new_section_body`,
+  `expected_revision`), `POST .../resolve-rows` (a drafted row operation on a
+  card's Facts or Connections table: `option_id`, `expected_revision`) or
+  `POST .../resolve-cards` (one `outcome` on every card a contradiction review
+  lists); all three need `kb:write`. A page that changed since
+  `expected_revision` answers `409` and nothing is applied. Where a person must
+  accept proposals, a person, or a key with the `proposals:accept` (reviewer)
+  permission, must apply a resolution, as for accepting: any other key or token
+  is refused with `403 person_review_required`. Drafting is open to any
+  `kb:write` key. A key restricted to projects reaches only flags in its
+  projects (another project's flag answers `404`), and a flag that is no longer
+  pending answers `400`. `GET /v1/knowledge/wiki/proposals` takes
+  `proposal_type`: `proposal_type=review` lists only review flags (with
+  `status=pending`, the default, the open ones).
 - A card type's field can say what to record under it. Each item of `fields`
   takes an optional `description` (up to 300 characters) on
   `PATCH /v1/knowledge/wiki/page-types/{key}` and on the `card_types` of
