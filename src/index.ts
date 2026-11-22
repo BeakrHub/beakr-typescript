@@ -106,8 +106,10 @@ export type {
 } from "./resources/integrations.js";
 export type {
   CreateLinkOptions,
+  DraftFromReviewsOptions,
   InterviewLink,
   InterviewResult,
+  ReviewInterviewDraft,
   SendableInterviewPage,
   SendableLink,
 } from "./resources/interviews.js";

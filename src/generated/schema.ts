@@ -1022,7 +1022,10 @@ export interface paths {
          *
          *     With ``project_id`` the answer also carries the project's card type
          *     ``settings`` (``inherit``, ``agent_may_change``) and ``kept_types``, the
-         *     built-in types it is offered whatever it chooses (listed under ``own``).
+         *     built-in types it is offered whatever it chooses (listed under ``own``),
+         *     and ``profile_types``: what Beakr did with the kinds of thing the project's
+         *     profile names (``made``, ``matched`` to an existing type, ``suggested``,
+         *     ``skipped`` with the reason) and whether it is still ``working`` on them.
          *     ``include_counts`` adds ``card_count`` to every type and ``unlisted_types``:
          *     ``{key, card_count}`` for each type the project's live cards carry that is
          *     not in the list (a type the settings hide, one turned off, or one with no
@@ -2219,6 +2222,46 @@ export interface paths {
          * @description Change a project's name, description, status or tags; fields left out are kept. Project admins and owners only.
          */
         patch: operations["update_project_route_v1_projects__project_id__patch"];
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/interviews/from-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft an interview from review flags
+         * @description Draft an interview from review flags.
+         *
+         *     Beakr writes one plain-language key question per open review flag in the
+         *     project, naming its specifics (the values that disagree, the cards, the
+         *     dates, where each came from), and saves them as a draft interview. By
+         *     default it asks about the project's open conflict flags, newest first, up
+         *     to `max_questions`; `include` adds other review kinds, or `proposal_ids` names the
+         *     flags. Nothing is sent: a person edits the draft and sends it
+         *     (`edit_url`, or `POST /v1/interview/sendables/{sendable_id}/links`).
+         *
+         *     Each flag records the question that asks about it. When a link of this
+         *     interview finishes, Beakr attaches each answer to its flag as a suggestion
+         *     (`interview_answers` on `GET /v1/knowledge/wiki/proposals/{proposal_id}`),
+         *     with the drafted resolution it matches; a person applies it with the
+         *     resolve routes. Nothing is ever applied automatically.
+         *
+         *     A project with nothing to ask about answers 200 with `interview: null` and
+         *     `empty_reason`. One model call; when no model answers, each question is
+         *     built from its flag (`questions_written_by: template`). Needs the
+         *     `interviews:write` and `kb:read` scopes. PHI organizations are refused
+         *     (403 `outside_interviews_unavailable`).
+         */
+        post: operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/projects/{project_id}/invite": {
@@ -6962,6 +7005,81 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * InterviewFromReviewsBody
+         * @description Which flags to ask about, and who the questions are for.
+         */
+        InterviewFromReviewsBody: {
+            /**
+             * Goals
+             * @description The interview's goals, in place of the drafted ones.
+             */
+            goals?: string | null;
+            /**
+             * Include
+             * @description Review kinds to ask about besides conflicts (`ambiguity`, `unverifiable`, `likely_error`), or `all` for every open review flag. Ignored with `proposal_ids`.
+             */
+            include?: ("ambiguity" | "unverifiable" | "likely_error" | "all")[];
+            /**
+             * Max Questions
+             * @description The most flags to ask about, one question each (a sendable interview takes 30).
+             * @default 15
+             */
+            max_questions?: number;
+            /**
+             * Participant
+             * @description Who the questions are for (a name or a role). Used for wording only: nothing is sent.
+             */
+            participant?: string | null;
+            /**
+             * Proposal Ids
+             * @description The review flags to ask about (proposal ids), in order. Omitted: the project's open conflict flags, newest first, plus the kinds in `include`.
+             */
+            proposal_ids?: string[];
+            /**
+             * Title
+             * @description The interview's title, in place of the drafted one.
+             */
+            title?: string | null;
+        };
+        /**
+         * InterviewFromReviewsOut
+         * @description The drafted interview and which flag each question asks about.
+         */
+        InterviewFromReviewsOut: {
+            /**
+             * Edit Url
+             * @description Where a person opens the draft in Beakr to edit and send it.
+             */
+            edit_url?: string | null;
+            /**
+             * Empty Reason
+             * @description Why nothing was drafted: `no_open_flags` (the project has none), `no_matching_flags` (none of the kinds asked for), `no_askable_flags` (none of the named flags is open here). Null when an interview was drafted.
+             */
+            empty_reason?: ("no_open_flags" | "no_matching_flags" | "no_askable_flags") | null;
+            /** @description The saved draft interview (no links: nothing is sent). Edit it, then send it with `POST /v1/interview/sendables/{sendable_id}/links`. Null when there was nothing to ask. */
+            interview: components["schemas"]["SendableInterviewOut"] | null;
+            /**
+             * Message
+             * @description A sentence saying why nothing was drafted.
+             */
+            message?: string | null;
+            /**
+             * Questions
+             * @description One per flag asked about, in the interview's order.
+             */
+            questions: components["schemas"]["ReviewQuestionOut"][];
+            /**
+             * Questions Written By
+             * @description `model` when the model wrote every question, `template` when any was built from its flag; null when nothing was drafted.
+             */
+            questions_written_by?: ("model" | "template") | null;
+            /**
+             * Skipped
+             * @description Named flags that could not be asked about, and why.
+             */
+            skipped?: components["schemas"]["SkippedFlagOut"][];
+        };
+        /**
          * InterviewLinkCreated
          * @description The interview and its link.
          * @example {
@@ -9814,11 +9932,83 @@ export interface components {
          * @enum {string}
          */
         PrincipalType: "user" | "group" | "org" | "service" | "link";
+        /** ProfileTypeMatch */
+        ProfileTypeMatch: {
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Page Type
+             * @description The key of the existing type that covers it.
+             */
+            page_type: string;
+            /**
+             * Reason
+             * @description Why that type covers it; may be empty.
+             */
+            reason: string;
+            /**
+             * Scope
+             * @description Where that type is defined: `global` (built-in), `org` or `project`.
+             */
+            scope: string;
+        };
+        /** ProfileTypeSkipped */
+        ProfileTypeSkipped: {
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Reason
+             * @description Why no type was made for it.
+             */
+            reason: string;
+        };
+        /**
+         * ProfileTypesOutcome
+         * @description What Beakr did with the kinds of thing a project's profile names.
+         */
+        ProfileTypesOutcome: {
+            /**
+             * Made
+             * @description Keys of the types it created.
+             */
+            made: string[];
+            /**
+             * Matched
+             * @description Names an existing type already covers; no separate type was made.
+             */
+            matched: components["schemas"]["ProfileTypeMatch"][];
+            /**
+             * Skipped
+             * @description Names that got no type, and why.
+             */
+            skipped: components["schemas"]["ProfileTypeSkipped"][];
+            /**
+             * Suggested
+             * @description Keys kept as suggestions, in a project whose types only people change (`agent_may_change` false).
+             */
+            suggested: string[];
+            /**
+             * Working
+             * @description Whether Beakr is still defining types from the profile; the lists may change.
+             */
+            working: boolean;
+        };
         /**
          * ProjectCardTypeFieldIn
          * @description One field of a card type defined with a new project.
          */
         ProjectCardTypeFieldIn: {
+            /**
+             * Description
+             * @description What to record under this field, when the name alone does not say: what counts, or that there is one row for each of many.
+             */
+            description?: string | null;
             /**
              * Name
              * @description The Attribute name.
@@ -10925,6 +11115,70 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * ReviewQuestionOut
+         * @description One drafted key question and the review flag it asks about.
+         */
+        ReviewQuestionOut: {
+            /**
+             * Asked Revision
+             * @description The card's revision the question was asked against. An answer to a card whose flagged text changed since is marked stale.
+             */
+            asked_revision?: number | null;
+            /**
+             * Kind
+             * @description The flag's kind: `contradiction`, `ambiguity`, `unverifiable`, `likely_error`, or `other` for an older flag that names none.
+             */
+            kind: string;
+            /**
+             * Linked
+             * @description Whether the flag records the question, so the answer can be attached to it. False when the caller may read the flag but not change it.
+             */
+            linked: boolean;
+            /**
+             * Number
+             * @description The question's place in the interview, from 1.
+             */
+            number: number;
+            /**
+             * Page Id
+             * @description Id of the card the flag is on.
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id?: string | null;
+            /**
+             * Page Title
+             * @description Title of the card the flag is on.
+             */
+            page_title: string;
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description Id of the review flag (proposal) it asks about.
+             */
+            proposal_id: string;
+            /**
+             * Question
+             * @description The key question, as saved on the interview.
+             */
+            question: string;
+            /**
+             * Reason
+             * @description Why the flag was raised.
+             */
+            reason: string;
+            /**
+             * Section Id
+             * @description The flagged section, when it names one.
+             */
+            section_id?: string | null;
+            /**
+             * Written By
+             * @description `model` when Beakr's model wrote the question, `template` when it was built from the flag because no model answer covered it.
+             * @enum {string}
+             */
+            written_by: "model" | "template";
+        };
+        /**
          * RunAnswer
          * @description A completed run's answer: readable text, the raw text and its cited sources.
          */
@@ -11994,6 +12248,24 @@ export interface components {
              * @description Name of the skill script.
              */
             name: string;
+        };
+        /**
+         * SkippedFlagOut
+         * @description A named flag that could not be asked about.
+         */
+        SkippedFlagOut: {
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description Id of the flag.
+             */
+            proposal_id: string;
+            /**
+             * Reason
+             * @description `not_found` (no such flag in this project, or not visible to you), `not_open` (already resolved or dismissed), `not_a_review_flag` (another kind of proposal).
+             * @enum {string}
+             */
+            reason: "not_found" | "not_open" | "not_a_review_flag";
         };
         /**
          * SourceExcerpt
@@ -13914,6 +14186,11 @@ export interface components {
          */
         WikiPageTypeFieldIn: {
             /**
+             * Description
+             * @description What to record under this field, when the name alone does not say: what counts, or that there is one row for each of many.
+             */
+            description?: string | null;
+            /**
              * Name
              * @description The Attribute name.
              */
@@ -14055,6 +14332,11 @@ export interface components {
              * @description Each type as the narrowest scope that defines it holds it. With `include_counts` each carries `card_count`, its live cards in the project.
              */
             page_types: components["schemas"]["WikiPageType"][];
+            /**
+             * @description What Beakr did with the kinds of thing the project's profile names; present when a project is named.
+             * @default null
+             */
+            profile_types?: components["schemas"]["ProfileTypesOutcome"] | null;
             /**
              * @description The project's card type settings; present when a project is named.
              * @default null
@@ -21664,6 +21946,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewFromReviewsBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewFromReviewsOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

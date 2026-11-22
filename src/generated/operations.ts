@@ -126,6 +126,7 @@ export const OPERATIONS = {
   "projects.getProject": { method: "GET", path: "/v1/projects/{project_id}" },
   "projects.updateProject": { method: "PATCH", path: "/v1/projects/{project_id}" },
   "projects.deleteProject": { method: "DELETE", path: "/v1/projects/{project_id}" },
+  "interviews.draftInterviewFromReviews": { method: "POST", path: "/v1/projects/{project_id}/interviews/from-reviews" },
   "projects.createProjectMembershipInvitation": { method: "POST", path: "/v1/projects/{project_id}/invite" },
   "projects.getProjectKnowledgeProfile": { method: "GET", path: "/v1/projects/{project_id}/knowledge-profile" },
   "projects.putProjectKnowledgeProfile": { method: "PUT", path: "/v1/projects/{project_id}/knowledge-profile" },
@@ -580,6 +581,12 @@ export class InterviewsApi {
   /** POST /v1/interview/sendables/links/{link_id}/revoke (Revoke an interview link) */
   revokeLink(args: { path: operations["revoke_link_v1_interview_sendables_links__link_id__revoke_post"]["parameters"]["path"] }, options?: CallOptions): Promise<void> {
     const request: RequestOptions = { method: "POST", path: `/v1/interview/sendables/links/${enc(String(args.path.link_id))}/revoke`, idempotent: true, responseType: "none", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/projects/{project_id}/interviews/from-reviews (Draft an interview from review flags) */
+  draftInterviewFromReviews(args: { path: operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"]["parameters"]["path"]; body: NonNullable<operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/interviews/from-reviews`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 }

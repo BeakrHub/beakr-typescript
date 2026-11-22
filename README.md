@@ -212,6 +212,19 @@ const stopped = await beakr.integrations.cancelSourceSync(projectId, sourceId); 
 console.log((await beakr.jobs.get(stopped.sync_job_id)).status); // running (cancelling), then cancelled
 ```
 
+### Ask a person about review flags
+
+Draft an interview with one question per open review flag (conflicts by
+default; `include` adds other kinds, `proposalIds` names flags). It is saved as
+a draft and never sent: a person edits and sends it from `edit_url`, and each
+answer comes back on its flag as a suggestion.
+
+```ts
+const draft = await beakr.interviews.draftFromReviews(projectId, { include: ["ambiguity"], participant: "Dana" });
+for (const q of draft.questions) console.log(q.number, q.question, q.proposal_id);
+console.log(draft.edit_url ?? draft.message);
+```
+
 ### Skills
 
 A skill is a SKILL.md folder your agent loads on demand. `skills.list` covers
