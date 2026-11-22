@@ -45,10 +45,9 @@ describe("interviews.draftFromReviews", () => {
     const { fetch, calls } = mockFetch([json(drafted, 201), json(drafted, 201), json(drafted, 201)]);
     const { beakr } = client(fetch);
     expect(await beakr.interviews.draftFromReviews("p1")).toEqual(drafted);
-    await beakr.interviews.draftFromReviews("p1", { include: ["ambiguity", "likely_error"], participant: "Dana" });
+    await beakr.interviews.draftFromReviews("p1", { kinds: ["contradiction", "ambiguity"], maxQuestions: 5 });
     await beakr.interviews.draftFromReviews("p1", {
       proposalIds: ["f1", "f2"],
-      maxQuestions: 5,
       title: "Lot 42",
       goals: "Settle the dates",
     });
@@ -56,16 +55,38 @@ describe("interviews.draftFromReviews", () => {
     expect(new URL(calls[0]!.url).pathname).toBe("/v1/projects/p1/interviews/from-reviews");
     expect(calls.map((c) => c.body)).toEqual([
       {},
-      { include: ["ambiguity", "likely_error"], participant: "Dana" },
-      { proposal_ids: ["f1", "f2"], max_questions: 5, title: "Lot 42", goals: "Settle the dates" },
+      { kinds: ["contradiction", "ambiguity"], max_questions: 5 },
+      { proposal_ids: ["f1", "f2"], title: "Lot 42", goals: "Settle the dates" },
     ]);
     expect(calls[0]!.headers["idempotency-key"]).toBeTruthy();
+  });
+
+  it("sends the participant in the wire's names and answers their link", async () => {
+    const withLink = {
+      ...drafted,
+      link: { link_id: "l1", label: "Dana", expires_at: "2026-12-06T00:00:00Z", result_url: "/r/l1" },
+      link_url: "https://app.example/i/tok",
+      secret_redacted: false,
+    };
+    const { fetch, calls } = mockFetch([json(withLink, 201), json(withLink, 201)]);
+    const { beakr } = client(fetch);
+    const answer = await beakr.interviews.draftFromReviews("p1", {
+      participant: { name: "Dana", email: "dana@example.com" },
+      linkExpiresInDays: 7,
+    });
+    await beakr.interviews.draftFromReviews("p1", { participant: { userId: "u1" } });
+    expect(calls.map((c) => c.body)).toEqual([
+      { participant: { name: "Dana", email: "dana@example.com" }, link_expires_in_days: 7 },
+      { participant: { user_id: "u1" } },
+    ]);
+    expect(answer.link_url).toBe("https://app.example/i/tok");
+    expect(answer.link?.link_id).toBe("l1");
   });
 
   it("leaves empty lists out", async () => {
     const { fetch, calls } = mockFetch([json(drafted, 201)]);
     const { beakr } = client(fetch);
-    await beakr.interviews.draftFromReviews("p1", { proposalIds: [], include: [] });
+    await beakr.interviews.draftFromReviews("p1", { proposalIds: [], kinds: [] });
     expect(calls[0]!.body).toEqual({});
   });
 

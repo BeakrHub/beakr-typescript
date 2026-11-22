@@ -110,6 +110,7 @@ export type {
   InterviewLink,
   InterviewResult,
   ReviewInterviewDraft,
+  ReviewInterviewParticipant,
   SendableInterviewPage,
   SendableLink,
 } from "./resources/interviews.js";

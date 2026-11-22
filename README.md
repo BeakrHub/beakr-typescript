@@ -214,15 +214,19 @@ console.log((await beakr.jobs.get(stopped.sync_job_id)).status); // running (can
 
 ### Ask a person about review flags
 
-Draft an interview with one question per open review flag (conflicts by
-default; `include` adds other kinds, `proposalIds` names flags). It is saved as
-a draft and never sent: a person edits and sends it from `edit_url`, and each
-answer comes back on its flag as a suggestion.
+Turn a project's open review flags into one interview, one question per flag
+(every kind by default, up to 30; `kinds` narrows it, `proposalIds` names
+flags). Without `participant` it is a draft a person edits and sends from
+`edit_url`; with one, it also gets that person's link, shown once. Beakr sends
+nothing, and each answer comes back on its flag as a suggestion.
 
 ```ts
-const draft = await beakr.interviews.draftFromReviews(projectId, { include: ["ambiguity"], participant: "Dana" });
+const draft = await beakr.interviews.draftFromReviews(projectId, {
+  kinds: ["contradiction", "ambiguity"],
+  participant: { name: "Dana", email: "dana@example.com" },
+});
 for (const q of draft.questions) console.log(q.number, q.question, q.proposal_id);
-console.log(draft.edit_url ?? draft.message);
+console.log(draft.link_url ?? draft.edit_url ?? draft.message); // link_url is shown once
 ```
 
 ### Skills

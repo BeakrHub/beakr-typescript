@@ -13,16 +13,28 @@ export type SendableLinkBody = BodyOf<"/v1/interview/sendables/{sendable_id}/lin
 export type ReviewInterviewDraft = ResponseOf<"/v1/projects/{project_id}/interviews/from-reviews", "post">;
 type ReviewInterviewBody = BodyOf<"/v1/projects/{project_id}/interviews/from-reviews", "post">;
 
+/** Who an interview drafted from review flags is for: a member (`userId`), or a name and/or email. */
+export interface ReviewInterviewParticipant {
+  /** A member of your organization; their name and email label the link. */
+  userId?: string;
+  /** The person's name, shown beside the link in Beakr. */
+  name?: string;
+  /** The person's email, shown beside the link in Beakr. Beakr sends nothing to it. */
+  email?: string;
+}
+
 /** What `draftFromReviews` asks about, and who for. Every field is optional. */
 export interface DraftFromReviewsOptions {
-  /** The review flags (proposal ids) to ask about, in order. Omitted: the project's open conflict flags. */
+  /** The review flags (proposal ids) to ask about, in order, up to 100. Omitted: every open review flag. */
   proposalIds?: string[];
-  /** Review kinds to ask about besides conflicts, or `all`. Ignored with `proposalIds`. */
-  include?: NonNullable<ReviewInterviewBody["include"]>;
-  /** The most flags to ask about, one question each: 1 to 30, default 15. */
+  /** Ask only about flags of these kinds. Omitted: every kind. Ignored with `proposalIds`. */
+  kinds?: NonNullable<ReviewInterviewBody["kinds"]>;
+  /** The most flags to ask about, one question each: 1 to 30, default 30. */
   maxQuestions?: number;
-  /** Who the questions are for (a name or role). Wording only: nothing is sent. */
-  participant?: string;
+  /** Who it is for. Given, the interview also gets that person's link (`link`, `link_url`); nothing is sent. */
+  participant?: ReviewInterviewParticipant;
+  /** How long the participant's link works, in days: 1 to 90, default 14. */
+  linkExpiresInDays?: number;
   /** The interview's title, in place of the drafted one. */
   title?: string;
   /** The interview's goals, in place of the drafted ones. */
@@ -119,28 +131,37 @@ export class Interviews extends Resource {
   }
 
   /**
-   * Draft an interview from a project's open review flags: one plain-language
-   * key question per flag, saved as a draft sendable interview. Nothing is sent.
-   * By default it asks about the open conflict flags, newest first, up to
-   * `maxQuestions` (15); `include` adds `ambiguity`, `unverifiable`,
-   * `likely_error` or `all`, and `proposalIds` names the flags instead. Needs
-   * `interviews:write` and `kb:read`.
+   * Turn a project's open review flags into one interview: one plain-language key
+   * question per flag. By default every open review flag, newest first, up to
+   * `maxQuestions` (30); flags past it come back in `skipped` as
+   * `over_question_limit`. `kinds` narrows the kinds and `proposalIds` names the
+   * flags. Needs `interviews:write` and `kb:read`.
    *
-   * Answers `interview` (the draft, or `null` with `empty_reason` and `message`
-   * when there was nothing to ask), `questions` (each with its `proposal_id`,
-   * `kind`, `page_title` and `reason`), `skipped` and `edit_url`, where a person
-   * edits and sends it. Each answer comes back on its flag as a suggestion.
+   * Without `participant` the interview is a draft a person edits (`edit_url`) and
+   * sends. With one, it also gets that person's link: `link` (`link_id`, `label`,
+   * `expires_at`, `result_url`) and `link_url`, shown once (absent on a replay,
+   * `secret_redacted: true`). Beakr sends nothing; you deliver the link. Nothing
+   * to ask answers `interview: null` with `empty_reason` and `message`. Each answer
+   * comes back on its flag (`interview_answers`) as a suggestion.
    */
   draftFromReviews(projectId: string, options: DraftFromReviewsOptions = {}): Promise<ReviewInterviewDraft> {
+    const participant = options.participant
+      ? cleanBody({
+          user_id: options.participant.userId,
+          name: options.participant.name,
+          email: options.participant.email,
+        })
+      : undefined;
     return this.transport.request({
       method: "POST",
       path: `/v1/projects/${enc(projectId)}/interviews/from-reviews`,
       idempotent: true,
       body: cleanBody({
         proposal_ids: options.proposalIds?.length ? options.proposalIds : undefined,
-        include: options.include?.length ? options.include : undefined,
+        kinds: options.kinds?.length ? options.kinds : undefined,
         max_questions: options.maxQuestions,
-        participant: options.participant,
+        participant,
+        link_expires_in_days: options.linkExpiresInDays,
         title: options.title,
         goals: options.goals,
       }) as ReviewInterviewBody,

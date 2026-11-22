@@ -2239,11 +2239,19 @@ export interface paths {
          *
          *     Beakr writes one plain-language key question per open review flag in the
          *     project, naming its specifics (the values that disagree, the cards, the
-         *     dates, where each came from), and saves them as a draft interview. By
-         *     default it asks about the project's open conflict flags, newest first, up
-         *     to `max_questions`; `include` adds other review kinds, or `proposal_ids` names the
-         *     flags. Nothing is sent: a person edits the draft and sends it
-         *     (`edit_url`, or `POST /v1/interview/sendables/{sendable_id}/links`).
+         *     dates, where each came from), and saves them as an interview; the
+         *     interviewer gets each flag's background (`supporting_info`). By default it
+         *     asks about every open review flag (contradictions, ambiguities and the
+         *     rest), newest first, up to `max_questions` (30, the interview's cap); flags
+         *     past it come back in `skipped` as `over_question_limit`. `kinds` narrows
+         *     the kinds, or `proposal_ids` names the flags.
+         *
+         *     With a `participant` (a member's `user_id`, or a name and/or email), the
+         *     interview also gets that person's link, made exactly as
+         *     `POST /v1/interview/sendables/{sendable_id}/links` makes it: Beakr sends
+         *     nothing, and `link_url` (shown once) is for you to deliver. So one call goes
+         *     from open flags to a link, for example from a scheduled job with an API key.
+         *     Without one, it is a draft: a person edits it (`edit_url`) and sends it.
          *
          *     Each flag records the question that asks about it. When a link of this
          *     interview finishes, Beakr attaches each answer to its flag as a suggestion
@@ -2255,7 +2263,9 @@ export interface paths {
          *     `empty_reason`. One model call; when no model answers, each question is
          *     built from its flag (`questions_written_by: template`). Needs the
          *     `interviews:write` and `kb:read` scopes. PHI organizations are refused
-         *     (403 `outside_interviews_unavailable`).
+         *     (403 `outside_interviews_unavailable`); a `user_id` that is not a member
+         *     answers 404 `participant_not_found`; past the daily link limit, 429
+         *     `interview_link_limit`.
          */
         post: operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"];
         delete?: never;
@@ -7006,7 +7016,7 @@ export interface components {
         };
         /**
          * InterviewFromReviewsBody
-         * @description Which flags to ask about, and who the questions are for.
+         * @description Which flags to ask about, and who the interview is for.
          */
         InterviewFromReviewsBody: {
             /**
@@ -7015,24 +7025,27 @@ export interface components {
              */
             goals?: string | null;
             /**
-             * Include
-             * @description Review kinds to ask about besides conflicts (`ambiguity`, `unverifiable`, `likely_error`), or `all` for every open review flag. Ignored with `proposal_ids`.
+             * Kinds
+             * @description Ask only about flags of these kinds (`contradiction`, `ambiguity`, `unverifiable`, `likely_error`, `other`). Omitted: every kind. Ignored with `proposal_ids`.
              */
-            include?: ("ambiguity" | "unverifiable" | "likely_error" | "all")[];
+            kinds?: ("contradiction" | "ambiguity" | "unverifiable" | "likely_error" | "other")[];
+            /**
+             * Link Expires In Days
+             * @description How long the participant's link works, in days.
+             * @default 14
+             */
+            link_expires_in_days?: number;
             /**
              * Max Questions
-             * @description The most flags to ask about, one question each (a sendable interview takes 30).
-             * @default 15
+             * @description The most flags to ask about, one question each; 30, the interview's own cap, by default. Flags past it are listed in `skipped` as `over_question_limit`.
+             * @default 30
              */
             max_questions?: number;
-            /**
-             * Participant
-             * @description Who the questions are for (a name or a role). Used for wording only: nothing is sent.
-             */
-            participant?: string | null;
+            /** @description Who the interview is for. Given, the interview also gets that person's link (`link`, `link_url`), made as `POST /v1/interview/sendables/{sendable_id}/links` makes it: Beakr sends nothing, you deliver the link. Omitted: a draft only. */
+            participant?: components["schemas"]["ParticipantIn"] | null;
             /**
              * Proposal Ids
-             * @description The review flags to ask about (proposal ids), in order. Omitted: the project's open conflict flags, newest first, plus the kinds in `include`.
+             * @description The review flags to ask about (proposal ids), in order. Omitted: every open review flag of the project, newest first (narrowed by `kinds`).
              */
             proposal_ids?: string[];
             /**
@@ -7043,7 +7056,7 @@ export interface components {
         };
         /**
          * InterviewFromReviewsOut
-         * @description The drafted interview and which flag each question asks about.
+         * @description The drafted interview, which flag each question asks about, and the participant's link.
          */
         InterviewFromReviewsOut: {
             /**
@@ -7056,8 +7069,15 @@ export interface components {
              * @description Why nothing was drafted: `no_open_flags` (the project has none), `no_matching_flags` (none of the kinds asked for), `no_askable_flags` (none of the named flags is open here). Null when an interview was drafted.
              */
             empty_reason?: ("no_open_flags" | "no_matching_flags" | "no_askable_flags") | null;
-            /** @description The saved draft interview (no links: nothing is sent). Edit it, then send it with `POST /v1/interview/sendables/{sendable_id}/links`. Null when there was nothing to ask. */
+            /** @description The saved interview. Without a participant it has no links: edit it, then send it with `POST /v1/interview/sendables/{sendable_id}/links`. Null when there was nothing to ask. */
             interview: components["schemas"]["SendableInterviewOut"] | null;
+            /** @description The participant's link, when a participant was given. */
+            link?: components["schemas"]["InterviewLinkMadeOut"] | null;
+            /**
+             * Link Url
+             * @description The link anyone can open to take the interview, with no Beakr account. Shown once. Shown on the first response only; absent from an idempotent replay.
+             */
+            link_url?: string | null;
             /**
              * Message
              * @description A sentence saying why nothing was drafted.
@@ -7074,8 +7094,13 @@ export interface components {
              */
             questions_written_by?: ("model" | "template") | null;
             /**
+             * Secret Redacted
+             * @description True on an idempotent replay (`Idempotent-Replayed` header): the one-time secret was not stored, so this response omits it. Absent on the first response.
+             */
+            secret_redacted?: boolean | null;
+            /**
              * Skipped
-             * @description Named flags that could not be asked about, and why.
+             * @description Flags not asked about, and why (including open flags past the question cap).
              */
             skipped?: components["schemas"]["SkippedFlagOut"][];
         };
@@ -7127,6 +7152,36 @@ export interface components {
              * @description The link to give the participant. Anyone holding it can take the interview, so treat it as a secret. Shown on the first response only; absent from an idempotent replay.
              */
             url?: string | null;
+        };
+        /**
+         * InterviewLinkMadeOut
+         * @description The participant's link, made with the interview.
+         */
+        InterviewLinkMadeOut: {
+            /**
+             * Expires At
+             * Format: date-time
+             * @description When the link stops working.
+             * @example 2026-10-03T09:30:42Z
+             */
+            expires_at: string;
+            /**
+             * Label
+             * @description Who it is for, as shown beside the link in Beakr.
+             */
+            label: string;
+            /**
+             * Link Id
+             * Format: uuid
+             * @description Id of the link.
+             * @example 0f1e2d3c-4b5a-4c6d-9e8f-7a6b5c4d3e2f
+             */
+            link_id: string;
+            /**
+             * Result Url
+             * @description Where to read the interview's progress and answers (the link result route).
+             */
+            result_url?: string | null;
         };
         /**
          * InterviewLinkRecipient
@@ -9673,6 +9728,28 @@ export interface components {
              * @example null
              */
             next_cursor?: string | null;
+        };
+        /**
+         * ParticipantIn
+         * @description Who the interview is for: a member of the organization, or a name and/or email.
+         */
+        ParticipantIn: {
+            /**
+             * Email
+             * @description The person's email, shown beside the link in Beakr. Beakr sends nothing to it.
+             * @example dana@example.com
+             */
+            email?: string | null;
+            /**
+             * Name
+             * @description The person's name, shown beside the link in Beakr.
+             */
+            name?: string | null;
+            /**
+             * User Id
+             * @description A member of your organization (user id); their name and email label the link.
+             */
+            user_id?: string | null;
         };
         /**
          * PendingMemberInvitationOut
@@ -12251,7 +12328,7 @@ export interface components {
         };
         /**
          * SkippedFlagOut
-         * @description A named flag that could not be asked about.
+         * @description A flag that was not asked about, and why.
          */
         SkippedFlagOut: {
             /**
@@ -12262,10 +12339,10 @@ export interface components {
             proposal_id: string;
             /**
              * Reason
-             * @description `not_found` (no such flag in this project, or not visible to you), `not_open` (already resolved or dismissed), `not_a_review_flag` (another kind of proposal).
+             * @description `not_found` (no such flag in this project, or not visible to you), `not_open` (already resolved or dismissed), `not_a_review_flag` (another kind of proposal), `over_question_limit` (an open flag left out because the interview was full).
              * @enum {string}
              */
-            reason: "not_found" | "not_open" | "not_a_review_flag";
+            reason: "not_found" | "not_open" | "not_a_review_flag" | "over_question_limit";
         };
         /**
          * SourceExcerpt
