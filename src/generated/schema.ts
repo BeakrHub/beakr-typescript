@@ -1345,6 +1345,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/page-types/{key}/to-field": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a row type a field
+         * @description Make the row type `key` a field of another card type. Make the row type ``key`` a field of another card type.
+         *
+         *     ``on_type`` gains the field ``name`` with ``description`` saying what to
+         *     record under it. The row type is turned off for the scope and becomes an
+         *     ordinary card type, so it stays out of use and cannot come back as rows.
+         *     Cards and rows already written are not changed.
+         *
+         *     422 when ``key`` is not a row type here, or ``on_type`` is not a card type
+         *     in use here. A project's types are changed by its owners, an organization's
+         *     by its admins.
+         */
+        post: operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/pages": {
         parameters: {
             query?: never;
@@ -10109,6 +10138,24 @@ export interface components {
          * @enum {string}
          */
         PrincipalType: "user" | "group" | "org" | "service" | "link";
+        /** ProfileTypeAsDetail */
+        ProfileTypeAsDetail: {
+            /**
+             * Field
+             * @description The field it is listed under on those cards.
+             */
+            field: string;
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Page Type
+             * @description The key of the type whose cards it is listed on.
+             */
+            page_type: string;
+        };
         /** ProfileTypeMatch */
         ProfileTypeMatch: {
             /**
@@ -10150,6 +10197,11 @@ export interface components {
          * @description What Beakr did with the kinds of thing a project's profile names.
          */
         ProfileTypesOutcome: {
+            /**
+             * As Details
+             * @description Names that are entries on another type's cards: no type was made, and the type gained a field for them.
+             */
+            as_details: components["schemas"]["ProfileTypeAsDetail"][];
             /**
              * Made
              * @description Keys of the types it created.
@@ -10215,7 +10267,7 @@ export interface components {
             fields?: components["schemas"]["ProjectCardTypeFieldIn"][] | null;
             /**
              * Grain
-             * @description `card` (the default): each instance gets a card. `row`: each is a Facts row on the card it belongs to.
+             * @description `card` (the default): each instance gets a card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.
              */
             grain?: ("card" | "row") | null;
             /**
@@ -14913,6 +14965,16 @@ export interface components {
             unlisted_types?: components["schemas"]["UnlistedCardType"][] | null;
         };
         /**
+         * WikiPageTypeMadeField
+         * @description ``POST /v1/knowledge/wiki/page-types/{key}/to-field``.
+         */
+        WikiPageTypeMadeField: {
+            /** @description The type that was recorded as rows, now turned off and a card type. */
+            former_row_type: components["schemas"]["WikiPageType"];
+            /** @description The type that gained the field. */
+            page_type: components["schemas"]["WikiPageType"];
+        };
+        /**
          * WikiPageTypeOverrideRemoved
          * @description ``DELETE /v1/knowledge/wiki/page-types/{key}``.
          */
@@ -15014,6 +15076,39 @@ export interface components {
             page_type: components["schemas"]["WikiPageType"];
         };
         /**
+         * WikiPageTypeToField
+         * @description Make a card type recorded as rows a field of the type its rows belong on.
+         */
+        WikiPageTypeToField: {
+            /**
+             * Description
+             * @description What to record under the field, for example 'one row per run'.
+             */
+            description?: string | null;
+            /**
+             * Name
+             * @description The field to add to that type.
+             */
+            name: string;
+            /**
+             * On Type
+             * @description The key of the card type whose cards these rows belong on.
+             */
+            on_type: string;
+            /**
+             * Project Id
+             * @description The project, with scope `project`; left out otherwise.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id?: string | null;
+            /**
+             * Scope
+             * @description Whose types to change: `project` (one project) or `org`.
+             * @default project
+             */
+            scope?: string;
+        };
+        /**
          * WikiPageTypeUpdate
          * @description Changes to one card type, as one scope holds it. A field left out is kept.
          *
@@ -15039,7 +15134,7 @@ export interface components {
             fields?: components["schemas"]["WikiPageTypeFieldIn"][] | null;
             /**
              * Grain
-             * @description `card`: each instance gets a card. `row`: each is a Facts row on the card it belongs to.
+             * @description `card` gives each instance of a type that was recorded as rows its own card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.
              */
             grain?: string | null;
             /**
@@ -19347,6 +19442,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WikiPageTypeCardsRetyped"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeToField"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeMadeField"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
