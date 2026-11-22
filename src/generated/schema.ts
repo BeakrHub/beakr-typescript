@@ -1520,6 +1520,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/conflict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a review flag
+         * @description What a review flag (a proposal of type `review`) is about: the flagged section and its current text, why it was flagged, the sources on each side, and the page's `current_revision`. `anchor` says whether the flag points at a section, at one the page no longer has, or at the page as a whole; `section_kind` is `card_table` for a card's Facts or Connections table, which changes only through row operations. `is_stale` is true when the flagged text changed since it was flagged. Any other proposal type answers 400.
+         */
+        get: operations["get_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__conflict_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/proposals/{proposal_id}/dismiss": {
         parameters: {
             query?: never;
@@ -1534,6 +1554,86 @@ export interface paths {
          * @description Dismiss a wiki proposal.
          */
         post: operations["dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/resolutions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft review flag resolutions
+         * @description Draft up to a few concrete resolutions for a pending review flag (keep, adopt, correct, clarify), each with what it changes. A text section's options carry the section's new Markdown (`new_section_body`); apply one with `POST .../resolve`. A flag on a card's Facts or Connections table gets row operations (`row_operation`, shown as `table_changes`); apply one with `POST .../resolve-rows`. Options are kept for the page revision they were drafted against (`current_revision`), so asking again returns them at once (`cached: true`) until the page changes. Drafting uses a model and can take up to two minutes. An empty `options` says why in `no_draft_reason`; resolve by hand then. Any key or token with `kb:write` may draft; applying is a separate call. A flag that is no longer pending answers 400; `503 model_unavailable` when no model is configured.
+         */
+        post: operations["generate_proposal_conflict_resolutions_v1_knowledge_wiki_proposals__proposal_id__resolutions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a review flag
+         * @description Rewrite the flagged section and clear the flag: send a drafted option's `new_section_body` (or your own Markdown for the section) with the flag's `section_id` and the `expected_revision` you drafted or read against. The page changes at once, as the caller's own edit, and the flag becomes `resolved`. A page that changed since that revision answers `409` and nothing is applied: draft the options again and choose again. A card's Facts or Connections table is not rewritten this way (use `POST .../resolve-rows`). In a project that requires a person to accept proposals, an API key or token is refused with `403 person_review_required` unless the key holds `proposals:accept`, as for accepting a proposal. A flag that is no longer pending answers 400.
+         */
+        post: operations["resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a contradiction everywhere
+         * @description Settle a contradiction review on every card it lists with one `outcome`: `keep_disputed` (the value the card stated stands; the disputing row is deleted), `adopt_disputing` (the disputing value stands; the row it disputed is deleted) or `both_valid` (both rows stand). Each card is changed as the caller's own row edit, pinned to its revision; a card that changed since the review, or that the caller cannot write, is skipped and listed in `skipped`. The review is resolved when any card changed (`status: resolved`); with none changed it stays pending (`status: unchanged`). Only a contradiction review raised from citation stances lists cards; any other answers 400. Person-only where a person must accept proposals (`403 person_review_required`).
+         */
+        post: operations["resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a flag with rows
+         * @description Apply one drafted row option (`option_id`) to a flagged card's Facts or Connections table and clear the flag. The option must be one `POST .../resolutions` returned for `expected_revision`; it is decided again by the table's row rules and written as the caller's own row edit, pinned to that revision. A card that changed since answers `409` and nothing is applied: draft the options again. An `option_id` not among the drafts answers 404. Person-only where a person must accept proposals (`403 person_review_required`), as for accepting. A flag that is no longer pending answers 400.
+         */
+        post: operations["resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9820,6 +9920,11 @@ export interface components {
          */
         ProjectCardTypeFieldIn: {
             /**
+             * Description
+             * @description What to record under this field, when the name alone does not say: what counts, or that there is one row for each of many.
+             */
+            description?: string | null;
+            /**
              * Name
              * @description The Attribute name.
              */
@@ -13376,6 +13481,392 @@ export interface components {
              */
             sources?: components["schemas"]["SourceRecord"][];
         };
+        /** WikiConflictCardResult */
+        WikiConflictCardResult: {
+            /**
+             * Page Id
+             * @description The card; absent for a card the caller cannot see or write.
+             * @default null
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id?: string | null;
+            /**
+             * Page Title
+             * @description The card's title.
+             * @default null
+             */
+            page_title?: string | null;
+            /**
+             * Reason
+             * @description Skipped cards only: changed_since_review (the card changed since the review recorded it), rows_not_recorded (the review predates row ids, so which row to delete is unknown) or not_available (the caller cannot see or write it).
+             * @default null
+             */
+            reason?: string | null;
+            /**
+             * Revision
+             * @description Updated cards: the card's revision after the change. Skipped as changed_since_review: its revision now.
+             * @default null
+             */
+            revision?: number | null;
+        };
+        /**
+         * WikiConflictCardsResolveRequest
+         * @description Resolve a contradiction review on every card it lists (``services/wiki_conflict_rows.py``).
+         */
+        WikiConflictCardsResolveRequest: {
+            /**
+             * Outcome
+             * @description keep_disputed: the value the card stated stands and the disputing row is deleted; adopt_disputing: the disputing value stands and the row it disputed is deleted; both_valid: both rows stand.
+             * @enum {string}
+             */
+            outcome: "keep_disputed" | "adopt_disputing" | "both_valid";
+        };
+        /**
+         * WikiConflictCardsResolved
+         * @description ``POST .../resolve-cards``: one outcome applied to every card a contradiction lists.
+         */
+        WikiConflictCardsResolved: {
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description The review's id.
+             */
+            proposal_id: string;
+            /**
+             * Skipped
+             * @description The cards left as they were, each with why.
+             */
+            skipped: components["schemas"]["WikiConflictCardResult"][];
+            /**
+             * Status
+             * @description resolved when any card changed; unchanged when none did (the review stays pending).
+             */
+            status: string;
+            /**
+             * Updated
+             * @description The cards that changed.
+             */
+            updated: components["schemas"]["WikiConflictCardResult"][];
+        };
+        /**
+         * WikiConflictDetail
+         * @description ``GET .../proposals/{id}/conflict``: the flagged section and the sources on each side.
+         */
+        WikiConflictDetail: {
+            /**
+             * Agent Reasoning
+             * @description What the agent that flagged it weighed; empty when it gave nothing.
+             */
+            agent_reasoning: string;
+            /**
+             * Anchor
+             * @description Where the flag points on the page as it is now: section (a section of the page), missing (a section the page no longer has) or page (the page as a whole).
+             * @default null
+             */
+            anchor?: string | null;
+            /**
+             * Conflict Kind
+             * @description contradiction (sources disagree: keep or adopt) or review (any other concern: correct or clarify).
+             * @default null
+             */
+            conflict_kind?: string | null;
+            /**
+             * Contradicting Sources
+             * @description The cited sources whose stance is contradicts.
+             */
+            contradicting_sources: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Current Revision
+             * @description The page's revision now: send it as expected_revision when resolving.
+             * @default null
+             */
+            current_revision?: number | null;
+            /**
+             * Flagged Revision
+             * @description The page revision the flag was raised against.
+             * @default null
+             */
+            flagged_revision?: number | null;
+            /**
+             * Is Stale
+             * @description True when the flagged text changed since it was flagged, so the concern may already be settled.
+             */
+            is_stale: boolean;
+            /**
+             * Kind
+             * @description The category the flag was raised with: contradiction, unverifiable, likely_error or ambiguity; null on older flags.
+             * @default null
+             */
+            kind?: string | null;
+            /**
+             * Page Id
+             * Format: uuid
+             * @description The flagged page.
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id: string;
+            /**
+             * Page Title
+             * @description The flagged page's title.
+             */
+            page_title: string;
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description The review flag's id.
+             */
+            proposal_id: string;
+            /**
+             * Reason
+             * @description Why it was flagged.
+             */
+            reason: string;
+            /**
+             * Section Content
+             * @description The flagged section's current Markdown, with its section marker; the text a hand-written resolution replaces.
+             */
+            section_content: string;
+            /**
+             * Section Id
+             * @description The flagged section, as resolve takes it; null when the flag names no section of the page as it is now.
+             * @default null
+             */
+            section_id?: string | null;
+            /**
+             * Section Kind
+             * @description text for an ordinary section; card_table for a card's Facts, Connections or Findings table, whose rows change only through row operations. Null without a section.
+             * @default null
+             */
+            section_kind?: string | null;
+            /**
+             * Section Title
+             * @description The flagged section's heading; empty without one.
+             */
+            section_title: string;
+            /**
+             * Sources
+             * @description Every source the flagged section cites, each with its stance.
+             */
+            sources: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Supporting Sources
+             * @description The other cited sources (support or qualifies).
+             */
+            supporting_sources: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** WikiConflictResolutionOption */
+        WikiConflictResolutionOption: {
+            /**
+             * Edits
+             * @description For a long section, the passages this option changes; new_section_body is the section with them applied. Null for an option drafted as a whole rewrite.
+             * @default null
+             */
+            edits?: components["schemas"]["WikiConflictTargetedEdit"][] | null;
+            /**
+             * Id
+             * @description The option's letter, A, B, ...
+             */
+            id: string;
+            /**
+             * Label
+             * @description A short name for what the option does.
+             */
+            label: string;
+            /**
+             * New Section Body
+             * @description The section's full Markdown with this resolution applied; send it to POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve to apply it.
+             */
+            new_section_body: string;
+            /**
+             * @description For a flag on a card's Facts or Connections table, the row operation this option makes. Apply it with POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows; new_section_body then only shows the table it would leave.
+             * @default null
+             */
+            row_operation?: components["schemas"]["WikiConflictRowOperation"] | null;
+            /**
+             * Summary
+             * @description What changes, in one or two sentences.
+             */
+            summary: string;
+            /**
+             * Table Changes
+             * @description The row operation's change, as rows added, removed and changed (the shape of a proposal's table_changes).
+             * @default null
+             */
+            table_changes?: {
+                [key: string]: unknown;
+            }[] | null;
+        };
+        /**
+         * WikiConflictResolutionOptions
+         * @description ``POST /v1/knowledge/wiki/proposals/{id}/resolutions``: Beakr's drafted resolutions.
+         */
+        WikiConflictResolutionOptions: {
+            /**
+             * Cached
+             * @description Whether these options were drafted earlier against the same revision.
+             */
+            cached: boolean;
+            /**
+             * Current Revision
+             * @description The page revision the options were drafted against.
+             * @default null
+             */
+            current_revision?: number | null;
+            /**
+             * No Draft Reason
+             * @description Why options is empty: no_section (the flag names no section of the page as it is now), rows_not_found (a card-table flag whose rows could not be found), empty_section, refused, truncated, unparseable, timed_out, edits_not_found or no_valid_options. Null when there are options.
+             * @default null
+             */
+            no_draft_reason?: string | null;
+            /**
+             * Options
+             * @description Drafted resolutions. Empty when the section has no body to rewrite or the model's answer could not be read; resolve by hand then.
+             */
+            options: components["schemas"]["WikiConflictResolutionOption"][];
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description Id of the proposal.
+             */
+            proposal_id: string;
+            /**
+             * Section Id
+             * @description The flagged section the options rewrite.
+             * @default null
+             */
+            section_id?: string | null;
+        };
+        /**
+         * WikiConflictResolveRequest
+         * @description Apply a chosen resolution to a flagged (review) wiki conflict.
+         *
+         *     ``new_section_body`` is a generated A/B option body or a manual edit.
+         *     ``section_id`` is the section the conflict detail resolved to;
+         *     ``expected_revision`` guards against a concurrent edit.
+         */
+        WikiConflictResolveRequest: {
+            /**
+             * Expected Revision
+             * @description The page revision the options were drafted or the flag read against (current_revision). A page that changed since answers 409 and nothing is applied. Omitted, the section is rewritten whatever changed since.
+             */
+            expected_revision?: number | null;
+            /**
+             * New Section Body
+             * @description The section's new Markdown: a drafted option's new_section_body, or your own.
+             */
+            new_section_body: string;
+            /**
+             * Option Id
+             * @description The drafted option being applied (A, B, ...); informational only: new_section_body is what is written.
+             */
+            option_id?: string | null;
+            /**
+             * Section Id
+             * @description The flagged section: the section_id POST .../resolutions returned.
+             */
+            section_id: string;
+        };
+        /**
+         * WikiConflictResolved
+         * @description ``POST .../resolve`` and ``POST .../resolve-rows``: the flag is resolved.
+         */
+        WikiConflictResolved: {
+            /**
+             * New Revision
+             * @description The page's revision after the change.
+             * @default null
+             */
+            new_revision?: number | null;
+            /**
+             * Page Id
+             * Format: uuid
+             * @description The page that changed.
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id: string;
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description The review flag's id.
+             */
+            proposal_id: string;
+            /**
+             * Section Id
+             * @description The section that changed.
+             */
+            section_id: string;
+            /**
+             * Status
+             * @description resolved.
+             */
+            status: string;
+        };
+        /** WikiConflictRowOperation */
+        WikiConflictRowOperation: {
+            /**
+             * Kind
+             * @description replace (correct one row), delete (retire rows), merge (rows that say one thing become one row keeping every citation) or add (a new row).
+             */
+            kind: string;
+            /**
+             * Reason
+             * @description Why, recorded with the revision.
+             */
+            reason: string;
+            /**
+             * Row
+             * @description The new row's cells (and evidence keys) for replace, merge and add.
+             * @default null
+             */
+            row?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Row Ids
+             * @description The rows it acts on, by row id.
+             */
+            row_ids: string[];
+            /**
+             * Table
+             * @description facts or connections.
+             */
+            table: string;
+        };
+        /**
+         * WikiConflictRowsResolveRequest
+         * @description Apply a drafted row option to a flagged card table (``services/wiki_conflict_row_drafts.py``).
+         */
+        WikiConflictRowsResolveRequest: {
+            /**
+             * Expected Revision
+             * @description The current_revision POST .../resolutions returned with that option.
+             */
+            expected_revision: number;
+            /**
+             * Option Id
+             * @description The id of a row option POST .../resolutions returned (A, B, ...).
+             */
+            option_id: string;
+        };
+        /** WikiConflictTargetedEdit */
+        WikiConflictTargetedEdit: {
+            /**
+             * New Text
+             * @description What replaces it. Empty deletes it.
+             */
+            new_text: string;
+            /**
+             * Old Text
+             * @description Text of the section, which occurs in it exactly once.
+             */
+            old_text: string;
+        };
         /**
          * WikiFieldRename
          * @description One field's current name and the name its rows should carry.
@@ -13913,6 +14404,11 @@ export interface components {
          * @description One field of a card type.
          */
         WikiPageTypeFieldIn: {
+            /**
+             * Description
+             * @description What to record under this field, when the name alone does not say: what counts, or that there is one row for each of many.
+             */
+            description?: string | null;
             /**
              * Name
              * @description The Attribute name.
@@ -19029,6 +19525,55 @@ export interface operations {
             };
         };
     };
+    get_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__conflict_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiConflictDetail"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post: {
         parameters: {
             query?: never;
@@ -19049,6 +19594,214 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    generate_proposal_conflict_resolutions_v1_knowledge_wiki_proposals__proposal_id__resolutions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiConflictResolutionOptions"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiConflictResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiConflictResolved"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiConflictCardsResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiConflictCardsResolved"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiConflictRowsResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiConflictResolved"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

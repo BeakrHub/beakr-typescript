@@ -48,6 +48,15 @@ export {
   type CopyCardTypesOptions,
   type ListCardTypesQuery,
   type RowsOptions,
+  RESOLUTION_OPTIONS_TIMEOUT_MS,
+  findResolutionOption,
+  type ContradictionOutcome,
+  type ContradictionResolved,
+  type ResolutionOption,
+  type ResolutionOptions,
+  type ResolveReviewOptions,
+  type ReviewFlag,
+  type ReviewFlagResolved,
 } from "./resources/knowledge.js";
 export type {
   ConversationClient,

@@ -1,6 +1,6 @@
 import type { QuerySpec } from "./query-spec.js";
 import { cleanBody, type ResponseMeta } from "../core.js";
-import { KnowledgeCommandError } from "../errors.js";
+import { ConflictError, KnowledgeCommandError, NotFoundError, ValidationError } from "../errors.js";
 import { publicSource, type SourceRecord } from "../sources.js";
 import type { BodyOf, JsonObject, ResponseOf, components } from "../types.js";
 import { Resource, enc } from "./base.js";
@@ -274,6 +274,62 @@ export type WikiProposal = ResponseOf<"/v1/knowledge/wiki/proposals/{proposal_id
 /** A page of proposals: `{data, next_cursor, has_more}`. */
 export type WikiProposalPage = ResponseOf<"/v1/knowledge/wiki/proposals", "get">;
 
+/**
+ * How long drafting a review flag's resolutions may take: the engine drafts with
+ * a model and stops within two minutes; options drafted before return at once.
+ */
+export const RESOLUTION_OPTIONS_TIMEOUT_MS = 150_000;
+
+/** A review flag: the flagged section and its text, why, the sources on each side, `current_revision`. */
+export type ReviewFlag = ResponseOf<"/v1/knowledge/wiki/proposals/{proposal_id}/conflict", "get">;
+/** Drafted resolutions of a review flag: `{ proposal_id, section_id, current_revision, options, cached, no_draft_reason }`. */
+export type ResolutionOptions = ResponseOf<"/v1/knowledge/wiki/proposals/{proposal_id}/resolutions", "post">;
+/** One drafted resolution: `id` (A, B, ...), `label`, `summary`, `new_section_body`, and `edits` or `row_operation`. */
+export type ResolutionOption = ResolutionOptions["options"][number];
+/** A resolved flag: `{ status, proposal_id, page_id, section_id, new_revision }`. */
+export type ReviewFlagResolved = ResponseOf<"/v1/knowledge/wiki/proposals/{proposal_id}/resolve", "post">;
+/** One outcome applied on every card a contradiction lists: `{ status, proposal_id, updated, skipped }`. */
+export type ContradictionResolved = ResponseOf<"/v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards", "post">;
+/** `keep_disputed`, `adopt_disputing` or `both_valid`. */
+export type ContradictionOutcome = BodyOf<"/v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards", "post">["outcome"];
+
+/** How {@link Proposals.resolve} resolves a flag: exactly one of `optionId` and `sectionBody`. */
+export interface ResolveReviewOptions {
+  /** The page revision the options were drafted or the flag read against (`current_revision`). */
+  expectedRevision: number;
+  /** A drafted option: its id (`A`, `B`, ...) or its 1-based number in `options`. */
+  optionId?: string | number;
+  /** Instead of an option: the flagged section's new Markdown. */
+  sectionBody?: string;
+}
+
+/** The drafted option by its id (any case) or 1-based number, else undefined. */
+export function findResolutionOption(
+  options: readonly ResolutionOption[],
+  optionId: string | number,
+): ResolutionOption | undefined {
+  const wanted = String(optionId).trim();
+  const byId = options.find((option) => String(option.id ?? "").trim().toLowerCase() === wanted.toLowerCase());
+  if (byId) return byId;
+  if (/^\d+$/.test(wanted)) {
+    const number = Number(wanted);
+    if (number >= 1 && number <= options.length) return options[number - 1];
+  }
+  return undefined;
+}
+
+function pageChanged(proposalId: string, expected: number, current: unknown): ConflictError {
+  return new ConflictError(
+    `The page changed since these options were drafted (revision ${expected}, now ${String(current)}); ` +
+      "nothing was applied. Draft the options again and choose again.",
+    {
+      status: 409,
+      code: "conflict",
+      fix: `Call proposals.resolutionOptions("${proposalId}") again and choose from the new options.`,
+    },
+  );
+}
+
 /** One proposal as a page of {@link WikiProposalPage} lists it. */
 export type ListedWikiProposal = WikiProposalPage["data"][number];
 
@@ -369,6 +425,110 @@ class Proposals extends Resource {
 
   dismiss(proposalId: string): Promise<unknown> {
     return this.transport.request({ method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(proposalId)}/dismiss` });
+  }
+
+  /**
+   * A review flag (a proposal of type `review`): the flagged section and its
+   * current text, why it was flagged, the sources on each side, and the page's
+   * `current_revision` to resolve against.
+   */
+  conflict(proposalId: string): Promise<ReviewFlag> {
+    return this.transport.request({ method: "GET", path: `/v1/knowledge/wiki/proposals/${enc(proposalId)}/conflict` });
+  }
+
+  /**
+   * Beakr's drafted resolutions for a pending review flag, each with what it
+   * changes. Drafting uses a model and can take up to two minutes, so this waits
+   * up to {@link RESOLUTION_OPTIONS_TIMEOUT_MS} whatever the client's timeout;
+   * options drafted for the same page revision return at once (`cached: true`).
+   * Drafting is open to any key with `kb:write`; applying is {@link resolve}.
+   */
+  resolutionOptions(proposalId: string): Promise<ResolutionOptions> {
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/knowledge/wiki/proposals/${enc(proposalId)}/resolutions`,
+      minTimeoutMs: RESOLUTION_OPTIONS_TIMEOUT_MS,
+    });
+  }
+
+  /**
+   * Resolve a review flag: apply a drafted option (`optionId`) or your own text
+   * for the flagged section (`sectionBody`), pinned to `expectedRevision`. A card
+   * table option is applied as its row operation (`POST .../resolve-rows`), any
+   * other as a section rewrite (`POST .../resolve`). The page's revision is read
+   * first, and a page that changed since rejects with `ConflictError` before
+   * anything is sent, so options drafted for a newer revision are never applied
+   * unseen. Where a person must accept proposals, an API key without
+   * `proposals:accept` is refused (`PersonReviewRequiredError`), as for
+   * {@link accept}.
+   */
+  async resolve(proposalId: string, options: ResolveReviewOptions): Promise<ReviewFlagResolved> {
+    const { expectedRevision, optionId, sectionBody } = options;
+    const hasOption = optionId !== undefined && optionId !== null && String(optionId).trim() !== "";
+    const hasBody = typeof sectionBody === "string" && sectionBody.trim() !== "";
+    if (hasOption === hasBody) {
+      throw new ValidationError("Pass exactly one of optionId or sectionBody.", { code: "validation_error" });
+    }
+    if (!Number.isInteger(expectedRevision)) {
+      throw new ValidationError(
+        "expectedRevision is required: the current_revision the options were drafted against.",
+        { code: "validation_error" },
+      );
+    }
+    const base = `/v1/knowledge/wiki/proposals/${enc(proposalId)}`;
+    const flag = await this.conflict(proposalId);
+    if (flag.current_revision !== expectedRevision) {
+      throw pageChanged(proposalId, expectedRevision, flag.current_revision);
+    }
+    if (hasBody) {
+      return this.transport.request({
+        method: "POST",
+        path: `${base}/resolve`,
+        body: { section_id: flag.section_id, new_section_body: sectionBody, expected_revision: expectedRevision },
+      });
+    }
+    const drafted = await this.resolutionOptions(proposalId);
+    if (drafted.current_revision !== expectedRevision) {
+      throw pageChanged(proposalId, expectedRevision, drafted.current_revision);
+    }
+    const option = findResolutionOption(drafted.options ?? [], optionId as string | number);
+    if (option === undefined) {
+      throw new NotFoundError(`Option ${String(optionId)} is not among this flag's drafted options.`, {
+        status: 404,
+        code: "not_found",
+      });
+    }
+    if (option.row_operation) {
+      return this.transport.request({
+        method: "POST",
+        path: `${base}/resolve-rows`,
+        body: { option_id: option.id, expected_revision: expectedRevision },
+      });
+    }
+    return this.transport.request({
+      method: "POST",
+      path: `${base}/resolve`,
+      body: {
+        section_id: drafted.section_id ?? flag.section_id,
+        new_section_body: option.new_section_body,
+        expected_revision: expectedRevision,
+        option_id: option.id,
+      },
+    });
+  }
+
+  /**
+   * Settle a contradiction review on every card it lists with one `outcome`.
+   * A card that changed since the review, or that you cannot write, is skipped
+   * and listed in `skipped`; with no card changed `status` is `unchanged` and the
+   * review stays pending.
+   */
+  resolveOnEveryCard(proposalId: string, outcome: ContradictionOutcome): Promise<ContradictionResolved> {
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/knowledge/wiki/proposals/${enc(proposalId)}/resolve-cards`,
+      body: { outcome },
+    });
   }
 }
 
