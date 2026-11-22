@@ -2316,6 +2316,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/knowledge/compiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the Knowledge compile queue
+         * @description Read the Knowledge compile queue.
+         *
+         *     Counts the project's queued and running compiles, or one source's, and
+         *     reports the latest cancel of that scope's queued compiles: cancelling while
+         *     skipped compiles are cleared, then cancelled with how many. A project you
+         *     cannot read is a 404.
+         */
+        get: operations["get_compile_queue_v1_projects__project_id__knowledge_compiles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/knowledge/compiles/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel queued Knowledge compiles
+         * @description Cancel queued Knowledge compiles.
+         *
+         *     Cancels every queued compile in the project, or one source's: a connected
+         *     source (attachment_id) or an uploaded file (artifact_id). Compiles already
+         *     running finish, and finished work is kept. Cancelling a connected source,
+         *     or the whole project, also stops the running syncs it covers, so items they
+         *     have not handed off never queue. Answers 202: skipped compiles are cleared
+         *     in the background; GET .../knowledge/compiles reports progress. A project
+         *     admin may cancel anything; the person who attached a source or uploaded a
+         *     file may cancel its compiles while they are a project member. A project you
+         *     cannot read is a 404.
+         */
+        post: operations["cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/knowledge/failed-files": {
         parameters: {
             query?: never;
@@ -2515,6 +2570,34 @@ export interface paths {
          * @description Revoke a pending membership invitation for a project.
          */
         delete: operations["revoke_project_membership_invitation_route_v1_projects__project_id__pending_invitations__invitation_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a source's running sync
+         * @description Cancel a source's running sync.
+         *
+         *     Listing stops at its next step and items not yet started are skipped. Items
+         *     already synced, and their Knowledge, are kept; compiles they already queued
+         *     still run (cancel those with POST .../knowledge/compiles/cancel). Works for
+         *     manual, nightly and change-triggered syncs. Read progress with
+         *     GET /v1/jobs/{sync_job_id}: cancelling while started items finish, then
+         *     cancelled. The person who attached the source (while a project member), a
+         *     project admin or an org admin may cancel it. 409 when nothing is syncing.
+         */
+        post: operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4670,6 +4753,143 @@ export interface components {
             activity_event_id?: string | null;
             /** @description The entry as it stands now, with `state` `dismissed`. */
             suggestion: components["schemas"]["CardTypeHistoryEntry"];
+        };
+        /**
+         * CompileCancelOut
+         * @description What a cancel reached.
+         */
+        CompileCancelOut: {
+            /**
+             * Already Running
+             * @description Compiles already running when the cancel landed. They finish.
+             */
+            already_running: number;
+            /**
+             * Cancel Id
+             * Format: uuid
+             * @description This cancel's id, as the compile queue read reports it.
+             */
+            cancel_id: string;
+            /**
+             * Next Sync
+             * @description What the next scheduled sync will do.
+             */
+            next_sync: string;
+            /**
+             * Note
+             * @description What happens to work already done.
+             */
+            note: string;
+            /**
+             * Scope
+             * @description project: every queued compile in the project; source: one source's.
+             * @enum {string}
+             */
+            scope: "project" | "source";
+            /**
+             * Status
+             * @description cancelling: skipped compiles are still being cleared from the queue; cancelled: done. Read GET .../knowledge/compiles for progress.
+             * @enum {string}
+             */
+            status: "cancelling" | "cancelled";
+            /**
+             * Sync Job Id
+             * @description For a connected source: the id of its sync this stopped. Read it with GET /v1/jobs/{job_id}.
+             */
+            sync_job_id?: string | null;
+            /**
+             * Sync Stopped
+             * @description Whether a running sync was stopped too.
+             */
+            sync_stopped: boolean;
+            /**
+             * Syncs Stopped
+             * @description How many running syncs were stopped.
+             */
+            syncs_stopped: number;
+            /**
+             * Will Be Skipped
+             * @description Queued compiles that will not run.
+             */
+            will_be_skipped: number;
+        };
+        /**
+         * CompileCancelRequest
+         * @description Which compiles to cancel: one source, or (empty) the whole project.
+         */
+        CompileCancelRequest: {
+            /**
+             * Artifact Id
+             * @description An uploaded file whose home is the project.
+             * @example 3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40
+             */
+            artifact_id?: string | null;
+            /**
+             * Attachment Id
+             * @description A connected source attached to the project. Also stops its running sync. Give this or artifact_id, or neither for the whole project.
+             */
+            attachment_id?: string | null;
+        };
+        /**
+         * CompileCancelStatusOut
+         * @description The latest cancel of this project's or source's queued compiles.
+         */
+        CompileCancelStatusOut: {
+            /**
+             * Cancel Id
+             * Format: uuid
+             * @description The cancel's id.
+             */
+            cancel_id: string;
+            /**
+             * Cancelled At
+             * @description When the cancel was made.
+             */
+            cancelled_at?: string | null;
+            /**
+             * Cancelled By
+             * @description Who cancelled.
+             */
+            cancelled_by?: string | null;
+            /**
+             * Done
+             * @description Queued compiles skipped so far.
+             */
+            done: number;
+            /**
+             * Status
+             * @description cancelling: still clearing skipped compiles; cancelled: done.
+             * @enum {string}
+             */
+            status: "cancelling" | "cancelled";
+            /**
+             * Summary
+             * @description One line, e.g. "Cancelled 40 of 40 queued compiles".
+             */
+            summary: string;
+            /**
+             * Total
+             * @description Queued compiles the cancel will skip.
+             */
+            total: number;
+        };
+        /**
+         * CompileQueueOut
+         * @description A project's (or one source's) Knowledge compile queue.
+         */
+        CompileQueueOut: {
+            /** @description The latest cancel of this scope's queued compiles, if any. */
+            last_cancel?: components["schemas"]["CompileCancelStatusOut"] | null;
+            /**
+             * Queued
+             * @description Compiles waiting to start.
+             */
+            queued: number;
+            /**
+             * Running
+             * @description Compiles running now.
+             */
+            running: number;
         };
         /** CompoundIn */
         CompoundIn: {
@@ -12297,6 +12517,38 @@ export interface components {
              * @description Id of the user message.
              */
             user_message_id?: string | null;
+        };
+        /**
+         * SyncCancelOut
+         * @description The sync a person stopped.
+         */
+        SyncCancelOut: {
+            /**
+             * Cancelled By
+             * @description Who stopped it.
+             */
+            cancelled_by?: string | null;
+            /**
+             * Next Sync
+             * @description What the next scheduled sync will do.
+             */
+            next_sync: string;
+            /**
+             * Note
+             * @description What happens to items already synced.
+             */
+            note: string;
+            /**
+             * Status
+             * @description cancelling: items already started are finishing; nothing new starts.
+             */
+            status: string;
+            /**
+             * Sync Job Id
+             * Format: uuid
+             * @description The stopped sync's job id.
+             */
+            sync_job_id: string;
         };
         /** TextContent */
         TextContent: {
@@ -21712,6 +21964,113 @@ export interface operations {
             };
         };
     };
+    get_compile_queue_v1_projects__project_id__knowledge_compiles_get: {
+        parameters: {
+            query?: {
+                /** @description Only this connected source's compiles. */
+                attachment_id?: string | null;
+                /** @description Only this uploaded file's compiles. */
+                artifact_id?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompileQueueOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CompileCancelRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompileCancelOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     list_knowledge_failed_files_route_v1_projects__project_id__knowledge_failed_files_get: {
         parameters: {
             query?: {
@@ -22215,6 +22574,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncCancelOut"];
+                };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
             422: {

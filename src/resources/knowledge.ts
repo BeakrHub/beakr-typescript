@@ -107,6 +107,19 @@ export interface CardTypeHistoryQuery {
   limit?: number;
 }
 
+/** How many Knowledge compiles are queued and running, and the last cancel's progress. */
+export type CompileQueue = ResponseOf<"/v1/projects/{project_id}/knowledge/compiles", "get">;
+/** What a cancel of queued compiles reached. */
+export type CompilesCancelled = ResponseOf<"/v1/projects/{project_id}/knowledge/compiles/cancel", "post">;
+
+/** One source of a project's compiles: a connected source or an uploaded file. Give at most one. */
+export interface CompileSource {
+  /** A connected source's attachment id in the project. */
+  attachmentId?: string;
+  /** An uploaded file's id in the project. */
+  artifactId?: string;
+}
+
 /** Which card types `GET /v1/knowledge/wiki/page-types` lists. */
 export interface ListCardTypesQuery {
   /** The project's id. */
@@ -775,6 +788,38 @@ export class Knowledge extends Resource {
       method: "POST",
       path: `/v1/knowledge/wiki/page-types/suggestions/${enc(suggestionId)}/dismiss`,
       body: { project_id: projectId },
+    });
+  }
+
+  /**
+   * How many Knowledge compiles are queued and running in a project, or for one
+   * source (`attachmentId`) or file (`artifactId`), and the last cancel's
+   * progress: `{ queued, running, last_cancel }`. `last_cancel` is `null` or
+   * `{ cancel_id, status, done, total, summary, cancelled_by, cancelled_at }`.
+   */
+  compileQueue(projectId: string, source: CompileSource = {}): Promise<CompileQueue> {
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/projects/${enc(projectId)}/knowledge/compiles`,
+      query: { attachment_id: source.attachmentId, artifact_id: source.artifactId },
+    });
+  }
+
+  /**
+   * Cancel the queued Knowledge compiles of a project, or of one source or file.
+   * Compiles already running finish (`already_running`) and pages Knowledge
+   * already wrote stay. A source's cancel also stops that source's running sync;
+   * the whole project's (no source) stops every running sync in the project
+   * (`sync_stopped`, `syncs_stopped`; `sync_job_id` for a source). Answers while
+   * the queue drains; {@link compileQueue} follows it. A project admin may cancel
+   * anything in the project, the person who attached a source or uploaded a file
+   * its compiles.
+   */
+  cancelQueuedCompiles(projectId: string, source: CompileSource = {}): Promise<CompilesCancelled> {
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/projects/${enc(projectId)}/knowledge/compiles/cancel`,
+      body: cleanBody({ attachment_id: source.attachmentId, artifact_id: source.artifactId }),
     });
   }
 }

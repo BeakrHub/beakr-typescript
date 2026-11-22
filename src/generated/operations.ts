@@ -131,6 +131,8 @@ export const OPERATIONS = {
   "projects.putProjectKnowledgeProfile": { method: "PUT", path: "/v1/projects/{project_id}/knowledge-profile" },
   "projects.patchProjectKnowledgeProfile": { method: "PATCH", path: "/v1/projects/{project_id}/knowledge-profile" },
   "projects.getProjectKnowledgeStatus": { method: "GET", path: "/v1/projects/{project_id}/knowledge-summary" },
+  "knowledge.getCompileQueue": { method: "GET", path: "/v1/projects/{project_id}/knowledge/compiles" },
+  "knowledge.cancelQueuedCompiles": { method: "POST", path: "/v1/projects/{project_id}/knowledge/compiles/cancel" },
   "projects.listKnowledgeFailedFiles": { method: "GET", path: "/v1/projects/{project_id}/knowledge/failed-files" },
   "projects.retryFailedKnowledge": { method: "POST", path: "/v1/projects/{project_id}/knowledge/retry-failed" },
   "projects.listMembers": { method: "GET", path: "/v1/projects/{project_id}/members" },
@@ -141,6 +143,7 @@ export const OPERATIONS = {
   "projects.getModelRefusalSummary": { method: "GET", path: "/v1/projects/{project_id}/model-refusals/summary" },
   "projects.listProjectPendingInvitations": { method: "GET", path: "/v1/projects/{project_id}/pending-invitations" },
   "projects.revokeProjectMembershipInvitation": { method: "DELETE", path: "/v1/projects/{project_id}/pending-invitations/{invitation_id}" },
+  "integrations.cancelSourceSync": { method: "POST", path: "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel" },
   "threads.listSharedThreads": { method: "GET", path: "/v1/projects/{project_id}/threads" },
   "openapi.publicOpenapi": { method: "GET", path: "/v1/public/openapi.json" },
   "runs.startChatRun": { method: "POST", path: "/v1/runs" },
@@ -520,6 +523,12 @@ export class IntegrationsApi {
     const request: RequestOptions = { method: "POST", path: `/v1/integrations/tools/${enc(String(args.path.tool_name))}/call`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
+
+  /** POST /v1/projects/{project_id}/sources/{attachment_id}/sync/cancel (Cancel a source's running sync) */
+  cancelSourceSync(args: { path: operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/sync/cancel`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
 }
 
 /** Public operations tagged interviews. */
@@ -803,6 +812,18 @@ export class KnowledgeApi {
   /** POST /v1/knowledge/wiki/write (Propose a Knowledge change) */
   runWikiWrite(args: { body: NonNullable<operations["run_wiki_write_v1_knowledge_wiki_write_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["run_wiki_write_v1_knowledge_wiki_write_post"]>> {
     const request: RequestOptions = { method: "POST", path: "/v1/knowledge/wiki/write", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/projects/{project_id}/knowledge/compiles (Read the Knowledge compile queue) */
+  getCompileQueue(args: { path: operations["get_compile_queue_v1_projects__project_id__knowledge_compiles_get"]["parameters"]["path"]; query?: NonNullable<operations["get_compile_queue_v1_projects__project_id__knowledge_compiles_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["get_compile_queue_v1_projects__project_id__knowledge_compiles_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge/compiles`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/projects/{project_id}/knowledge/compiles/cancel (Cancel queued Knowledge compiles) */
+  cancelQueuedCompiles(args: { path: operations["cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post"]["parameters"]["path"]; body?: NonNullable<operations["cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge/compiles/cancel`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 }
