@@ -7,6 +7,63 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- A change to every card of a type that takes several calls is one Activity
+  entry. `POST /v1/knowledge/wiki/page-types/{key}/rename-fields` and
+  `POST /v1/knowledge/wiki/page-types/{key}/retype-cards` write at most 500
+  cards per call and answer `cards_remaining`. Send the same request again with
+  `continue_event_id` set to the `undo_event_id` the first call answered: the
+  next cards are added to that entry, and undoing that entry undoes every call. A
+  `continue_event_id` that is not the caller's own entry of the same change in
+  that project answers `422` and writes nothing. Both operations now allow 30
+  calls a minute.
+- A project chooses where its card types come from and who may change them, and
+  every change to a card type is kept in a history.
+  `PUT /v1/knowledge/wiki/page-types/settings` (`kb:write`, an owner of the
+  project) takes `project_id` and either or both of `inherit` and
+  `agent_may_change`. `inherit` is `organization` (the organization's types and
+  the built-in ones; the default), `builtin` (the built-in ones only) or `own`
+  (only the types the project defines). `own` answers `422` unless the project
+  defines at least one active type whose `grain` is `card`. A few built-in
+  types stay offered under it (`topic`, `overview`, `index`, `person` and
+  `organization`, unless the project defines its own); they are returned as
+  `kept_types`. `agent_may_change: false` stops Beakr itself from
+  adding or changing the project's types: only people do, and a type Beakr would
+  have added is kept as a suggestion. `dry_run` defaults to `true` and answers
+  `types_dropped`, each type the project would stop being offered with its
+  `live_cards`; nothing is written. Applying never changes or removes a card or
+  a type: a type that drops out is offered again when the setting is switched
+  back, and each dropped type that still has cards gets a suggestion to move
+  them. `keep_types_in_use: true` makes the dropped types that have cards the
+  project's own instead (`types_kept`). The last usable type of a project on
+  `own` cannot be turned off or removed (`422` or `409`).
+  `POST /v1/projects` takes an optional `card_types` object with the same two
+  settings; `inherit: "own"` at creation needs `copy_from_project_id` (with
+  optional `copy_keys`) or a `types` list in the same request, and answers `422`
+  otherwise.
+  `GET /v1/knowledge/wiki/page-types` with `project_id` now also answers
+  `settings` and `kept_types`; with `include_counts=true` each type carries
+  `card_count` and `unlisted_types` lists the types the project's cards carry
+  that are not in the list.
+  `GET /v1/knowledge/wiki/page-types/history` (`kb:read`) lists the changes to a
+  project's types (`project_id`) or the organization's (`scope=org`), newest
+  first, filtered by `key`: who (`actor_type`, `actor_user_id` or `actor_name`),
+  when, the `kind` (`edited`, `turned_off`, `turned_on`, `created`,
+  `copy_removed`, `copied_in`, `promoted`, `settings_changed`, `undone`), a
+  `title`, the definition fields that `changed`, and the definition `before` and
+  `after`. A project's entries are visible to whoever can see the project, and
+  the organization's to its members. History starts with the first change made
+  after this release. Suggestions are left out unless `include_suggestions` is
+  true, which adds them with their `state` (`pending`, `applied` or
+  `dismissed`).
+  `GET /v1/knowledge/wiki/page-types/suggestions` (`kb:read`) lists what waits
+  for a person in a project (`project_id`): types Beakr was not allowed to add (`held_back`)
+  and cards to move (`retype_suggested`, with `details.from_type` and
+  `details.cards`). `POST /v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss`
+  (`kb:write`, an owner) dismisses one; `409` if it was already answered.
+  `POST /v1/knowledge/wiki/page-types/{key}/retype-cards` takes an optional
+  `suggestion_id`, which marks that suggestion applied once no card of the type
+  is left, and accepts a `{key}` no type defines when the project has cards
+  carrying it.
 - A change to a card type can be applied to the cards a project already has
   (`kb:write`; the caller must be an owner of the project).
   `POST /v1/knowledge/wiki/page-types/{key}/rename-fields` renames fields on
@@ -124,6 +181,20 @@ Each release lists the public API changes it supports, taken from the API change
   list of `{ old, new }`), and `knowledge.retypeCards(key, projectId, toType)`
   moves every card of a type to another type. Both are dry runs that write
   nothing unless called with `{ dryRun: false }`.
+- Card type settings, history and suggestions on the knowledge resource:
+  `knowledge.cardTypeSettings(projectId)` reads a project's settings and
+  `knowledge.setCardTypeSettings(projectId, { inherit, agentMayChange,
+  keepTypesInUse })` changes them, as a dry run that lists the types that would
+  drop out unless called with `dryRun: false`;
+  `knowledge.cardTypeHistory({ projectId, scope, key, includeSuggestions })` is
+  one page of type changes and `iterCardTypeHistory` follows every page;
+  `knowledge.cardTypeSuggestions(projectId)` (and `iterCardTypeSuggestions`)
+  lists what waits for a person, and
+  `knowledge.dismissCardTypeSuggestion(suggestionId, projectId)` dismisses one.
+- `knowledge.listCardTypes({ includeCounts: true })` asks for each type's
+  `card_count` and `unlisted_types`; `knowledge.retypeCards(..., {
+  suggestionId })` names the suggestion a move answers; and
+  `projects.create({ name, card_types })` chooses a new project's card types.
 
 ## @beakr/sdk 0.3.0 (2026-11-15)
 

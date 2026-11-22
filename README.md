@@ -175,6 +175,27 @@ One call changes at most 500 cards; `cards_remaining` says how many are left,
 and the same call again changes the next ones. An applied change shows in the
 project's activity, where an owner of the project can undo it.
 
+A project also chooses where its card types come from (`inherit`:
+`organization`, `builtin` or `own`) and whether Beakr itself may add or change
+them (`agent_may_change`). A change is a dry run until you pass `dryRun: false`:
+
+```ts
+console.log(await beakr.knowledge.cardTypeSettings(projectId));
+const preview = await beakr.knowledge.setCardTypeSettings(projectId, { inherit: "own" });
+for (const dropped of preview.types_dropped) console.log(dropped.key, dropped.live_cards);
+await beakr.knowledge.setCardTypeSettings(projectId, { inherit: "own", keepTypesInUse: true, dryRun: false });
+
+for await (const entry of beakr.knowledge.iterCardTypeHistory({ projectId })) console.log(entry.title);
+for await (const waiting of beakr.knowledge.iterCardTypeSuggestions(projectId)) console.log(waiting.kind);
+await beakr.knowledge.dismissCardTypeSuggestion(suggestionId, projectId);
+
+await beakr.projects.create({ name: "Lyon", card_types: { inherit: "builtin", agent_may_change: false } });
+```
+
+Applying a settings change never changes or removes a card or a type. A new
+project on `inherit: "own"` needs its types in the same call:
+`copy_from_project_id` (with optional `copy_keys`) or `types`.
+
 ### Skills
 
 A skill is a SKILL.md folder your agent loads on demand. `skills.list` covers

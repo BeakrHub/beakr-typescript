@@ -65,7 +65,11 @@ export const OPERATIONS = {
   "knowledge.renameWikiPageTypeFields": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/rename-fields" },
   "knowledge.retypeWikiPageTypeCards": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/retype-cards" },
   "knowledge.copyWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/copy" },
+  "knowledge.listCardTypeHistory": { method: "GET", path: "/v1/knowledge/wiki/page-types/history" },
   "knowledge.promoteWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/promote" },
+  "knowledge.changeCardTypeSettings": { method: "PUT", path: "/v1/knowledge/wiki/page-types/settings" },
+  "knowledge.listCardTypeSuggestions": { method: "GET", path: "/v1/knowledge/wiki/page-types/suggestions" },
+  "knowledge.dismissCardTypeSuggestion": { method: "POST", path: "/v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss" },
   "knowledge.listWikiPages": { method: "GET", path: "/v1/knowledge/wiki/pages" },
   "knowledge.getWikiPage": { method: "GET", path: "/v1/knowledge/wiki/pages/{page_id}" },
   "knowledge.getWikiPageRevisions": { method: "GET", path: "/v1/knowledge/wiki/pages/{page_id}/revisions" },
@@ -658,9 +662,45 @@ export class KnowledgeApi {
     return this.transport.request(request);
   }
 
+  /** GET /v1/knowledge/wiki/page-types/history (List card type changes) */
+  listCardTypeHistory(args?: { query?: NonNullable<operations["list_card_type_history_v1_knowledge_wiki_page_types_history_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_card_type_history_v1_knowledge_wiki_page_types_history_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/page-types/history", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/knowledge/wiki/page-types/history, following its cursor. */
+  listCardTypeHistoryAll(args?: { query?: NonNullable<operations["list_card_type_history_v1_knowledge_wiki_page_types_history_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_card_type_history_v1_knowledge_wiki_page_types_history_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/page-types/history", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
   /** POST /v1/knowledge/wiki/page-types/promote (Promote card types to the organization) */
   promoteWikiPageTypes(args: { body: NonNullable<operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"]>> {
     const request: RequestOptions = { method: "POST", path: "/v1/knowledge/wiki/page-types/promote", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PUT /v1/knowledge/wiki/page-types/settings (Change a project's card type settings) */
+  changeCardTypeSettings(args: { body: NonNullable<operations["change_card_type_settings_v1_knowledge_wiki_page_types_settings_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["change_card_type_settings_v1_knowledge_wiki_page_types_settings_put"]>> {
+    const request: RequestOptions = { method: "PUT", path: "/v1/knowledge/wiki/page-types/settings", body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/knowledge/wiki/page-types/suggestions (List card type suggestions) */
+  listCardTypeSuggestions(args?: { query?: NonNullable<operations["list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/page-types/suggestions", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/knowledge/wiki/page-types/suggestions, following its cursor. */
+  listCardTypeSuggestionsAll(args?: { query?: NonNullable<operations["list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/page-types/suggestions", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss (Dismiss a card type suggestion) */
+  dismissCardTypeSuggestion(args: { path: operations["dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post"]["parameters"]["path"]; body: NonNullable<operations["dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/suggestions/${enc(String(args.path.suggestion_id))}/dismiss`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
