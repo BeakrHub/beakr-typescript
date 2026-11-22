@@ -79,7 +79,12 @@ export const OPERATIONS = {
   "knowledge.createProposal": { method: "POST", path: "/v1/knowledge/wiki/proposals" },
   "knowledge.getProposal": { method: "GET", path: "/v1/knowledge/wiki/proposals/{proposal_id}" },
   "knowledge.acceptProposal": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/accept" },
+  "knowledge.getProposalConflict": { method: "GET", path: "/v1/knowledge/wiki/proposals/{proposal_id}/conflict" },
   "knowledge.dismissProposal": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/dismiss" },
+  "knowledge.generateProposalConflictResolutions": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/resolutions" },
+  "knowledge.resolveProposalConflict": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/resolve" },
+  "knowledge.resolveConflictOnEveryCard": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards" },
+  "knowledge.resolveConflictWithRows": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows" },
   "knowledge.searchWikiPages": { method: "GET", path: "/v1/knowledge/wiki/search" },
   "knowledge.runWikiWrite": { method: "POST", path: "/v1/knowledge/wiki/write" },
   "labels.listLabels": { method: "GET", path: "/v1/labels" },
@@ -798,9 +803,39 @@ export class KnowledgeApi {
     return this.transport.request(request);
   }
 
+  /** GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict (Get a review flag) */
+  getProposalConflict(args: { path: operations["get_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__conflict_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__conflict_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/conflict`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
   /** POST /v1/knowledge/wiki/proposals/{proposal_id}/dismiss (Dismiss a Knowledge proposal) */
   dismissProposal(args: { path: operations["dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/dismiss`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/proposals/{proposal_id}/resolutions (Draft review flag resolutions) */
+  generateProposalConflictResolutions(args: { path: operations["generate_proposal_conflict_resolutions_v1_knowledge_wiki_proposals__proposal_id__resolutions_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["generate_proposal_conflict_resolutions_v1_knowledge_wiki_proposals__proposal_id__resolutions_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/resolutions`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve (Resolve a review flag) */
+  resolveProposalConflict(args: { path: operations["resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post"]["parameters"]["path"]; body: NonNullable<operations["resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/resolve`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards (Resolve a contradiction everywhere) */
+  resolveConflictOnEveryCard(args: { path: operations["resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post"]["parameters"]["path"]; body: NonNullable<operations["resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/resolve-cards`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows (Resolve a flag with rows) */
+  resolveConflictWithRows(args: { path: operations["resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post"]["parameters"]["path"]; body: NonNullable<operations["resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/resolve-rows`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
