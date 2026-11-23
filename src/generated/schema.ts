@@ -2808,6 +2808,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a source's tracked items
+         * @description List a source's tracked items.
+         *
+         *     Every item a connected source's syncs picked, and what became of it: read
+         *     into Knowledge, still pending, skipped (with the reason it was set aside,
+         *     including what Knowledge decided after reading it) or removed from the
+         *     source. ``counts`` cover the whole source; ``state``, ``reason_code``,
+         *     ``search`` and ``since`` narrow the page and ``matched`` says how many they
+         *     keep. Pages by ``cursor``, newest picked first.
+         */
+        get: operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/threads": {
         parameters: {
             query?: never;
@@ -13522,6 +13549,125 @@ export interface components {
              */
             name: string;
         };
+        /** TrackedItemCounts */
+        TrackedItemCounts: {
+            /**
+             * Ingested
+             * @description Items read into Knowledge.
+             */
+            ingested: number;
+            /**
+             * Pending
+             * @description Items tracked and not read into Knowledge yet.
+             */
+            pending: number;
+            /**
+             * Removed
+             * @description Items gone from the source.
+             */
+            removed: number;
+            /**
+             * Skipped
+             * @description Items set aside; each one's reason says why.
+             */
+            skipped: number;
+            /**
+             * Total
+             * @description Every item the source tracks, whatever the filters.
+             */
+            total: number;
+        };
+        /** TrackedItemOut */
+        TrackedItemOut: {
+            /**
+             * External Id
+             * @description The item's key in Beakr, stable across syncs.
+             */
+            external_id: string;
+            /**
+             * Ingested At
+             * @description When the item was last read into Knowledge (ISO 8601).
+             */
+            ingested_at?: string | null;
+            /**
+             * Kind
+             * @description What one item is: file, channel, thread, event, page or item.
+             */
+            kind: string;
+            /**
+             * Last Synced At
+             * @description When a sync last read the item or Knowledge last decided on it (ISO 8601).
+             */
+            last_synced_at?: string | null;
+            /**
+             * Reason
+             * @description Why a skipped item was set aside, for a person to read.
+             */
+            reason?: string | null;
+            /**
+             * Reason Code
+             * @description Why a skipped item was set aside, as a stable code: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Null unless skipped, and for items skipped before reasons were recorded.
+             */
+            reason_code?: string | null;
+            /**
+             * Selected At
+             * @description When the source's sync picked the item (ISO 8601).
+             */
+            selected_at?: string | null;
+            /**
+             * Selected Reason
+             * @description Why the source's sync picked the item.
+             */
+            selected_reason?: string | null;
+            /**
+             * State
+             * @description pending (tracked, not read into Knowledge yet), ingested, skipped (set aside; reason says why) or removed (gone from the source).
+             * @enum {string}
+             */
+            state: "pending" | "ingested" | "skipped" | "removed";
+            /**
+             * Title
+             * @description The item's title, or its key when it has none.
+             */
+            title: string;
+        };
+        /** TrackedItemsPage */
+        TrackedItemsPage: {
+            /** @description How many items are in each state, over the whole source, unfiltered. */
+            counts: components["schemas"]["TrackedItemCounts"];
+            /**
+             * Data
+             * @description One page of items, newest picked first.
+             */
+            data: components["schemas"]["TrackedItemOut"][];
+            /**
+             * Has More
+             * @description Whether more items match after this page.
+             * @example false
+             */
+            has_more: boolean;
+            /**
+             * Kind
+             * @description What one item is for this source.
+             */
+            kind: string;
+            /**
+             * Matched
+             * @description How many items the filters keep.
+             */
+            matched: number;
+            /**
+             * Next Cursor
+             * @description Pass as cursor for the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
+            /**
+             * Provider
+             * @description The service the items come from, e.g. gdrive or notion.
+             */
+            provider: string;
+        };
         /** UnlistedCardType */
         UnlistedCardType: {
             /**
@@ -24189,6 +24335,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SyncCancelOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get: {
+        parameters: {
+            query?: {
+                /** @description Keep items in this state only. */
+                state?: ("pending" | "ingested" | "skipped" | "removed") | null;
+                /** @description Keep skipped items set aside for this reason (e.g. nothing_to_add). */
+                reason_code?: string | null;
+                /** @description Keep items whose title holds this text (case-insensitive). */
+                search?: string | null;
+                /** @description Keep items a sync read, or Knowledge decided on, at or after this time (ISO 8601). A sync status's outcomes link here with its run's start. */
+                since?: string | null;
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackedItemsPage"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */

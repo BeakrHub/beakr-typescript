@@ -10,7 +10,36 @@ export type SourceSyncCancelled = ResponseOf<
   "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel",
   "post"
 >;
+/** One page of a source's tracked items, with the whole source's counts. */
+export type TrackedItemsPage = ResponseOf<
+  "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items",
+  "get"
+>;
+/** One item a source tracks, and what became of it. */
+export type TrackedItem = TrackedItemsPage["data"][number];
+/** The state of a tracked item: pending, ingested, skipped or removed. */
+export type TrackedItemState = TrackedItem["state"];
 type ToolCallBody = NonNullable<BodyOf<"/v1/integrations/tools/{tool_name}/call", "post">>;
+
+export interface TrackedItemsQuery {
+  /** Only items in this state; skipped items carry `reason_code` and `reason`. */
+  state?: TrackedItemState;
+  /** Only skipped items set aside for this reason (e.g. `nothing_to_add`). */
+  reasonCode?: string;
+  /** Only items whose title holds this text (case-insensitive). */
+  search?: string;
+  /** Only items a sync read, or Knowledge decided on, at or after this time (ISO 8601). */
+  since?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+const trackedItemsQuery = (query: Omit<TrackedItemsQuery, "cursor" | "limit">) => ({
+  state: query.state,
+  reason_code: query.reasonCode,
+  search: query.search,
+  since: query.since,
+});
 
 export interface ToolsQuery {
   /** Only this provider's tools (`slack`, `google-drive`, ...). */
@@ -120,6 +149,44 @@ export class Integrations extends Resource {
       method: "POST",
       path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/sync/cancel`,
     });
+  }
+
+  /**
+   * One page of the items a project source tracks, and what became of each:
+   * `state` is `pending` (not read into Knowledge yet), `ingested`, `skipped`
+   * or `removed`. A skipped item carries `reason_code` and `reason`, including
+   * when Knowledge read the item and found nothing to add (`nothing_to_add`).
+   * `counts` cover the whole source; `matched` is how many the filters keep.
+   * A sync's own outcomes (`jobs.get(syncJobId)`, `result.outcomes`) link here
+   * with `since` set to the sync's start. Scope `projects:read`.
+   */
+  trackedItems(
+    projectId: string,
+    attachmentId: string,
+    query: TrackedItemsQuery = {},
+  ): Promise<TrackedItemsPage> {
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/tracked-items`,
+      query: { ...trackedItemsQuery(query), cursor: query.cursor, limit: query.limit },
+    });
+  }
+
+  /** Every tracked item of a project source that the filters keep, following cursors. */
+  iterTrackedItems(
+    projectId: string,
+    attachmentId: string,
+    query: Omit<TrackedItemsQuery, "cursor" | "limit"> = {},
+    pageSize?: number,
+  ): AsyncGenerator<TrackedItem> {
+    return this.transport.paginate(
+      {
+        method: "GET",
+        path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/tracked-items`,
+        query: trackedItemsQuery(query),
+      },
+      pageSize,
+    );
   }
 
   disconnect(connectorId: string): Promise<JsonObject> {

@@ -152,6 +152,7 @@ export const OPERATIONS = {
   "projects.listProjectPendingInvitations": { method: "GET", path: "/v1/projects/{project_id}/pending-invitations" },
   "projects.revokeProjectMembershipInvitation": { method: "DELETE", path: "/v1/projects/{project_id}/pending-invitations/{invitation_id}" },
   "integrations.cancelSourceSync": { method: "POST", path: "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel" },
+  "integrations.listTrackedItems": { method: "GET", path: "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items" },
   "threads.listSharedThreads": { method: "GET", path: "/v1/projects/{project_id}/threads" },
   "openapi.publicOpenapi": { method: "GET", path: "/v1/public/openapi.json" },
   "runs.startChatRun": { method: "POST", path: "/v1/runs" },
@@ -548,6 +549,18 @@ export class IntegrationsApi {
   cancelSourceSync(args: { path: operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/sync/cancel`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
+  }
+
+  /** GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items (List a source's tracked items) */
+  listTrackedItems(args: { path: operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]["parameters"]["path"]; query?: NonNullable<operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/tracked-items`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items, following its cursor. */
+  listTrackedItemsAll(args: { path: operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]["parameters"]["path"]; query?: NonNullable<operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/tracked-items`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
   }
 }
 

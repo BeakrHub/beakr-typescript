@@ -112,6 +112,10 @@ export type {
   IntegrationToolResult,
   SourceSyncCancelled,
   ToolsQuery,
+  TrackedItem,
+  TrackedItemsPage,
+  TrackedItemsQuery,
+  TrackedItemState,
 } from "./resources/integrations.js";
 export type {
   CreateLinkOptions,
