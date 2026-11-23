@@ -10,6 +10,12 @@ export {
 export * from "./errors.js";
 export { CAPABILITIES_TTL_MS, Capabilities, forgetCapabilities } from "./capabilities.js";
 export {
+  forgetInstallationClients,
+  INSTALLATION_CLIENTS_TTL_MS,
+  INSTALLATION_MANIFEST_PATH,
+  InstallationClients,
+} from "./installation-clients.js";
+export {
   QUICK_RESEARCH_TIMEOUT_MS,
   RESEARCH_TIMEOUT_MS,
   crossProjectHold,
