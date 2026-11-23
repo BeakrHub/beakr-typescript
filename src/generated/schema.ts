@@ -2275,7 +2275,7 @@ export interface paths {
         put?: never;
         /**
          * Create a service account
-         * @description Create a non-human member with an organization role, for CI and automation. Mint its keys with the API key routes. Needs an interactive session (and step-up where the organization requires it); organization admins only.
+         * @description Create a non-human member with an organization role, for CI and automation. Mint its keys with the API key routes. Needs an interactive session; no second factor is required. Organization admins only.
          */
         post: operations["create_service_account_v1_organizations__org_id__service_accounts_post"];
         delete?: never;
