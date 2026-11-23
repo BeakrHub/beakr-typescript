@@ -304,6 +304,9 @@ export interface paths {
          *     5. Bulk indexing is triggered asynchronously
          *
          *     Supports partial success - returns both created artifacts and failures.
+         *     With ``on_existing: "version"`` a file whose folder already holds a file of
+         *     its title is added to that file as a new version (``result`` says what it
+         *     did); the default ``"new"`` always creates a file.
          *
          *     Args:
          *         payload: Batch ID and list of files with titles and artifact types.
@@ -4472,6 +4475,11 @@ export interface components {
              */
             key: string;
             /**
+             * On Existing
+             * @description This file's `on_existing`. Omit to follow the request's.
+             */
+            on_existing?: ("version" | "new") | null;
+            /**
              * Path
              * @description Same path as in prepare request
              */
@@ -4510,11 +4518,24 @@ export interface components {
              */
             ingest_to_wiki?: boolean;
             /**
+             * On Existing
+             * @description What to do when a file's folder already holds a file with its `title` (exact, case-sensitive match). `new` (the default) creates a separate file. `version` adds the upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. With `version`, a folder holding several files of that name, or one you cannot change, leaves that file out (`failed`, with `error_code` `ambiguous_path` or `file_not_writable`); the rest of the batch completes.
+             * @default new
+             * @enum {string}
+             */
+            on_existing?: "version" | "new";
+            /**
              * Source
              * @description Provenance hint for all files in this batch (e.g. 'upload', 'capture').
              * @default upload
              */
             source?: string;
+            /**
+             * Written By Agent
+             * @description Mark these files as written by an agent rather than a person. The mark is kept on each version this request creates; a file it creates is also marked as Beakr-written (`is_ai_generated`, source `ai_generated`), so search and agents treat it as an agent's output rather than a source.
+             * @default false
+             */
+            written_by_agent?: boolean;
         };
         /**
          * BulkCompleteResponse
@@ -5664,6 +5685,11 @@ export interface components {
              */
             path: string;
             /**
+             * Result
+             * @description `created`: a new file. `versioned`: a new version of the file already at this path (`id`), now its current version. `restored`: the bytes match an earlier version of that file, which is current again. `unchanged`: the bytes match its current version; no version is added.
+             */
+            result?: ("created" | "versioned" | "restored" | "unchanged") | null;
+            /**
              * Title
              * @description Title of the created artifact.
              */
@@ -5675,6 +5701,11 @@ export interface components {
              * @example c1a7e5d2-4b9f-4f38-a612-7d0e9b3c5f81
              */
             version_id: string;
+            /**
+             * Version No
+             * @description The number of `version_id` within its file (1 = first)
+             */
+            version_no?: number | null;
         };
         /**
          * CreatedFolderOut
@@ -6526,6 +6557,11 @@ export interface components {
              * @description What went wrong.
              */
             error: string;
+            /**
+             * Error Code
+             * @description Why, when it is a refusal of where the file would go: `ambiguous_path` (the folder holds several files of that name) or `file_not_writable` (the file there is one you cannot change). Nothing was created for it.
+             */
+            error_code?: string | null;
             /**
              * Path
              * @description Path where it lives.

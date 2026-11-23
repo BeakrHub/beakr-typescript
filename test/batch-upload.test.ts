@@ -69,6 +69,29 @@ describe("uploads.uploadMany (/v1/bulk)", () => {
     });
   });
 
+  it("adds a version to a file at the same path by default, as a single upload does", async () => {
+    // ENG-2465: the API's batch default is "new" (the web app's), so the SDK sends
+    // "version"; onExisting and writtenByAgent override it.
+    const { fetch, calls } = mockFetch([
+      prepared(["a.md"]),
+      stored(),
+      completion(),
+      prepared(["a.md"]),
+      stored(),
+      completion(),
+    ]);
+    const { beakr } = client(fetch);
+    await beakr.uploads.uploadMany([{ path: "a.md", data: bytes("a") }], { projectId: "p1" });
+    await beakr.uploads.uploadMany([{ path: "a.md", data: bytes("a") }], {
+      projectId: "p1",
+      onExisting: "new",
+      writtenByAgent: true,
+    });
+    expect(calls[2]!.body).toMatchObject({ on_existing: "version" });
+    expect(calls[2]!.body).not.toHaveProperty("written_by_agent");
+    expect(calls[5]!.body).toMatchObject({ on_existing: "new", written_by_agent: true });
+  });
+
   it("reads files and directories from disk and can wait for indexing", async () => {
     root = await mkdtemp(join(tmpdir(), "beakr-batch-"));
     await mkdir(join(root, "docs", "deep"), { recursive: true });
