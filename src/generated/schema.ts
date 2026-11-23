@@ -205,6 +205,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/artifacts/{artifact_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a file's versions
+         * @description A file's versions, oldest first, one page at a time: each version's number, size, type, content hash, when it was added, and whether it is marked as an agent's work (`written_by_agent`). A file is given a new version by uploading to its path or with `artifact_id` on `POST /v1/uploads/{upload_id}/complete`. A file the caller cannot see, or that does not exist, answers `404`.
+         */
+        get: operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/end-user-tokens": {
         parameters: {
             query?: never;
@@ -284,6 +304,9 @@ export interface paths {
          *     5. Bulk indexing is triggered asynchronously
          *
          *     Supports partial success - returns both created artifacts and failures.
+         *     With ``on_existing: "version"`` a file whose folder already holds a file of
+         *     its title is added to that file as a new version (``result`` says what it
+         *     did); the default ``"new"`` always creates a file.
          *
          *     Args:
          *         payload: Batch ID and list of files with titles and artifact types.
@@ -1028,6 +1051,375 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/page-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List card types
+         * @description List active page-type ontology entries for the current org/project.
+         *
+         *     ``map_mode`` says the org's Knowledge is a map, and each type's ``card_type``
+         *     whether its pages are cards there, laid out as a card whatever starter
+         *     sections the type stores; both are false outside a map.
+         *
+         *     With ``project_id`` the answer also carries the project's card type
+         *     ``settings`` (``inherit``, ``agent_may_change``) and ``kept_types``, the
+         *     built-in types it is offered whatever it chooses (listed under ``own``),
+         *     and ``profile_types``: what Beakr did with the kinds of thing the project's
+         *     profile names (``made``, ``matched`` to an existing type, ``suggested``,
+         *     ``skipped`` with the reason) and whether it is still ``working`` on them.
+         *     ``include_counts`` adds ``card_count`` to every type and ``unlisted_types``:
+         *     ``{key, card_count}`` for each type the project's live cards carry that is
+         *     not in the list (a type the settings hide, one turned off, or one with no
+         *     definition), so a client can offer to move those cards.
+         */
+        get: operations["list_wiki_page_types_v1_knowledge_wiki_page_types_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy card types between projects
+         * @description Copy card types one project defines into another project.
+         *
+         *     The destination gets its own copies, so later edits in either project stay
+         *     there. Only types the source project itself defines are copied; a type it
+         *     inherits is already available to the destination. ``skipped`` lists each
+         *     key not copied: ``not_found`` in the source, or ``exists`` in the
+         *     destination when ``replace`` is false. Cards are not copied or changed.
+         *     Requires being able to see the source and being an owner of the destination.
+         */
+        post: operations["copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List card type changes
+         * @description List the recorded changes to a project's or the organization's card types.
+         *
+         *     Each entry names the type (``key``, ``label``), what happened (``kind``,
+         *     ``title``, ``changed``), the definition ``before`` and ``after``, who did
+         *     it and when, and whether it can still be undone (``undoable``;
+         *     ``undone_by`` names the entry that undid it). Newest first. ``state`` is
+         *     null for a change; suggestions appear only with ``include_suggestions``.
+         */
+        get: operations["list_card_type_history_v1_knowledge_wiki_page_types_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote card types to the organization
+         * @description Copy card types one project defines up to the organization.
+         *
+         *     Every project without a copy of its own inherits a promoted type from then
+         *     on, and every member of the organization can read its definition, so this
+         *     takes an organization admin. ``skipped`` lists each key not promoted:
+         *     ``not_found`` in the source, or ``exists`` in the organization when
+         *     ``replace`` is false. The source project keeps its own copy.
+         */
+        post: operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change a project's card type settings
+         * @description Preview or apply a change to one project's card type settings.
+         *
+         *     ``inherit`` says which broader card types the project is offered:
+         *     ``organization`` (the organization's and the built-in types, the default),
+         *     ``builtin`` (the built-in types only) or ``own`` (only the types the project
+         *     itself defines, plus the built-in types that are always kept, listed in
+         *     ``kept_types``). ``agent_may_change`` says whether Beakr itself may
+         *     add or change the project's types.
+         *
+         *     With ``dry_run`` (the default) nothing is written: the answer lists in
+         *     ``types_dropped`` every type that would leave the project's ontology, with
+         *     how many live cards carry it. Applying never changes a card and is never
+         *     refused because cards exist: a card of a dropped type keeps its type and
+         *     stays readable, and one suggestion to move those cards is recorded per
+         *     dropped type that still has cards (``suggestions``). ``keep_types_in_use``
+         *     makes each dropped type that has cards the project's own type instead
+         *     (``types_kept``). Switching back offers every type again.
+         *
+         *     ``own`` is refused with 422 while the project would have no card type of its
+         *     own to use. Only the project's owners may change the settings.
+         */
+        put: operations["change_card_type_settings_v1_knowledge_wiki_page_types_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List card type suggestions
+         * @description List a project's pending card type suggestions, newest first.
+         *
+         *     Each item is a type history entry with ``state`` ``pending``. ``kind`` is
+         *     ``held_back`` (a type Beakr wanted to add; ``after`` is the definition it
+         *     proposed and ``details.reason`` why) or ``retype_suggested`` (cards that
+         *     may want moving: ``details.from_type``, ``details.to_type`` when a
+         *     successor is known, ``details.reason`` and ``details.cards``, the number of
+         *     live cards of the type now).
+         */
+        get: operations["list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dismiss a card type suggestion
+         * @description Dismiss one pending suggestion; nothing else changes.
+         *
+         *     The suggestion is kept with ``state`` ``dismissed`` and the person who
+         *     dismissed it, and the project's Activity gets one row. Beakr does not make
+         *     the same suggestion for that type again: a held-back type is suggested
+         *     again only with a different definition, a move only for a different reason
+         *     or once a type that had no cards has some. Answers 404 for an id that is
+         *     not a suggestion of this project and 409 for one already applied or
+         *     dismissed.
+         */
+        post: operations["dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a card type copy
+         * @description Drop a project's or organization's own copy of a type it also inherits.
+         *
+         *     The scope goes back to the broader type. A type defined only here cannot be
+         *     removed this way (its cards carry it): turn it off with ``status``.
+         */
+        delete: operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a card type
+         * @description Change a card type: its wording, its fields, card or row, or turn it off.
+         *
+         *     The change applies to the type as ``scope`` holds it. A scope that only
+         *     inherits the type (a project using a built-in or an organization's type)
+         *     gets its own copy first, so nobody else's ontology changes; the response's
+         *     ``overrides`` names the scope the copy now stands in front of. ``fields``
+         *     replaces the type's field list, each marked required or not. ``grain`` says
+         *     whether an instance is a card or a row on the card it belongs to.
+         *     ``status: deprecated`` turns the type off for the scope, and hides a broader
+         *     type of the same key from it.
+         *
+         *     Existing cards are not rewritten: the next compiles use the new definition.
+         */
+        patch: operations["update_wiki_page_type_v1_knowledge_wiki_page_types__key__patch"];
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/{key}/rename-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rename fields on existing cards
+         * @description Rename a card type's fields on the cards a project already has.
+         *
+         *     Changing a type's field list changes what later compiles write and rewrites
+         *     no card. This applies a mapping of old name to new name to the Facts rows
+         *     of every card of the type in one project: rows are renamed, two rows that
+         *     become the same field are merged with their citations kept, and the old
+         *     name is remembered so a later compile does not bring it back.
+         *
+         *     ``dry_run`` (the default) answers the counts and writes nothing. An apply
+         *     writes every card in one commit, whose id is ``commit_id``, and records one
+         *     row in the project's Activity, whose id is ``undo_event_id``: reverting that
+         *     row (``POST /wiki/ingestion-events/{id}/revert``) puts the cards' rows back.
+         *     ``refused`` lists renames the safety checks did
+         *     not accept (two names that differ by one word whose values disagree, or a
+         *     rename that drops a word such as "planned" or "actual"). Cards another
+         *     change touched meanwhile are counted in ``cards_conflicted`` and left as
+         *     they were. One call writes at most 500 cards; ``cards_remaining`` counts
+         *     the cards the mapping still changes afterwards. Send the same request
+         *     again with ``continue_event_id`` set to the ``undo_event_id`` this call
+         *     answered: the next cards are another commit on the same Activity row, so
+         *     the whole rename stays one entry and one undo.
+         *
+         *     Answers 409 while Knowledge is running maintenance on the project.
+         */
+        post: operations["rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/{key}/retype-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move existing cards to another type
+         * @description Move the cards a project already has from this type to another.
+         *
+         *     Editing or turning off a type rewrites no card. This changes every live
+         *     card of the type in one project to ``to_type``, which must be an active
+         *     type of cards in that project. A card's text is not changed: its Facts
+         *     rows keep their field names and are read from then on through the target
+         *     type's recorded names, so rename fields on the target type afterwards if
+         *     the two types named a field differently.
+         *
+         *     ``dry_run`` (the default) answers the counts and writes nothing. An apply
+         *     writes up to 500 cards in one commit, whose id is ``commit_id``, and
+         *     records one row in the project's Activity, whose id is ``undo_event_id``:
+         *     reverting that row (``POST /wiki/ingestion-events/{id}/revert``) puts each
+         *     card back to this type. ``cards_remaining`` counts the cards still of this
+         *     type afterwards (past the per-call limit, or held by another writer and
+         *     counted in ``cards_skipped``); send the same request again to move them,
+         *     with ``continue_event_id`` set to the ``undo_event_id`` this call answered
+         *     so the whole move stays one Activity entry and one undo.
+         *
+         *     The source may be a type no row defines (a legacy or hand-written type, or
+         *     one the project's card type settings hide) as long as the project has a
+         *     live card carrying it.
+         *
+         *     ``suggestion_id`` names the pending suggestion this move answers (``GET
+         *     /wiki/page-types/suggestions``). It must be a pending suggestion to move
+         *     this type's cards in this project, or the request is refused before
+         *     anything runs. An apply that moves at least one card and leaves none of
+         *     the type (``cards_remaining`` 0) marks it applied; while cards remain it
+         *     stays pending for the next call.
+         *
+         *     Answers 409 while Knowledge is running maintenance on the project, 422 for
+         *     a mapping that cannot be applied or a suggestion that is not this one, and
+         *     404 for a type the project neither knows nor has cards of.
+         */
+        post: operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/page-types/{key}/to-field": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a row type a field
+         * @description Make the row type `key` a field of another card type. Make the row type ``key`` a field of another card type.
+         *
+         *     ``on_type`` gains the field ``name`` with ``description`` saying what to
+         *     record under it. The row type is turned off for the scope and becomes an
+         *     ordinary card type, so it stays out of use and cannot come back as rows.
+         *     Cards and rows already written are not changed.
+         *
+         *     422 when ``key`` is not a row type here, or ``on_type`` is not a card type
+         *     in use here. A project's types are changed by its owners, an organization's
+         *     by its admins.
+         */
+        post: operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/pages": {
         parameters: {
             query?: never;
@@ -1229,6 +1621,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/conflict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a review flag
+         * @description What a review flag (a proposal of type `review`) is about: the flagged section and its current text, why it was flagged, the sources on each side, and the page's `current_revision`. `anchor` says whether the flag points at a section, at one the page no longer has, or at the page as a whole; `section_kind` is `card_table` for a card's Facts or Connections table, which changes only through row operations. `is_stale` is true when the flagged text changed since it was flagged. Any other proposal type answers 400.
+         */
+        get: operations["get_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__conflict_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/knowledge/wiki/proposals/{proposal_id}/dismiss": {
         parameters: {
             query?: never;
@@ -1243,6 +1655,86 @@ export interface paths {
          * @description Dismiss a wiki proposal.
          */
         post: operations["dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/resolutions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft review flag resolutions
+         * @description Draft up to a few concrete resolutions for a pending review flag (keep, adopt, correct, clarify), each with what it changes. A text section's options carry the section's new Markdown (`new_section_body`); apply one with `POST .../resolve`. A flag on a card's Facts or Connections table gets row operations (`row_operation`, shown as `table_changes`); apply one with `POST .../resolve-rows`. Options are kept for the page revision they were drafted against (`current_revision`), so asking again returns them at once (`cached: true`) until the page changes. Drafting uses a model and can take up to two minutes. An empty `options` says why in `no_draft_reason`; resolve by hand then. Any key or token with `kb:write` may draft; applying is a separate call. A flag that is no longer pending answers 400; `503 model_unavailable` when no model is configured.
+         */
+        post: operations["generate_proposal_conflict_resolutions_v1_knowledge_wiki_proposals__proposal_id__resolutions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a review flag
+         * @description Rewrite the flagged section and clear the flag: send a drafted option's `new_section_body` (or your own Markdown for the section) with the flag's `section_id` and the `expected_revision` you drafted or read against. The page changes at once, as the caller's own edit, and the flag becomes `resolved`. A page that changed since that revision answers `409` and nothing is applied: draft the options again and choose again. A card's Facts or Connections table is not rewritten this way (use `POST .../resolve-rows`). In a project that requires a person to accept proposals, a person, or a key with the `proposals:accept` (reviewer) permission, must apply it: any other key or token is refused with `403 person_review_required`, as for accepting a proposal. A scheduled job closes flags with a reviewer key. A flag that is no longer pending answers 400.
+         */
+        post: operations["resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a contradiction everywhere
+         * @description Settle a contradiction review on every card it lists with one `outcome`: `keep_disputed` (the value the card stated stands; the disputing row is deleted), `adopt_disputing` (the disputing value stands; the row it disputed is deleted) or `both_valid` (both rows stand). Each card is changed as the caller's own row edit, pinned to its revision; a card that changed since the review, or that the caller cannot write, is skipped and listed in `skipped`. The review is resolved when any card changed (`status: resolved`); with none changed it stays pending (`status: unchanged`). Only a contradiction review raised from citation stances lists cards; any other answers 400. Where a person must accept proposals, a person, or a key with the `proposals:accept` (reviewer) permission, must apply it (`403 person_review_required` otherwise).
+         */
+        post: operations["resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resolve a flag with rows
+         * @description Apply one drafted row option (`option_id`) to a flagged card's Facts or Connections table and clear the flag. The option must be one `POST .../resolutions` returned for `expected_revision`; it is decided again by the table's row rules and written as the caller's own row edit, pinned to that revision. A card that changed since answers `409` and nothing is applied: draft the options again. An `option_id` not among the drafts answers 404. Where a person must accept proposals, a person, or a key with the `proposals:accept` (reviewer) permission, must apply it (`403 person_review_required` otherwise). A flag that is no longer pending answers 400.
+         */
+        post: operations["resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2067,6 +2559,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/interviews/from-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft an interview from review flags
+         * @description Draft an interview from review flags.
+         *
+         *     Beakr writes one plain-language key question per open review flag in the
+         *     project, naming its specifics (the values that disagree, the cards, the
+         *     dates, where each came from), and saves them as an interview; the
+         *     interviewer gets each flag's background (`supporting_info`). By default it
+         *     asks about every open review flag (contradictions, ambiguities and the
+         *     rest), newest first, up to `max_questions` (30, the interview's cap); flags
+         *     past it come back in `skipped` as `over_question_limit`. `kinds` narrows
+         *     the kinds, or `proposal_ids` names the flags.
+         *
+         *     With a `participant` (a member's `user_id`, or a name and/or email), the
+         *     interview also gets that person's link, made exactly as
+         *     `POST /v1/interview/sendables/{sendable_id}/links` makes it: Beakr sends
+         *     nothing, and `link_url` (shown once) is for you to deliver. So one call goes
+         *     from open flags to a link, for example from a scheduled job with an API key.
+         *     Without one, it is a draft: a person edits it (`edit_url`) and sends it.
+         *
+         *     Each flag records the question that asks about it. When a link of this
+         *     interview finishes, Beakr attaches each answer to its flag as a suggestion
+         *     (`interview_answers` on `GET /v1/knowledge/wiki/proposals/{proposal_id}`),
+         *     with the drafted resolution it matches; a person applies it with the
+         *     resolve routes. Nothing is ever applied automatically.
+         *
+         *     A project with nothing to ask about answers 200 with `interview: null` and
+         *     `empty_reason`. One model call; when no model answers, each question is
+         *     built from its flag (`questions_written_by: template`). Needs the
+         *     `interviews:write` and `kb:read` scopes. PHI organizations are refused
+         *     (403 `outside_interviews_unavailable`); a `user_id` that is not a member
+         *     answers 404 `participant_not_found`; past the daily link limit, 429
+         *     `interview_link_limit`.
+         */
+        post: operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/invite": {
         parameters: {
             query?: never;
@@ -2156,6 +2698,61 @@ export interface paths {
         get: operations["get_project_knowledge_status_route_v1_projects__project_id__knowledge_summary_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/knowledge/compiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the Knowledge compile queue
+         * @description Read the Knowledge compile queue.
+         *
+         *     Counts the project's queued and running compiles, or one source's, and
+         *     reports the latest cancel of that scope's queued compiles: cancelling while
+         *     skipped compiles are cleared, then cancelled with how many. A project you
+         *     cannot read is a 404.
+         */
+        get: operations["get_compile_queue_v1_projects__project_id__knowledge_compiles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/knowledge/compiles/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel queued Knowledge compiles
+         * @description Cancel queued Knowledge compiles.
+         *
+         *     Cancels every queued compile in the project, or one source's: a connected
+         *     source (attachment_id) or an uploaded file (artifact_id). Compiles already
+         *     running finish, and finished work is kept. Cancelling a connected source,
+         *     or the whole project, also stops the running syncs it covers, so items they
+         *     have not handed off never queue. Answers 202: skipped compiles are cleared
+         *     in the background; GET .../knowledge/compiles reports progress. A project
+         *     admin may cancel anything; the person who attached a source or uploaded a
+         *     file may cancel its compiles while they are a project member. A project you
+         *     cannot read is a 404.
+         */
+        post: operations["cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2361,6 +2958,34 @@ export interface paths {
          * @description Revoke a pending membership invitation for a project.
          */
         delete: operations["revoke_project_membership_invitation_route_v1_projects__project_id__pending_invitations__invitation_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a source's running sync
+         * @description Cancel a source's running sync.
+         *
+         *     Listing stops at its next step and items not yet started are skipped. Items
+         *     already synced, and their Knowledge, are kept; compiles they already queued
+         *     still run (cancel those with POST .../knowledge/compiles/cancel). Works for
+         *     manual, nightly and change-triggered syncs. Read progress with
+         *     GET /v1/jobs/{sync_job_id}: cancelling while started items finish, then
+         *     cancelled. The person who attached the source (while a project member), a
+         *     project admin or an org admin may cancel it. 409 when nothing is syncing.
+         */
+        post: operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2866,7 +3491,18 @@ export interface paths {
         put?: never;
         /**
          * Complete an upload
-         * @description Assemble the parts and create the file; answers with its indexing job.
+         * @description Assemble the parts and create the file, or add it as a version.
+         *
+         *     When the upload's folder already holds a file with the name this file would
+         *     get, ``on_existing`` (default ``version``) adds the upload to that file as a
+         *     new version and updates the Knowledge built from it, instead of creating a
+         *     second file; ``new`` always creates one. ``result`` says which happened
+         *     (``created``, ``versioned``, ``restored`` or ``unchanged``). Several files of
+         *     that name in the folder answer ``409 ambiguous_path``, and a file the caller
+         *     cannot change answers ``403 file_not_writable``; either way nothing is created
+         *     and the upload stays open to complete again. ``artifact_id`` instead names
+         *     the file to add the upload to as a new version. ``written_by_agent`` marks
+         *     the upload as an agent's work. Answers with the file's indexing job.
          */
         post: operations["complete_upload_v1_uploads__upload_id__complete_post"];
         delete?: never;
@@ -4017,6 +4653,103 @@ export interface components {
             title?: string | null;
         };
         /**
+         * ArtifactVersionOut
+         * @description Serialized representation of an artifact version.
+         *
+         *     Attributes:
+         *         id: Unique identifier for the version row.
+         *         artifact_id: Identifier of the artifact that owns the version.
+         *         version_no: Monotonic version number assigned by the server.
+         *         mime_type: Optional MIME type for the stored binary.
+         *         size_bytes: Optional size in bytes of the payload.
+         *         content_hash: Optional integrity hash for deduplication.
+         *         metadata: Arbitrary metadata captured for the version.
+         *         created_at: Timestamp when the version was created.
+         *         managed_blob: if beakr owns the lifecycle of this blob
+         */
+        ArtifactVersionOut: {
+            /**
+             * Artifact Id
+             * Format: uuid
+             * @description The file this version belongs to
+             * @example 3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40
+             */
+            artifact_id: string;
+            /**
+             * Content Hash
+             * @description Lowercase SHA-256 hex digest of the version's bytes
+             */
+            content_hash?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the version was added
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description The version's id
+             */
+            id: string;
+            /**
+             * Managed Blob
+             * @description Whether Beakr stores and deletes this version's bytes
+             * @default true
+             */
+            managed_blob?: boolean;
+            /**
+             * Metadata
+             * @description Details recorded with the version, such as `original_filename`
+             */
+            metadata: {
+                [key: string]: unknown;
+            };
+            /**
+             * Mime Type
+             * @description The version's MIME type
+             */
+            mime_type?: string | null;
+            /**
+             * Size Bytes
+             * @description The version's size in bytes
+             */
+            size_bytes?: number | null;
+            /**
+             * Version No
+             * @description The version's number within its file (1 = first)
+             */
+            version_no: number;
+            /**
+             * Written By Agent
+             * @description Whether this version was uploaded marked as an agent's work (`written_by_agent` on the upload)
+             * @default false
+             */
+            written_by_agent?: boolean;
+        };
+        /** ArtifactVersionOutPage */
+        ArtifactVersionOutPage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["ArtifactVersionOut"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @default false
+             * @example false
+             */
+            has_more?: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
+        };
+        /**
          * BatchKnowledgeSummary
          * @description How a batch's files are doing in reaching the project's Knowledge.
          */
@@ -4193,6 +4926,11 @@ export interface components {
              */
             key: string;
             /**
+             * On Existing
+             * @description This file's `on_existing`. Omit to follow the request's.
+             */
+            on_existing?: ("version" | "new") | null;
+            /**
              * Path
              * @description Same path as in prepare request
              */
@@ -4231,11 +4969,24 @@ export interface components {
              */
             ingest_to_wiki?: boolean;
             /**
+             * On Existing
+             * @description What to do when a file's folder already holds a file with its `title` (exact, case-sensitive match). `new` (the default) creates a separate file. `version` adds the upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. With `version`, a folder holding several files of that name, or one you cannot change, leaves that file out (`failed`, with `error_code` `ambiguous_path` or `file_not_writable`); the rest of the batch completes.
+             * @default new
+             * @enum {string}
+             */
+            on_existing?: "version" | "new";
+            /**
              * Source
              * @description Provenance hint for all files in this batch (e.g. 'upload', 'capture').
              * @default upload
              */
             source?: string;
+            /**
+             * Written By Agent
+             * @description Mark these files as written by an agent rather than a person. The mark is kept on each version this request creates; a file it creates is also marked as Beakr-written (`is_ai_generated`, source `ai_generated`), so search and agents treat it as an agent's output rather than a source.
+             * @default false
+             */
+            written_by_agent?: boolean;
         };
         /**
          * BulkCompleteResponse
@@ -4473,6 +5224,454 @@ export interface components {
              * @description Title of the canvas.
              */
             title: string;
+        };
+        /**
+         * CardTypeHistoryEntry
+         * @description One change to a card type, or one suggestion (pending, applied or dismissed).
+         */
+        CardTypeHistoryEntry: {
+            /**
+             * Actor Name
+             * @description Which part of Beakr, when Beakr made it.
+             * @default null
+             */
+            actor_name?: string | null;
+            /**
+             * Actor Type
+             * @description `user` for a person, `agent` for Beakr itself.
+             */
+            actor_type: string;
+            /**
+             * Actor User Id
+             * @description The person, when a person made it.
+             * @default null
+             */
+            actor_user_id?: string | null;
+            /**
+             * After
+             * @description The definition after.
+             * @default null
+             */
+            after?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Before
+             * @description The definition before.
+             * @default null
+             */
+            before?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Changed
+             * @description The definition fields that differ.
+             */
+            changed: string[];
+            /**
+             * Created At
+             * @description When it was created (ISO 8601, UTC).
+             * @default null
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at?: string | null;
+            /**
+             * Details
+             * @description What the kind adds: a suggestion's types and count, and the project a copy came from when the reader can see that project.
+             */
+            details: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             * @description Unique id of this card type history entry.
+             */
+            id: string;
+            /**
+             * Key
+             * @description The type's key; empty for a settings change.
+             */
+            key: string;
+            /**
+             * Kind
+             * @description edited, turned_off, turned_on, created, copy_removed, copied_in, promoted, settings_changed, undone, held_back or retype_suggested.
+             */
+            kind: string;
+            /**
+             * Label
+             * @description Display label.
+             */
+            label: string;
+            /**
+             * Project Id
+             * @description Id of the project it belongs to, or the project to act in.
+             * @default null
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id?: string | null;
+            /**
+             * Scope
+             * @description `project` or `org`.
+             */
+            scope: string;
+            /**
+             * State
+             * @description For a suggestion: pending, applied or dismissed.
+             * @default null
+             */
+            state?: string | null;
+            /**
+             * Title
+             * @description One readable line.
+             */
+            title: string;
+            /**
+             * Undoable
+             * @description Whether an owner can still undo it.
+             */
+            undoable: boolean;
+            /**
+             * Undone By
+             * @description The entry that undid it, once undone.
+             * @default null
+             */
+            undone_by?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /** CardTypeHistoryPage */
+        CardTypeHistoryPage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["CardTypeHistoryEntry"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @example false
+             */
+            has_more: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @default null
+             * @example null
+             */
+            next_cursor?: string | null;
+        };
+        /**
+         * CardTypeSettings
+         * @description A project's two choices about its card types.
+         */
+        CardTypeSettings: {
+            /**
+             * Agent May Change
+             * @description Whether Beakr itself may add or change the project's card types.
+             */
+            agent_may_change: boolean;
+            /**
+             * Inherit
+             * @description Which broader types the project is offered: `organization` (the organization's and the built-in ones), `builtin` (the built-in ones only) or `own` (only its own).
+             */
+            inherit: string;
+        };
+        /**
+         * CardTypeSettingsChangeOut
+         * @description What a change to a project's card type settings would do, or did.
+         */
+        CardTypeSettingsChangeOut: {
+            /** @description The settings before this request. */
+            current: components["schemas"]["CardTypeSettingsOut"];
+            /**
+             * Dry Run
+             * @description True when nothing was written.
+             */
+            dry_run: boolean;
+            /**
+             * History Id
+             * @description The type history entry recording an applied change; null on a dry run.
+             */
+            history_id?: string | null;
+            /**
+             * Kept Types
+             * @description Built-in types the project is offered whatever it chooses, listed when the requested choice is `own`: the page types that are not cards, and `person` and `organization`.
+             */
+            kept_types: string[];
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /** @description The settings this request asks for; the project's settings once applied. */
+            requested: components["schemas"]["CardTypeSettingsOut"];
+            /**
+             * Suggestions
+             * @description How many suggestions to move cards were recorded: one per dropped type that still has cards.
+             * @default 0
+             */
+            suggestions?: number;
+            /**
+             * Types Dropped
+             * @description Types the project is offered now and would not be after the change. Their cards are not changed and stay readable.
+             */
+            types_dropped: components["schemas"]["CardTypeSettingsDroppedType"][];
+            /**
+             * Types Kept
+             * @description With `keep_types_in_use`: types that would have dropped out and are made the project's own instead, because cards carry them.
+             */
+            types_kept: components["schemas"]["CardTypeSettingsDroppedType"][];
+            /**
+             * Undo Event Id
+             * @description The Activity entry of an applied change; null on a dry run.
+             */
+            undo_event_id?: string | null;
+            /**
+             * Usable Own Types
+             * @description Keys of the project's own active types whose instances are cards, after the change. `own` needs at least one.
+             */
+            usable_own_types: string[];
+        };
+        /**
+         * CardTypeSettingsDroppedType
+         * @description One card type a settings change takes out of, or keeps in, the project's ontology.
+         */
+        CardTypeSettingsDroppedType: {
+            /**
+             * Key
+             * @description The type's key.
+             */
+            key: string;
+            /**
+             * Label
+             * @description The type's display name.
+             */
+            label: string;
+            /**
+             * Live Cards
+             * @description How many of the project's cards that are not archived carry this type.
+             */
+            live_cards: number;
+            /**
+             * Scope
+             * @description Where the type is defined: `org` (the organization) or `global` (built-in).
+             */
+            scope: string;
+        };
+        /**
+         * CardTypeSettingsOut
+         * @description A project's two choices about its card types.
+         */
+        CardTypeSettingsOut: {
+            /**
+             * Agent May Change
+             * @description Whether Beakr itself may add or change the project's card types.
+             */
+            agent_may_change: boolean;
+            /**
+             * Inherit
+             * @description Which broader card types the project is offered: `organization` (the organization's and the built-in types, the default), `builtin` (the built-in types only) or `own` (only the types the project itself defines).
+             */
+            inherit: string;
+        };
+        /**
+         * CardTypeSettingsUpdate
+         * @description A change to one project's card type settings. A choice left out is kept.
+         */
+        CardTypeSettingsUpdate: {
+            /**
+             * Agent May Change
+             * @description Whether Beakr itself may add or change the project's card types.
+             */
+            agent_may_change?: boolean | null;
+            /**
+             * Dry Run
+             * @description Answer what would change and write nothing. Pass false to apply.
+             * @default true
+             */
+            dry_run?: boolean;
+            /**
+             * Inherit
+             * @description `organization`: the organization's and the built-in types. `builtin`: the built-in types only. `own`: only the types the project itself defines, which takes a project with at least one card type of its own.
+             */
+            inherit?: string | null;
+            /**
+             * Keep Types In Use
+             * @description Before switching, make every type that would drop out and still has cards one of the project's own types, so those cards keep a type the project offers.
+             * @default false
+             */
+            keep_types_in_use?: boolean;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project whose settings to change.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+        };
+        /**
+         * CardTypeSuggestionDismiss
+         * @description Dismiss one pending card type suggestion of a project.
+         */
+        CardTypeSuggestionDismiss: {
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project the suggestion belongs to.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+        };
+        /** CardTypeSuggestionDismissed */
+        CardTypeSuggestionDismissed: {
+            /**
+             * Activity Event Id
+             * @description The activity row recorded for the dismissal.
+             * @default null
+             */
+            activity_event_id?: string | null;
+            /** @description The entry as it stands now, with `state` `dismissed`. */
+            suggestion: components["schemas"]["CardTypeHistoryEntry"];
+        };
+        /**
+         * CompileCancelOut
+         * @description What a cancel reached.
+         */
+        CompileCancelOut: {
+            /**
+             * Already Running
+             * @description Compiles already running when the cancel landed. They finish.
+             */
+            already_running: number;
+            /**
+             * Cancel Id
+             * Format: uuid
+             * @description This cancel's id, as the compile queue read reports it.
+             */
+            cancel_id: string;
+            /**
+             * Next Sync
+             * @description What the next scheduled sync will do.
+             */
+            next_sync: string;
+            /**
+             * Note
+             * @description What happens to work already done.
+             */
+            note: string;
+            /**
+             * Scope
+             * @description project: every queued compile in the project; source: one source's.
+             * @enum {string}
+             */
+            scope: "project" | "source";
+            /**
+             * Status
+             * @description cancelling: skipped compiles are still being cleared from the queue; cancelled: done. Read GET .../knowledge/compiles for progress.
+             * @enum {string}
+             */
+            status: "cancelling" | "cancelled";
+            /**
+             * Sync Job Id
+             * @description For a connected source: the id of its sync this stopped. Read it with GET /v1/jobs/{job_id}.
+             */
+            sync_job_id?: string | null;
+            /**
+             * Sync Stopped
+             * @description Whether a running sync was stopped too.
+             */
+            sync_stopped: boolean;
+            /**
+             * Syncs Stopped
+             * @description How many running syncs were stopped.
+             */
+            syncs_stopped: number;
+            /**
+             * Will Be Skipped
+             * @description Queued compiles that will not run.
+             */
+            will_be_skipped: number;
+        };
+        /**
+         * CompileCancelRequest
+         * @description Which compiles to cancel: one source, or (empty) the whole project.
+         */
+        CompileCancelRequest: {
+            /**
+             * Artifact Id
+             * @description An uploaded file whose home is the project.
+             * @example 3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40
+             */
+            artifact_id?: string | null;
+            /**
+             * Attachment Id
+             * @description A connected source attached to the project. Also stops its running sync. Give this or artifact_id, or neither for the whole project.
+             */
+            attachment_id?: string | null;
+        };
+        /**
+         * CompileCancelStatusOut
+         * @description The latest cancel of this project's or source's queued compiles.
+         */
+        CompileCancelStatusOut: {
+            /**
+             * Cancel Id
+             * Format: uuid
+             * @description The cancel's id.
+             */
+            cancel_id: string;
+            /**
+             * Cancelled At
+             * @description When the cancel was made.
+             */
+            cancelled_at?: string | null;
+            /**
+             * Cancelled By
+             * @description Who cancelled.
+             */
+            cancelled_by?: string | null;
+            /**
+             * Done
+             * @description Queued compiles skipped so far.
+             */
+            done: number;
+            /**
+             * Status
+             * @description cancelling: still clearing skipped compiles; cancelled: done.
+             * @enum {string}
+             */
+            status: "cancelling" | "cancelled";
+            /**
+             * Summary
+             * @description One line, e.g. "Cancelled 40 of 40 queued compiles".
+             */
+            summary: string;
+            /**
+             * Total
+             * @description Queued compiles the cancel will skip.
+             */
+            total: number;
+        };
+        /**
+         * CompileQueueOut
+         * @description A project's (or one source's) Knowledge compile queue.
+         */
+        CompileQueueOut: {
+            /** @description The latest cancel of this scope's queued compiles, if any. */
+            last_cancel?: components["schemas"]["CompileCancelStatusOut"] | null;
+            /**
+             * Queued
+             * @description Compiles waiting to start.
+             */
+            queued: number;
+            /**
+             * Running
+             * @description Compiles running now.
+             */
+            running: number;
         };
         /** CompoundIn */
         CompoundIn: {
@@ -4937,6 +6136,11 @@ export interface components {
              */
             path: string;
             /**
+             * Result
+             * @description `created`: a new file. `versioned`: a new version of the file already at this path (`id`), now its current version. `restored`: the bytes match an earlier version of that file, which is current again. `unchanged`: the bytes match its current version; no version is added.
+             */
+            result?: ("created" | "versioned" | "restored" | "unchanged") | null;
+            /**
              * Title
              * @description Title of the created artifact.
              */
@@ -4948,6 +6152,11 @@ export interface components {
              * @example c1a7e5d2-4b9f-4f38-a612-7d0e9b3c5f81
              */
             version_id: string;
+            /**
+             * Version No
+             * @description The number of `version_id` within its file (1 = first)
+             */
+            version_no?: number | null;
         };
         /**
          * CreatedFolderOut
@@ -5943,6 +7152,11 @@ export interface components {
              */
             error: string;
             /**
+             * Error Code
+             * @description Why, when it is a refusal of where the file would go: `ambiguous_path` (the folder holds several files of that name) or `file_not_writable` (the file there is one you cannot change). Nothing was created for it.
+             */
+            error_code?: string | null;
+            /**
              * Path
              * @description Path where it lives.
              */
@@ -6688,6 +7902,96 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * InterviewFromReviewsBody
+         * @description Which flags to ask about, and who the interview is for.
+         */
+        InterviewFromReviewsBody: {
+            /**
+             * Goals
+             * @description The interview's goals, in place of the drafted ones.
+             */
+            goals?: string | null;
+            /**
+             * Kinds
+             * @description Ask only about flags of these kinds (`contradiction`, `ambiguity`, `unverifiable`, `likely_error`, `other`). Omitted: every kind. Ignored with `proposal_ids`.
+             */
+            kinds?: ("contradiction" | "ambiguity" | "unverifiable" | "likely_error" | "other")[];
+            /**
+             * Link Expires In Days
+             * @description How long the participant's link works, in days.
+             * @default 14
+             */
+            link_expires_in_days?: number;
+            /**
+             * Max Questions
+             * @description The most flags to ask about, one question each; 30, the interview's own cap, by default. Flags past it are listed in `skipped` as `over_question_limit`.
+             * @default 30
+             */
+            max_questions?: number;
+            /** @description Who the interview is for. Given, the interview also gets that person's link (`link`, `link_url`), made as `POST /v1/interview/sendables/{sendable_id}/links` makes it: Beakr sends nothing, you deliver the link. Omitted: a draft only. */
+            participant?: components["schemas"]["ParticipantIn"] | null;
+            /**
+             * Proposal Ids
+             * @description The review flags to ask about (proposal ids), in order. Omitted: every open review flag of the project, newest first (narrowed by `kinds`).
+             */
+            proposal_ids?: string[];
+            /**
+             * Title
+             * @description The interview's title, in place of the drafted one.
+             */
+            title?: string | null;
+        };
+        /**
+         * InterviewFromReviewsOut
+         * @description The drafted interview, which flag each question asks about, and the participant's link.
+         */
+        InterviewFromReviewsOut: {
+            /**
+             * Edit Url
+             * @description Where a person opens the draft in Beakr to edit and send it.
+             */
+            edit_url?: string | null;
+            /**
+             * Empty Reason
+             * @description Why nothing was drafted: `no_open_flags` (the project has none), `no_matching_flags` (none of the kinds asked for), `no_askable_flags` (none of the named flags is open here). Null when an interview was drafted.
+             */
+            empty_reason?: ("no_open_flags" | "no_matching_flags" | "no_askable_flags") | null;
+            /** @description The saved interview. Without a participant it has no links: edit it, then send it with `POST /v1/interview/sendables/{sendable_id}/links`. Null when there was nothing to ask. */
+            interview: components["schemas"]["SendableInterviewOut"] | null;
+            /** @description The participant's link, when a participant was given. */
+            link?: components["schemas"]["InterviewLinkMadeOut"] | null;
+            /**
+             * Link Url
+             * @description The link anyone can open to take the interview, with no Beakr account. Shown once. Shown on the first response only; absent from an idempotent replay.
+             */
+            link_url?: string | null;
+            /**
+             * Message
+             * @description A sentence saying why nothing was drafted.
+             */
+            message?: string | null;
+            /**
+             * Questions
+             * @description One per flag asked about, in the interview's order.
+             */
+            questions: components["schemas"]["ReviewQuestionOut"][];
+            /**
+             * Questions Written By
+             * @description `model` when the model wrote every question, `template` when any was built from its flag; null when nothing was drafted.
+             */
+            questions_written_by?: ("model" | "template") | null;
+            /**
+             * Secret Redacted
+             * @description True on an idempotent replay (`Idempotent-Replayed` header): the one-time secret was not stored, so this response omits it. Absent on the first response.
+             */
+            secret_redacted?: boolean | null;
+            /**
+             * Skipped
+             * @description Flags not asked about, and why (including open flags past the question cap).
+             */
+            skipped?: components["schemas"]["SkippedFlagOut"][];
+        };
+        /**
          * InterviewLinkCreated
          * @description The interview and its link.
          * @example {
@@ -6735,6 +8039,36 @@ export interface components {
              * @description The link to give the participant. Anyone holding it can take the interview, so treat it as a secret. Shown on the first response only; absent from an idempotent replay.
              */
             url?: string | null;
+        };
+        /**
+         * InterviewLinkMadeOut
+         * @description The participant's link, made with the interview.
+         */
+        InterviewLinkMadeOut: {
+            /**
+             * Expires At
+             * Format: date-time
+             * @description When the link stops working.
+             * @example 2026-10-03T09:30:42Z
+             */
+            expires_at: string;
+            /**
+             * Label
+             * @description Who it is for, as shown beside the link in Beakr.
+             */
+            label: string;
+            /**
+             * Link Id
+             * Format: uuid
+             * @description Id of the link.
+             * @example 0f1e2d3c-4b5a-4c6d-9e8f-7a6b5c4d3e2f
+             */
+            link_id: string;
+            /**
+             * Result Url
+             * @description Where to read the interview's progress and answers (the link result route).
+             */
+            result_url?: string | null;
         };
         /**
          * InterviewLinkRecipient
@@ -9296,6 +10630,28 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * ParticipantIn
+         * @description Who the interview is for: a member of the organization, or a name and/or email.
+         */
+        ParticipantIn: {
+            /**
+             * Email
+             * @description The person's email, shown beside the link in Beakr. Beakr sends nothing to it.
+             * @example dana@example.com
+             */
+            email?: string | null;
+            /**
+             * Name
+             * @description The person's name, shown beside the link in Beakr.
+             */
+            name?: string | null;
+            /**
+             * User Id
+             * @description A member of your organization (user id); their name and email label the link.
+             */
+            user_id?: string | null;
+        };
+        /**
          * PendingMemberInvitationOut
          * @description Pending membership invitation shown alongside real members.
          */
@@ -9516,6 +10872,96 @@ export interface components {
          * @enum {string}
          */
         PrincipalType: "user" | "group" | "org" | "service" | "link";
+        /** ProfileTypeAsDetail */
+        ProfileTypeAsDetail: {
+            /**
+             * Field
+             * @description The field it is listed under on those cards.
+             */
+            field: string;
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Page Type
+             * @description The key of the type whose cards it is listed on.
+             */
+            page_type: string;
+        };
+        /** ProfileTypeMatch */
+        ProfileTypeMatch: {
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Page Type
+             * @description The key of the existing type that covers it.
+             */
+            page_type: string;
+            /**
+             * Reason
+             * @description Why that type covers it; may be empty.
+             */
+            reason: string;
+            /**
+             * Scope
+             * @description Where that type is defined: `global` (built-in), `org` or `project`.
+             */
+            scope: string;
+        };
+        /** ProfileTypeSkipped */
+        ProfileTypeSkipped: {
+            /**
+             * Name
+             * @description The kind of thing as the profile names it.
+             */
+            name: string;
+            /**
+             * Reason
+             * @description Why no type was made for it.
+             */
+            reason: string;
+        };
+        /**
+         * ProfileTypesOutcome
+         * @description What Beakr did with the kinds of thing a project's profile names.
+         */
+        ProfileTypesOutcome: {
+            /**
+             * As Details
+             * @description Names that are entries on another type's cards: no type was made, and the type gained a field for them.
+             */
+            as_details: components["schemas"]["ProfileTypeAsDetail"][];
+            /**
+             * Made
+             * @description Keys of the types it created.
+             */
+            made: string[];
+            /**
+             * Matched
+             * @description Names an existing type already covers; no separate type was made.
+             */
+            matched: components["schemas"]["ProfileTypeMatch"][];
+            /**
+             * Skipped
+             * @description Names that got no type, and why.
+             */
+            skipped: components["schemas"]["ProfileTypeSkipped"][];
+            /**
+             * Suggested
+             * @description Keys kept as suggestions, in a project whose types only people change (`agent_may_change` false).
+             */
+            suggested: string[];
+            /**
+             * Working
+             * @description Whether Beakr is still defining types from the profile; the lists may change.
+             */
+            working: boolean;
+        };
         /**
          * ProjectBoundaryChange
          * @description A change to a project's boundary: a key left out keeps its value.
@@ -9591,6 +11037,95 @@ export interface components {
             content_out: "allowed" | "locked";
         };
         /**
+         * ProjectCardTypeFieldIn
+         * @description One field of a card type defined with a new project.
+         */
+        ProjectCardTypeFieldIn: {
+            /**
+             * Description
+             * @description What to record under this field, when the name alone does not say: what counts, or that there is one row for each of many.
+             */
+            description?: string | null;
+            /**
+             * Name
+             * @description The Attribute name.
+             */
+            name: string;
+            /**
+             * Required
+             * @description Whether every card of this type should state it.
+             * @default false
+             */
+            required?: boolean;
+        };
+        /**
+         * ProjectCardTypeIn
+         * @description One card type a new project defines for itself.
+         */
+        ProjectCardTypeIn: {
+            /**
+             * Description
+             * @description What a card of this type is about.
+             */
+            description?: string | null;
+            /**
+             * Fields
+             * @description The type's fields, in order.
+             */
+            fields?: components["schemas"]["ProjectCardTypeFieldIn"][] | null;
+            /**
+             * Grain
+             * @description `card` (the default): each instance gets a card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.
+             */
+            grain?: ("card" | "row") | null;
+            /**
+             * Key
+             * @description The type's key: lowercase letters, digits and underscores.
+             */
+            key: string;
+            /**
+             * Label
+             * @description The type's display name.
+             */
+            label: string;
+        };
+        /**
+         * ProjectCardTypesCreate
+         * @description A new project's card type settings, and the card types it starts with.
+         *
+         *     Left out entirely, the project is offered the organization's and the
+         *     built-in card types. `inherit: own` is accepted only when this request
+         *     brings at least one type whose instances are cards (`copy_from_project_id`
+         *     or `types`).
+         */
+        ProjectCardTypesCreate: {
+            /**
+             * Agent May Change
+             * @description Whether Beakr itself may add or change the project's card types. On by default.
+             */
+            agent_may_change?: boolean | null;
+            /**
+             * Copy From Project Id
+             * @description A project you can see whose own card types to copy into the new project. Cards are not copied.
+             */
+            copy_from_project_id?: string | null;
+            /**
+             * Copy Keys
+             * @description With `copy_from_project_id`: the keys to copy. Left out, every type that project itself defines is copied.
+             */
+            copy_keys?: string[] | null;
+            /**
+             * Inherit
+             * @description Which broader card types the project is offered: `organization` (the organization's and the built-in types, the default), `builtin` (the built-in types only) or `own` (only the types the project itself defines).
+             */
+            inherit?: ("organization" | "builtin" | "own") | null;
+            /**
+             * Types
+             * @description Card types to define for the new project.
+             */
+            types?: components["schemas"]["ProjectCardTypeIn"][] | null;
+        };
+        /**
          * ProjectCreate
          * @description Request payload for creating a project.
          *
@@ -9600,6 +11135,7 @@ export interface components {
          *         tags: List of tags stored in `projects.tags`.
          *         group_id: Legacy space (group) this project belongs to. New projects
          *                   should omit this and remain standalone.
+         *         card_types: Optional card type settings and starting card types.
          * @example {
          *       "description": "Assay protocols, validation runs and their results.",
          *       "name": "Assay development",
@@ -9617,6 +11153,8 @@ export interface components {
              * @description A preset to set the boundary from, instead of `boundary`.
              */
             boundary_preset?: ("internal" | "siloed" | "leadership") | null;
+            /** @description The project's card type settings and the card types it starts with. Left out, the project is offered the organization's and the built-in types. */
+            card_types?: components["schemas"]["ProjectCardTypesCreate"] | null;
             /**
              * Description
              * @description Optional long-form project description.
@@ -10821,6 +12359,70 @@ export interface components {
             type?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * ReviewQuestionOut
+         * @description One drafted key question and the review flag it asks about.
+         */
+        ReviewQuestionOut: {
+            /**
+             * Asked Revision
+             * @description The card's revision the question was asked against. An answer to a card whose flagged text changed since is marked stale.
+             */
+            asked_revision?: number | null;
+            /**
+             * Kind
+             * @description The flag's kind: `contradiction`, `ambiguity`, `unverifiable`, `likely_error`, or `other` for an older flag that names none.
+             */
+            kind: string;
+            /**
+             * Linked
+             * @description Whether the flag records the question, so the answer can be attached to it. False when the caller may read the flag but not change it.
+             */
+            linked: boolean;
+            /**
+             * Number
+             * @description The question's place in the interview, from 1.
+             */
+            number: number;
+            /**
+             * Page Id
+             * @description Id of the card the flag is on.
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id?: string | null;
+            /**
+             * Page Title
+             * @description Title of the card the flag is on.
+             */
+            page_title: string;
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description Id of the review flag (proposal) it asks about.
+             */
+            proposal_id: string;
+            /**
+             * Question
+             * @description The key question, as saved on the interview.
+             */
+            question: string;
+            /**
+             * Reason
+             * @description Why the flag was raised.
+             */
+            reason: string;
+            /**
+             * Section Id
+             * @description The flagged section, when it names one.
+             */
+            section_id?: string | null;
+            /**
+             * Written By
+             * @description `model` when Beakr's model wrote the question, `template` when it was built from the flag because no model answer covered it.
+             * @enum {string}
+             */
+            written_by: "model" | "template";
         };
         /**
          * RunAnswer
@@ -12464,6 +14066,24 @@ export interface components {
             name: string;
         };
         /**
+         * SkippedFlagOut
+         * @description A flag that was not asked about, and why.
+         */
+        SkippedFlagOut: {
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description Id of the flag.
+             */
+            proposal_id: string;
+            /**
+             * Reason
+             * @description `not_found` (no such flag in this project, or not visible to you), `not_open` (already resolved or dismissed), `not_a_review_flag` (another kind of proposal), `over_question_limit` (an open flag left out because the interview was full).
+             * @enum {string}
+             */
+            reason: "not_found" | "not_open" | "not_a_review_flag" | "over_question_limit";
+        };
+        /**
          * SourceExcerpt
          * @description One cited passage of a compact record's document.
          */
@@ -13023,6 +14643,38 @@ export interface components {
              */
             reason: string | null;
         };
+        /**
+         * SyncCancelOut
+         * @description The sync a person stopped.
+         */
+        SyncCancelOut: {
+            /**
+             * Cancelled By
+             * @description Who stopped it.
+             */
+            cancelled_by?: string | null;
+            /**
+             * Next Sync
+             * @description What the next scheduled sync will do.
+             */
+            next_sync: string;
+            /**
+             * Note
+             * @description What happens to items already synced.
+             */
+            note: string;
+            /**
+             * Status
+             * @description cancelling: items already started are finishing; nothing new starts.
+             */
+            status: string;
+            /**
+             * Sync Job Id
+             * Format: uuid
+             * @description The stopped sync's job id.
+             */
+            sync_job_id: string;
+        };
         /** TextContent */
         TextContent: {
             /**
@@ -13416,6 +15068,19 @@ export interface components {
             /** @description The project it writes into. */
             project?: components["schemas"]["TrailProject"] | null;
         };
+        /** UnlistedCardType */
+        UnlistedCardType: {
+            /**
+             * Card Count
+             * @description Live cards of that type in the project.
+             */
+            card_count: number;
+            /**
+             * Key
+             * @description The type the cards carry.
+             */
+            key: string;
+        };
         /** UploadCompletePart */
         UploadCompletePart: {
             /**
@@ -13434,10 +15099,18 @@ export interface components {
          * @description Finish an upload. Omit ``parts`` to let the server use every part S3 holds.
          * @example {
          *       "artifact_type": "protocol",
-         *       "title": "protocol.pdf"
+         *       "on_existing": "version",
+         *       "title": "protocol.pdf",
+         *       "written_by_agent": false
          *     }
          */
         UploadCompleteRequest: {
+            /**
+             * Artifact Id
+             * @description Add this upload as a new version of this file, which must be an uploaded file in the upload's project. Its Knowledge is updated as for any new version; `on_existing`, `title`, `artifact_type`, `description` and `relative_path` do not apply.
+             * @example 3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40
+             */
+            artifact_id?: string | null;
             /**
              * @description Kind of file.
              * @default doc
@@ -13448,6 +15121,13 @@ export interface components {
              * @description Description of the upload complete, in plain text.
              */
             description?: string | null;
+            /**
+             * On Existing
+             * @description What to do when the upload's folder already holds a file with the name this file would get (`title`, else the last part of `path`; exact, case-sensitive match). `version` (the default) adds this upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. `new` always creates a separate file.
+             * @default version
+             * @enum {string}
+             */
+            on_existing?: "version" | "new";
             /**
              * Parts
              * @description The parts.
@@ -13463,6 +15143,12 @@ export interface components {
              * @description Defaults to the file name
              */
             title?: string | null;
+            /**
+             * Written By Agent
+             * @description Mark this upload as written by an agent rather than a person. The mark is kept on the version this upload creates; when the upload creates the file, the file is also marked as Beakr-written (`is_ai_generated`), so search and agents treat it as an agent's output rather than a source.
+             * @default false
+             */
+            written_by_agent?: boolean;
         };
         /**
          * UploadCompleteResponse
@@ -13479,6 +15165,7 @@ export interface components {
          *       "batch_status_url": "/v1/jobs/a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
          *       "folders": [],
          *       "job_id": "a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
+         *       "result": "versioned",
          *       "status_url": "/v1/jobs/a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
          *       "upload": {
          *         "artifact_id": "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40",
@@ -13494,7 +15181,9 @@ export interface components {
          *         "path": "protocol.pdf",
          *         "project_id": "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d",
          *         "status": "completed"
-         *       }
+         *       },
+         *       "version_no": 2,
+         *       "written_by_agent": false
          *     }
          */
         UploadCompleteResponse: {
@@ -13513,10 +15202,17 @@ export interface components {
             /**
              * Job Id
              * Format: uuid
-             * @description The new file's processing job (kind artifact_index in GET /v1/jobs)
+             * @description The file's processing job (kind artifact_index in GET /v1/jobs). When `result` is `unchanged` and nothing needed processing, the job that processed that version earlier.
              * @example a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63
              */
             job_id: string;
+            /**
+             * Result
+             * @description `created`: a new file. `versioned`: a new version of the file already at this path (`artifact.id`), now its current version. `restored`: the bytes match an earlier version of that file, which is current again; no version is added. `unchanged`: the bytes match the file's current version; no version is added. Detecting identical bytes needs `content_hash` on the upload; without it, identical bytes are added as a new version.
+             * @default created
+             * @enum {string}
+             */
+            result?: "created" | "versioned" | "restored" | "unchanged";
             /**
              * Status Url
              * @description GET /v1/jobs/{job_id}: poll this until it is final
@@ -13524,6 +15220,18 @@ export interface components {
             status_url: string;
             /** @description The finished upload session. */
             upload: components["schemas"]["UploadSessionOut"];
+            /**
+             * Version No
+             * @description The number of `artifact.version_id` within its file (1 = first)
+             * @default 1
+             */
+            version_no?: number;
+            /**
+             * Written By Agent
+             * @description Whether `artifact.version_id` is marked as written by an agent
+             * @default false
+             */
+            written_by_agent?: boolean;
         };
         /** UploadPartUrl */
         UploadPartUrl: {
@@ -13926,6 +15634,408 @@ export interface components {
              * @default []
              */
             sources?: components["schemas"]["SourceRecord"][];
+        };
+        /** WikiConflictCardResult */
+        WikiConflictCardResult: {
+            /**
+             * Page Id
+             * @description The card; absent for a card the caller cannot see or write.
+             * @default null
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id?: string | null;
+            /**
+             * Page Title
+             * @description The card's title.
+             * @default null
+             */
+            page_title?: string | null;
+            /**
+             * Reason
+             * @description Skipped cards only: changed_since_review (the card changed since the review recorded it), rows_not_recorded (the review predates row ids, so which row to delete is unknown) or not_available (the caller cannot see or write it).
+             * @default null
+             */
+            reason?: string | null;
+            /**
+             * Revision
+             * @description Updated cards: the card's revision after the change. Skipped as changed_since_review: its revision now.
+             * @default null
+             */
+            revision?: number | null;
+        };
+        /**
+         * WikiConflictCardsResolveRequest
+         * @description Resolve a contradiction review on every card it lists (``services/wiki_conflict_rows.py``).
+         */
+        WikiConflictCardsResolveRequest: {
+            /**
+             * Outcome
+             * @description keep_disputed: the value the card stated stands and the disputing row is deleted; adopt_disputing: the disputing value stands and the row it disputed is deleted; both_valid: both rows stand.
+             * @enum {string}
+             */
+            outcome: "keep_disputed" | "adopt_disputing" | "both_valid";
+        };
+        /**
+         * WikiConflictCardsResolved
+         * @description ``POST .../resolve-cards``: one outcome applied to every card a contradiction lists.
+         */
+        WikiConflictCardsResolved: {
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description The review's id.
+             */
+            proposal_id: string;
+            /**
+             * Skipped
+             * @description The cards left as they were, each with why.
+             */
+            skipped: components["schemas"]["WikiConflictCardResult"][];
+            /**
+             * Status
+             * @description resolved when any card changed; unchanged when none did (the review stays pending).
+             */
+            status: string;
+            /**
+             * Updated
+             * @description The cards that changed.
+             */
+            updated: components["schemas"]["WikiConflictCardResult"][];
+        };
+        /**
+         * WikiConflictDetail
+         * @description ``GET .../proposals/{id}/conflict``: the flagged section and the sources on each side.
+         */
+        WikiConflictDetail: {
+            /**
+             * Agent Reasoning
+             * @description What the agent that flagged it weighed; empty when it gave nothing.
+             */
+            agent_reasoning: string;
+            /**
+             * Anchor
+             * @description Where the flag points on the page as it is now: section (a section of the page), missing (a section the page no longer has) or page (the page as a whole).
+             * @default null
+             */
+            anchor?: string | null;
+            /**
+             * Conflict Kind
+             * @description contradiction (sources disagree: keep or adopt) or review (any other concern: correct or clarify).
+             * @default null
+             */
+            conflict_kind?: string | null;
+            /**
+             * Contradicting Sources
+             * @description The cited sources whose stance is contradicts.
+             */
+            contradicting_sources: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Current Revision
+             * @description The page's revision now: send it as expected_revision when resolving.
+             * @default null
+             */
+            current_revision?: number | null;
+            /**
+             * Flagged Revision
+             * @description The page revision the flag was raised against.
+             * @default null
+             */
+            flagged_revision?: number | null;
+            /**
+             * Is Stale
+             * @description True when the flagged text changed since it was flagged, so the concern may already be settled.
+             */
+            is_stale: boolean;
+            /**
+             * Kind
+             * @description The category the flag was raised with: contradiction, unverifiable, likely_error or ambiguity; null on older flags.
+             * @default null
+             */
+            kind?: string | null;
+            /**
+             * Page Id
+             * Format: uuid
+             * @description The flagged page.
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id: string;
+            /**
+             * Page Title
+             * @description The flagged page's title.
+             */
+            page_title: string;
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description The review flag's id.
+             */
+            proposal_id: string;
+            /**
+             * Reason
+             * @description Why it was flagged.
+             */
+            reason: string;
+            /**
+             * Section Content
+             * @description The flagged section's current Markdown, with its section marker; the text a hand-written resolution replaces.
+             */
+            section_content: string;
+            /**
+             * Section Id
+             * @description The flagged section, as resolve takes it; null when the flag names no section of the page as it is now.
+             * @default null
+             */
+            section_id?: string | null;
+            /**
+             * Section Kind
+             * @description text for an ordinary section; card_table for a card's Facts, Connections or Findings table, whose rows change only through row operations. Null without a section.
+             * @default null
+             */
+            section_kind?: string | null;
+            /**
+             * Section Title
+             * @description The flagged section's heading; empty without one.
+             */
+            section_title: string;
+            /**
+             * Sources
+             * @description Every source the flagged section cites, each with its stance.
+             */
+            sources: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Supporting Sources
+             * @description The other cited sources (support or qualifies).
+             */
+            supporting_sources: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** WikiConflictResolutionOption */
+        WikiConflictResolutionOption: {
+            /**
+             * Edits
+             * @description For a long section, the passages this option changes; new_section_body is the section with them applied. Null for an option drafted as a whole rewrite.
+             * @default null
+             */
+            edits?: components["schemas"]["WikiConflictTargetedEdit"][] | null;
+            /**
+             * Id
+             * @description The option's letter, A, B, ...
+             */
+            id: string;
+            /**
+             * Label
+             * @description A short name for what the option does.
+             */
+            label: string;
+            /**
+             * New Section Body
+             * @description The section's full Markdown with this resolution applied; send it to POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve to apply it.
+             */
+            new_section_body: string;
+            /**
+             * @description For a flag on a card's Facts or Connections table, the row operation this option makes. Apply it with POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows; new_section_body then only shows the table it would leave.
+             * @default null
+             */
+            row_operation?: components["schemas"]["WikiConflictRowOperation"] | null;
+            /**
+             * Summary
+             * @description What changes, in one or two sentences.
+             */
+            summary: string;
+            /**
+             * Table Changes
+             * @description The row operation's change, as rows added, removed and changed (the shape of a proposal's table_changes).
+             * @default null
+             */
+            table_changes?: {
+                [key: string]: unknown;
+            }[] | null;
+        };
+        /**
+         * WikiConflictResolutionOptions
+         * @description ``POST /v1/knowledge/wiki/proposals/{id}/resolutions``: Beakr's drafted resolutions.
+         */
+        WikiConflictResolutionOptions: {
+            /**
+             * Cached
+             * @description Whether these options were drafted earlier against the same revision.
+             */
+            cached: boolean;
+            /**
+             * Current Revision
+             * @description The page revision the options were drafted against.
+             * @default null
+             */
+            current_revision?: number | null;
+            /**
+             * No Draft Reason
+             * @description Why options is empty: no_section (the flag names no section of the page as it is now), rows_not_found (a card-table flag whose rows could not be found), empty_section, refused, truncated, unparseable, timed_out, edits_not_found or no_valid_options. Null when there are options.
+             * @default null
+             */
+            no_draft_reason?: string | null;
+            /**
+             * Options
+             * @description Drafted resolutions. Empty when the section has no body to rewrite or the model's answer could not be read; resolve by hand then.
+             */
+            options: components["schemas"]["WikiConflictResolutionOption"][];
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description Id of the proposal.
+             */
+            proposal_id: string;
+            /**
+             * Section Id
+             * @description The flagged section the options rewrite.
+             * @default null
+             */
+            section_id?: string | null;
+        };
+        /**
+         * WikiConflictResolveRequest
+         * @description Apply a chosen resolution to a flagged (review) wiki conflict.
+         *
+         *     ``new_section_body`` is a generated A/B option body or a manual edit.
+         *     ``section_id`` is the section the conflict detail resolved to;
+         *     ``expected_revision`` guards against a concurrent edit.
+         */
+        WikiConflictResolveRequest: {
+            /**
+             * Expected Revision
+             * @description The page revision the options were drafted or the flag read against (current_revision). A page that changed since answers 409 and nothing is applied. Omitted, the section is rewritten whatever changed since.
+             */
+            expected_revision?: number | null;
+            /**
+             * New Section Body
+             * @description The section's new Markdown: a drafted option's new_section_body, or your own.
+             */
+            new_section_body: string;
+            /**
+             * Option Id
+             * @description The drafted option being applied (A, B, ...); informational only: new_section_body is what is written.
+             */
+            option_id?: string | null;
+            /**
+             * Section Id
+             * @description The flagged section: the section_id POST .../resolutions returned.
+             */
+            section_id: string;
+        };
+        /**
+         * WikiConflictResolved
+         * @description ``POST .../resolve`` and ``POST .../resolve-rows``: the flag is resolved.
+         */
+        WikiConflictResolved: {
+            /**
+             * New Revision
+             * @description The page's revision after the change.
+             * @default null
+             */
+            new_revision?: number | null;
+            /**
+             * Page Id
+             * Format: uuid
+             * @description The page that changed.
+             * @example 9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14
+             */
+            page_id: string;
+            /**
+             * Proposal Id
+             * Format: uuid
+             * @description The review flag's id.
+             */
+            proposal_id: string;
+            /**
+             * Section Id
+             * @description The section that changed.
+             */
+            section_id: string;
+            /**
+             * Status
+             * @description resolved.
+             */
+            status: string;
+        };
+        /** WikiConflictRowOperation */
+        WikiConflictRowOperation: {
+            /**
+             * Kind
+             * @description replace (correct one row), delete (retire rows), merge (rows that say one thing become one row keeping every citation) or add (a new row).
+             */
+            kind: string;
+            /**
+             * Reason
+             * @description Why, recorded with the revision.
+             */
+            reason: string;
+            /**
+             * Row
+             * @description The new row's cells (and evidence keys) for replace, merge and add.
+             * @default null
+             */
+            row?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Row Ids
+             * @description The rows it acts on, by row id.
+             */
+            row_ids: string[];
+            /**
+             * Table
+             * @description facts or connections.
+             */
+            table: string;
+        };
+        /**
+         * WikiConflictRowsResolveRequest
+         * @description Apply a drafted row option to a flagged card table (``services/wiki_conflict_row_drafts.py``).
+         */
+        WikiConflictRowsResolveRequest: {
+            /**
+             * Expected Revision
+             * @description The current_revision POST .../resolutions returned with that option.
+             */
+            expected_revision: number;
+            /**
+             * Option Id
+             * @description The id of a row option POST .../resolutions returned (A, B, ...).
+             */
+            option_id: string;
+        };
+        /** WikiConflictTargetedEdit */
+        WikiConflictTargetedEdit: {
+            /**
+             * New Text
+             * @description What replaces it. Empty deletes it.
+             */
+            new_text: string;
+            /**
+             * Old Text
+             * @description Text of the section, which occurs in it exactly once.
+             */
+            old_text: string;
+        };
+        /**
+         * WikiFieldRename
+         * @description One field's current name and the name its rows should carry.
+         */
+        WikiFieldRename: {
+            /**
+             * New
+             * @description The name to give it.
+             */
+            new: string;
+            /**
+             * Old
+             * @description The field's current name.
+             */
+            old: string;
         };
         /**
          * WikiIngestQueueResult
@@ -14337,6 +16447,507 @@ export interface components {
             view_hit_count?: number | null;
         } & {
             [key: string]: unknown;
+        };
+        /** WikiPageType */
+        WikiPageType: {
+            /**
+             * Key
+             * @description The key.
+             */
+            key: string;
+            /**
+             * Label
+             * @description Display label.
+             */
+            label: string;
+            /**
+             * Scope
+             * @description The scope it applies to.
+             */
+            scope: string;
+            /**
+             * Status
+             * @description Current status of the wiki page type.
+             */
+            status: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * WikiPageTypeCardsRetyped
+         * @description ``POST /v1/knowledge/wiki/page-types/{key}/retype-cards``.
+         */
+        WikiPageTypeCardsRetyped: {
+            /**
+             * Cards
+             * @description Live cards of the source type when the call started.
+             */
+            cards: number;
+            /**
+             * Cards Remaining
+             * @description Cards still of the source type after this call. One call moves at most 500; send the same request again for the rest.
+             */
+            cards_remaining: number;
+            /**
+             * Cards Retyped
+             * @description Cards this call moved; 0 for a dry run.
+             */
+            cards_retyped: number;
+            /**
+             * Cards Skipped
+             * @description Cards another change held or touched meanwhile; still of the source type.
+             */
+            cards_skipped: number;
+            /**
+             * Commit Id
+             * @description The one change holding every card moved; null when none was.
+             */
+            commit_id: string | null;
+            /**
+             * Dry Run
+             * @description True when nothing was written.
+             */
+            dry_run: boolean;
+            /**
+             * From Type
+             * @description The key of the type the cards had.
+             */
+            from_type: string;
+            /**
+             * To Type
+             * @description The key of the type the cards were moved to.
+             */
+            to_type: string;
+            /**
+             * Undo Event Id
+             * @description The activity row recorded for an applied change. Reverting it undoes the change; null for a dry run or when nothing was moved.
+             */
+            undo_event_id: string | null;
+        };
+        /**
+         * WikiPageTypeCopy
+         * @description Copy card types one project defines into another project.
+         */
+        WikiPageTypeCopy: {
+            /**
+             * From Project Id
+             * Format: uuid
+             * @description The project whose types to copy.
+             */
+            from_project_id: string;
+            /**
+             * Keys
+             * @description The keys of the types to copy.
+             */
+            keys: string[];
+            /**
+             * Replace
+             * @description Overwrite a type the destination already defines; otherwise it is skipped.
+             * @default false
+             */
+            replace?: boolean;
+            /**
+             * To Project Id
+             * Format: uuid
+             * @description The project that gets its own copies.
+             */
+            to_project_id: string;
+        };
+        /**
+         * WikiPageTypeFieldIn
+         * @description One field of a card type.
+         */
+        WikiPageTypeFieldIn: {
+            /**
+             * Description
+             * @description What to record under this field, when the name alone does not say: what counts, or that there is one row for each of many.
+             */
+            description?: string | null;
+            /**
+             * Name
+             * @description The Attribute name.
+             */
+            name: string;
+            /**
+             * Required
+             * @description Whether every card of this type should state it.
+             * @default false
+             */
+            required?: boolean;
+        };
+        /**
+         * WikiPageTypeFieldRenames
+         * @description Rename a card type's fields on the cards one project already has.
+         */
+        WikiPageTypeFieldRenames: {
+            /**
+             * Continue Event Id
+             * @description The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.
+             */
+            continue_event_id?: string | null;
+            /**
+             * Dry Run
+             * @description Count what would change and write nothing. Pass false to apply.
+             * @default true
+             */
+            dry_run?: boolean;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project whose cards to change.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /**
+             * Renames
+             * @description The fields to rename.
+             */
+            renames: components["schemas"]["WikiFieldRename"][];
+        };
+        /**
+         * WikiPageTypeFieldsRenamed
+         * @description ``POST /v1/knowledge/wiki/page-types/{key}/rename-fields``.
+         */
+        WikiPageTypeFieldsRenamed: {
+            /**
+             * Applied
+             * @description The renames accepted, old name to new name.
+             */
+            applied: {
+                [key: string]: string;
+            };
+            /**
+             * Cards
+             * @description Cards of the type in the project.
+             */
+            cards: number;
+            /**
+             * Cards Changed
+             * @description Cards the mapping changes.
+             */
+            cards_changed: number;
+            /**
+             * Cards Conflicted
+             * @description Cards another change touched meanwhile; left as they were.
+             */
+            cards_conflicted: number;
+            /**
+             * Cards Refused
+             * @description Cards whose table could not be rewritten safely; left for a person.
+             */
+            cards_refused: number;
+            /**
+             * Cards Remaining
+             * @description Cards the mapping still changes after this call. One call writes at most 500; send the same request again for the rest.
+             */
+            cards_remaining: number;
+            /**
+             * Cards Written
+             * @description Cards this call wrote; 0 for a dry run.
+             */
+            cards_written: number;
+            /**
+             * Commit Id
+             * @description The one change holding every card written; null when none was.
+             */
+            commit_id: string | null;
+            /**
+             * Dry Run
+             * @description True when nothing was written.
+             */
+            dry_run: boolean;
+            /**
+             * Page Type
+             * @description The key of the type whose cards were read.
+             */
+            page_type: string;
+            /**
+             * Refused
+             * @description The renames the safety checks did not accept, old name to new name.
+             */
+            refused: {
+                [key: string]: string;
+            };
+            /**
+             * Rows Merged
+             * @description Rows folded into another row that became the same field, citations kept.
+             */
+            rows_merged: number;
+            /**
+             * Rows Renamed
+             * @description Rows given a new field name.
+             */
+            rows_renamed: number;
+            /**
+             * Undo Event Id
+             * @description The activity row recorded for an applied change. Reverting it undoes the change; null for a dry run or when nothing was written.
+             */
+            undo_event_id: string | null;
+        };
+        /**
+         * WikiPageTypeList
+         * @description ``GET /v1/knowledge/wiki/page-types``: the card types a project uses.
+         */
+        WikiPageTypeList: {
+            /**
+             * Kept Types
+             * @description Built-in types the project is offered whatever it chooses (the page types that are not cards, and `person` and `organization`); listed when `inherit` is `own`, empty otherwise.
+             * @default null
+             */
+            kept_types?: string[] | null;
+            /**
+             * Map Mode
+             * @description Whether this organization's Knowledge is a map of cards.
+             */
+            map_mode: boolean;
+            /**
+             * Page Types
+             * @description Each type as the narrowest scope that defines it holds it. With `include_counts` each carries `card_count`, its live cards in the project.
+             */
+            page_types: components["schemas"]["WikiPageType"][];
+            /**
+             * @description What Beakr did with the kinds of thing the project's profile names; present when a project is named.
+             * @default null
+             */
+            profile_types?: components["schemas"]["ProfileTypesOutcome"] | null;
+            /**
+             * @description The project's card type settings; present when a project is named.
+             * @default null
+             */
+            settings?: components["schemas"]["CardTypeSettings"] | null;
+            /**
+             * Unlisted Types
+             * @description With `include_counts`: types the project's live cards carry that are not in `page_types` (turned off, no longer offered, or never defined).
+             * @default null
+             */
+            unlisted_types?: components["schemas"]["UnlistedCardType"][] | null;
+        };
+        /**
+         * WikiPageTypeMadeField
+         * @description ``POST /v1/knowledge/wiki/page-types/{key}/to-field``.
+         */
+        WikiPageTypeMadeField: {
+            /** @description The type that was recorded as rows, now turned off and a card type. */
+            former_row_type: components["schemas"]["WikiPageType"];
+            /** @description The type that gained the field. */
+            page_type: components["schemas"]["WikiPageType"];
+        };
+        /**
+         * WikiPageTypeOverrideRemoved
+         * @description ``DELETE /v1/knowledge/wiki/page-types/{key}``.
+         */
+        WikiPageTypeOverrideRemoved: {
+            /**
+             * Key
+             * @description The key.
+             */
+            key: string;
+            /**
+             * Removed
+             * @description What was removed.
+             */
+            removed: boolean;
+            /**
+             * Scope
+             * @description The scope it applies to.
+             */
+            scope: string;
+        };
+        /**
+         * WikiPageTypePromote
+         * @description Copy card types one project defines up to the organization.
+         *
+         *     The source is ``source``, not ``from_project_id``, on purpose: the Knowledge
+         *     commit gate judges an agent's write by the projects a request names, and a
+         *     promotion changes what every project inherits. Naming no project makes the
+         *     gate read it as the organization-wide write it is.
+         */
+        WikiPageTypePromote: {
+            /**
+             * Keys
+             * @description The keys of the types to promote.
+             */
+            keys: string[];
+            /**
+             * Replace
+             * @description Overwrite a type the organization already defines; otherwise it is skipped.
+             * @default false
+             */
+            replace?: boolean;
+            /**
+             * Source
+             * Format: uuid
+             * @description The id of the project whose types to promote.
+             */
+            source: string;
+        };
+        /**
+         * WikiPageTypeRetypeCards
+         * @description Move the cards one project already has from one card type to another.
+         */
+        WikiPageTypeRetypeCards: {
+            /**
+             * Continue Event Id
+             * @description The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.
+             */
+            continue_event_id?: string | null;
+            /**
+             * Dry Run
+             * @description Count what would change and write nothing. Pass false to apply.
+             * @default true
+             */
+            dry_run?: boolean;
+            /**
+             * Project Id
+             * Format: uuid
+             * @description The project whose cards to move.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id: string;
+            /**
+             * Suggestion Id
+             * @description The pending suggestion this move answers, from the card type suggestions list. It must be a suggestion to move this type's cards in this project. An apply that leaves no card of the type marks it applied.
+             */
+            suggestion_id?: string | null;
+            /**
+             * To Type
+             * @description The key of the type the cards become: an active type of cards here.
+             */
+            to_type: string;
+        };
+        /** WikiPageTypeSkipped */
+        WikiPageTypeSkipped: {
+            /**
+             * Key
+             * @description The key.
+             */
+            key: string;
+            /**
+             * Reason
+             * @description not_found in the source, or exists at the destination
+             */
+            reason: string;
+        };
+        /** WikiPageTypeStatusResult */
+        WikiPageTypeStatusResult: {
+            /** @description The Knowledge page type. */
+            page_type: components["schemas"]["WikiPageType"];
+        };
+        /**
+         * WikiPageTypeToField
+         * @description Make a card type recorded as rows a field of the type its rows belong on.
+         */
+        WikiPageTypeToField: {
+            /**
+             * Description
+             * @description What to record under the field, for example 'one row per run'.
+             */
+            description?: string | null;
+            /**
+             * Name
+             * @description The field to add to that type.
+             */
+            name: string;
+            /**
+             * On Type
+             * @description The key of the card type whose cards these rows belong on.
+             */
+            on_type: string;
+            /**
+             * Project Id
+             * @description The project, with scope `project`; left out otherwise.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id?: string | null;
+            /**
+             * Scope
+             * @description Whose types to change: `project` (one project) or `org`.
+             * @default project
+             */
+            scope?: string;
+        };
+        /**
+         * WikiPageTypeUpdate
+         * @description Changes to one card type, as one scope holds it. A field left out is kept.
+         *
+         *     Editing a type the scope only inherits (a built-in from a project or an
+         *     organization, an organization's type from a project) makes that scope its own
+         *     copy and changes the copy.
+         */
+        WikiPageTypeUpdate: {
+            /**
+             * Aliases
+             * @description Other names people use for this type; replaces the list.
+             */
+            aliases?: string[] | null;
+            /**
+             * Description
+             * @description What a card of this type is about.
+             */
+            description?: string | null;
+            /**
+             * Fields
+             * @description The type's fields in order; replaces the list.
+             */
+            fields?: components["schemas"]["WikiPageTypeFieldIn"][] | null;
+            /**
+             * Grain
+             * @description `card` gives each instance of a type that was recorded as rows its own card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.
+             */
+            grain?: string | null;
+            /**
+             * Label
+             * @description The type's display name.
+             */
+            label?: string | null;
+            /**
+             * Project Id
+             * @description The project, with scope `project`; left out otherwise.
+             * @example 9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d
+             */
+            project_id?: string | null;
+            /**
+             * Scope
+             * @description Whose copy of the type to change: `project` (one project), `org` (every project in the organization that has no copy of its own) or `global` (the built-ins).
+             * @default project
+             */
+            scope?: string;
+            /**
+             * Status
+             * @description `deprecated` turns the type off for this scope, hiding a broader type of the same key.
+             */
+            status?: string | null;
+            /**
+             * When Not To Use
+             * @description What looks like this type but belongs to another, and which.
+             */
+            when_not_to_use?: string | null;
+            /**
+             * When To Use
+             * @description When a thing in a source should become a card of this type.
+             */
+            when_to_use?: string | null;
+        };
+        /**
+         * WikiPageTypesCopied
+         * @description ``POST /v1/knowledge/wiki/page-types/copy`` and ``.../promote``.
+         */
+        WikiPageTypesCopied: {
+            /**
+             * Copied
+             * @description Types the destination did not have.
+             */
+            copied: components["schemas"]["WikiPageType"][];
+            /**
+             * Replaced
+             * @description Types the destination had, overwritten because replace was true.
+             */
+            replaced: components["schemas"]["WikiPageType"][];
+            /**
+             * Skipped
+             * @description Keys not copied, each with why.
+             */
+            skipped: components["schemas"]["WikiPageTypeSkipped"][];
         };
         /**
          * WikiPatchIn
@@ -15867,6 +18478,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArtifactOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_artifact_versions_route_v1_artifacts__artifact_id__versions_get: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                artifact_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactVersionOutPage"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
@@ -18215,6 +20880,643 @@ export interface operations {
             };
         };
     };
+    list_wiki_page_types_v1_knowledge_wiki_page_types_get: {
+        parameters: {
+            query?: {
+                project_id?: string | null;
+                include_proposed?: boolean;
+                include_deprecated?: boolean;
+                /** @description With `project_id`: add each type's `card_count` (the project's cards that are not archived) and `unlisted_types`, the types cards carry that are not listed. */
+                include_counts?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeList"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeCopy"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypesCopied"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_card_type_history_v1_knowledge_wiki_page_types_history_get: {
+        parameters: {
+            query?: {
+                /** @description The project whose card type history. */
+                project_id?: string | null;
+                /** @description `org` for the organization's card types; `project` goes with project_id. */
+                scope?: string | null;
+                /** @description Only the entries of this card type. */
+                key?: string | null;
+                /** @description Also list Beakr's suggestions (`held_back`, `retype_suggested`), each with its `state`: `pending`, `applied` or `dismissed`. They are not changes. */
+                include_suggestions?: boolean;
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardTypeHistoryPage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypePromote"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypesCopied"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    change_card_type_settings_v1_knowledge_wiki_page_types_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CardTypeSettingsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardTypeSettingsChangeOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get: {
+        parameters: {
+            query?: {
+                /** @description The project whose pending suggestions. */
+                project_id?: string | null;
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardTypeHistoryPage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                suggestion_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CardTypeSuggestionDismiss"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardTypeSuggestionDismissed"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete: {
+        parameters: {
+            query?: {
+                scope?: string;
+                project_id?: string | null;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeOverrideRemoved"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    update_wiki_page_type_v1_knowledge_wiki_page_types__key__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeStatusResult"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeFieldRenames"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeFieldsRenamed"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeRetypeCards"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeCardsRetyped"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiPageTypeToField"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiPageTypeMadeField"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     list_wiki_pages_v1_knowledge_wiki_pages_get: {
         parameters: {
             query?: {
@@ -18553,6 +21855,8 @@ export interface operations {
                 status?: string;
                 /** @description Restrict to one proposal source. Omitted, a pending listing hides the sources reviewed elsewhere (an interview's proposals are reviewed on that interview's wrap-up, not in this queue). */
                 source?: string | null;
+                /** @description Restrict to one kind of proposal. `review` lists only review flags: sections Knowledge flagged as contradicted, unverifiable or unclear, which are resolved with `POST .../resolve` (and its row and card variants) rather than accepted. Other kinds include `create`, `edit`, `archive`, `mv` and `find_replace`. */
+                proposal_type?: string | null;
                 /** @description Opaque cursor from a previous page's `next_cursor`. */
                 cursor?: string | null;
                 /** @description Page size, 1 to 200. */
@@ -18761,6 +22065,55 @@ export interface operations {
             };
         };
     };
+    get_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__conflict_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiConflictDetail"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post: {
         parameters: {
             query?: never;
@@ -18781,6 +22134,214 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    generate_proposal_conflict_resolutions_v1_knowledge_wiki_proposals__proposal_id__resolutions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiConflictResolutionOptions"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiConflictResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiConflictResolved"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiConflictCardsResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiConflictCardsResolved"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WikiConflictRowsResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WikiConflictResolved"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
@@ -21834,6 +25395,59 @@ export interface operations {
             };
         };
     };
+    draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InterviewFromReviewsBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InterviewFromReviewsOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     create_project_membership_invitation_route_v1_projects__project_id__invite_post: {
         parameters: {
             query?: never;
@@ -22072,6 +25686,113 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectKnowledgeStatusResponse"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    get_compile_queue_v1_projects__project_id__knowledge_compiles_get: {
+        parameters: {
+            query?: {
+                /** @description Only this connected source's compiles. */
+                attachment_id?: string | null;
+                /** @description Only this uploaded file's compiles. */
+                artifact_id?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompileQueueOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CompileCancelRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompileCancelOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
@@ -22606,6 +26327,56 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncCancelOut"];
+                };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
             422: {
@@ -24151,8 +27922,17 @@ export interface operations {
                     "application/json": components["schemas"]["UploadCompleteResponse"];
                 };
             };
-            /** @description The `parts` list on completion does not name each part from 1 to `part_count` exactly once. The file was assembled but Beakr could not create it; `message` says why. */
+            /** @description The `parts` list on completion does not name each part from 1 to `part_count` exactly once. `artifact_id` does not name an uploaded file in the upload's project that you can see (a document written in Beakr cannot take an uploaded version). The file was assembled but Beakr could not create it; `message` says why. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description With `on_existing: "version"`, the file already at this path is one you cannot change, so no version was added and no second file was created. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -24169,7 +27949,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description The upload is completing, completed, aborted or expired, so it takes no more parts; or another request finished it first. Some parts have not arrived; `missing_parts` lists up to 100 of them. S3 no longer holds the uploaded data, so the file cannot be assembled. The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted. */
+            /** @description The upload is completing, completed, aborted or expired, so it takes no more parts; or another request finished it first. Some parts have not arrived; `missing_parts` lists up to 100 of them. S3 no longer holds the uploaded data, so the file cannot be assembled. The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted. With `on_existing: "version"`, the upload's folder holds more than one file with that name (or more than one folder of a name on its path), so Beakr cannot tell which file to add the version to. Nothing was created. */
             409: {
                 headers: {
                     [name: string]: unknown;
