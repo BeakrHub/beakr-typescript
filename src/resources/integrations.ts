@@ -5,6 +5,11 @@ import { Resource, enc } from "./base.js";
 export type IntegrationToolPage = ResponseOf<"/v1/integrations/tools", "get">;
 export type IntegrationTool = IntegrationToolPage["data"][number];
 export type IntegrationToolResult = ResponseOf<"/v1/integrations/tools/{tool_name}/call", "post">;
+/** What a sync cancel did. */
+export type SourceSyncCancelled = ResponseOf<
+  "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel",
+  "post"
+>;
 type ToolCallBody = NonNullable<BodyOf<"/v1/integrations/tools/{tool_name}/call", "post">>;
 
 export interface ToolsQuery {
@@ -96,6 +101,24 @@ export class Integrations extends Resource {
       method: "POST",
       path: `/v1/integrations/tools/${enc(toolName)}/call`,
       body: cleanBody({ arguments: args, connector_id: options.connectorId }),
+    });
+  }
+
+  /**
+   * Stop a project source's running sync, Notion follow-up syncs included.
+   * Items already being read finish; the rest are skipped, and the next sync
+   * picks them up. Compiles the sync already queued still run:
+   * `knowledge.cancelQueuedCompiles(projectId, { attachmentId })` cancels them
+   * (and stops the sync too). Answers `{ sync_job_id, status: "cancelling",
+   * cancelled_by, next_sync, note }`; `jobs.get(sync_job_id)` follows it to
+   * `cancelled`. `ConflictError` (`no_running_sync`) when no sync is running.
+   * The person who attached the source, a project admin or an organization
+   * admin may.
+   */
+  cancelSourceSync(projectId: string, attachmentId: string): Promise<SourceSyncCancelled> {
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/sync/cancel`,
     });
   }
 

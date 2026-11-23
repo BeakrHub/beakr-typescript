@@ -39,6 +39,7 @@ export const REPLAYING_CREATES: readonly string[] = [
   "/v1/organizations/{org_id}/service-accounts",
   "/v1/organizations/{org_id}/service-accounts/{account_id}/keys",
   "/v1/projects",
+  "/v1/projects/{project_id}/interviews/from-reviews",
   "/v1/projects/{project_id}/invite",
   "/v1/projects/{project_id}/members",
   "/v1/runs",

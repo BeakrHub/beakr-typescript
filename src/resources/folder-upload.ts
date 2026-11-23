@@ -87,6 +87,14 @@ export interface UploadFolderOptions {
    * false puts the directory's contents straight into `folderId`.
    */
   rootFolder?: boolean;
+  /**
+   * A file already in its folder under the same name gets the upload as a new
+   * version (`"version"`, the server's default), so uploading the same tree
+   * again updates it; `"new"` creates second copies.
+   */
+  onExisting?: "version" | "new";
+  /** Mark every upload as an agent's work. */
+  writtenByAgent?: boolean;
   signal?: AbortSignal;
 }
 
@@ -290,6 +298,8 @@ export async function uploadEntries(
         contentType,
         artifactType: detectArtifactType(contentType, name),
         ingest: options.ingest ?? true,
+        onExisting: options.onExisting,
+        writtenByAgent: options.writtenByAgent,
         signal: options.signal,
       });
     } catch (error) {

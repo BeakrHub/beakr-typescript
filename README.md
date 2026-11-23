@@ -111,6 +111,23 @@ Many files or whole directories go up as one batch with one indexing job:
 `const batch = await beakr.uploads.uploadMany(["results", "summary.pdf"], { projectId })`,
 then `await beakr.jobs.wait(batch)` (or pass `wait: true`).
 
+Uploading to a folder that already holds a file with the same name adds a
+version to that file, and the Knowledge built from it is updated, instead of
+making a second file (`uploads.upload`, `uploadFolder` and `uploadEntries`; a
+`uploadMany` batch always makes new files):
+
+```ts
+const again = await beakr.uploads.upload(bytes, { projectId, path: "q3.pdf" });
+again.result; // "created", "versioned", "restored" (an earlier version's bytes) or "unchanged"
+await beakr.uploads.upload(bytes, { projectId, path: "q3.pdf", onExisting: "new" }); // always a new file
+await beakr.uploads.upload(bytes, { projectId, path: "summary.md", writtenByAgent: true }); // an agent's work
+await beakr.uploads.upload(bytes, { projectId, path: "q3-final.pdf", versionOf: fileId }); // a version of one file
+const versions = await beakr.files.versions(fileId); // each with version_no and written_by_agent
+```
+
+Several files of that name in the folder reject with a `ConflictError` whose
+`code` is `ambiguous_path`.
+
 ### Tell Knowledge what a project is about
 
 A project's Knowledge profile steers how Beakr compiles its files. Its most
@@ -151,6 +168,108 @@ without one takes no files, connector sources or Knowledge: those calls throw
 `ProjectProfileRequiredError` (409 `project_profile_required`, a
 `ConflictError`, with `projectId`) until the profile has content. Reads still
 work.
+
+### Change a project's card types
+
+Card types are the kinds of cards Knowledge writes for a project. A change is
+held by one scope: `project` (the default) changes the type for one project
+only, giving it its own copy when it inherited the type; `org` changes it for
+every project in the organization without its own copy. A project's owners
+change its types and an organization's admins the organization's.
+
+```ts
+const { page_types } = await beakr.knowledge.listCardTypes({ projectId });
+const saved = await beakr.knowledge.updateCardType(
+  "deviation",
+  {
+    description: "One departure from a batch record",
+    fields: [{ name: "Root cause", required: true }, { name: "CAPA" }],
+  },
+  { projectId },
+);
+console.log(saved.page_type.overrides); // the scope this copy stands in front of
+await beakr.knowledge.removeCardTypeCopy("deviation", { projectId });
+```
+
+`fields` replaces the type's field list. Cards already written are not
+rewritten; later compiles use the new definition. `removeCardTypeCopy` throws
+`ConflictError` for a type defined only in that scope: turn it off with
+`updateCardType(key, { status: "deprecated" })` instead.
+
+`copyCardTypes(fromProjectId, toProjectId, keys)` copies the types one
+project defines into another project, and `promoteCardTypes(projectId, keys)`
+copies them up to the organization (an organization admin); both skip a type
+the destination already defines unless `{ replace: true }`.
+
+A change to a type does not rewrite the cards a project already has. Two calls
+do, and both are dry runs that write nothing until you pass `{ dryRun: false }`:
+
+```ts
+const preview = await beakr.knowledge.renameCardTypeFields("deviation", projectId, {
+  Cause: "Root cause",
+});
+console.log(preview.cards_changed, preview.applied, preview.refused);
+await beakr.knowledge.renameCardTypeFields("deviation", projectId, { Cause: "Root cause" }, { dryRun: false });
+await beakr.knowledge.retypeCards("deviation", projectId, "incident"); // dry run: counts only
+```
+
+One call changes at most 500 cards; `cards_remaining` says how many are left,
+and the same call again changes the next ones. An applied change shows in the
+project's activity, where an owner of the project can undo it.
+
+A project also chooses where its card types come from (`inherit`:
+`organization`, `builtin` or `own`) and whether Beakr itself may add or change
+them (`agent_may_change`). A change is a dry run until you pass `dryRun: false`:
+
+```ts
+console.log(await beakr.knowledge.cardTypeSettings(projectId));
+const preview = await beakr.knowledge.setCardTypeSettings(projectId, { inherit: "own" });
+for (const dropped of preview.types_dropped) console.log(dropped.key, dropped.live_cards);
+await beakr.knowledge.setCardTypeSettings(projectId, { inherit: "own", keepTypesInUse: true, dryRun: false });
+
+for await (const entry of beakr.knowledge.iterCardTypeHistory({ projectId })) console.log(entry.title);
+for await (const waiting of beakr.knowledge.iterCardTypeSuggestions(projectId)) console.log(waiting.kind);
+await beakr.knowledge.dismissCardTypeSuggestion(suggestionId, projectId);
+
+await beakr.projects.create({ name: "Lyon", card_types: { inherit: "builtin", agent_may_change: false } });
+```
+
+Applying a settings change never changes or removes a card or a type. A new
+project on `inherit: "own"` needs its types in the same call:
+`copy_from_project_id` (with optional `copy_keys`) or `types`.
+
+### Stop queued work
+
+Compiles wait in a queue per project. Cancel the queued ones for the whole
+project or one source to stop paying for them; compiles already running finish,
+and what Knowledge wrote stays. Cancelling a source's compiles (or the whole
+project's) also stops the running syncs it covers:
+
+```ts
+console.log(await beakr.knowledge.compileQueue(projectId)); // { queued, running, last_cancel }
+const cancel = await beakr.knowledge.cancelQueuedCompiles(projectId, { attachmentId: sourceId });
+console.log(cancel.will_be_skipped, cancel.already_running, cancel.next_sync);
+
+const stopped = await beakr.integrations.cancelSourceSync(projectId, sourceId); // ConflictError if none runs
+console.log((await beakr.jobs.get(stopped.sync_job_id)).status); // running (cancelling), then cancelled
+```
+
+### Ask a person about review flags
+
+Turn a project's open review flags into one interview, one question per flag
+(every kind by default, up to 30; `kinds` narrows it, `proposalIds` names
+flags). Without `participant` it is a draft a person edits and sends from
+`edit_url`; with one, it also gets that person's link, shown once. Beakr sends
+nothing, and each answer comes back on its flag as a suggestion.
+
+```ts
+const draft = await beakr.interviews.draftFromReviews(projectId, {
+  kinds: ["contradiction", "ambiguity"],
+  participant: { name: "Dana", email: "dana@example.com" },
+});
+for (const q of draft.questions) console.log(q.number, q.question, q.proposal_id);
+console.log(draft.link_url ?? draft.edit_url ?? draft.message); // link_url is shown once
+```
 
 ### Skills
 

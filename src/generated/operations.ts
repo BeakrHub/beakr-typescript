@@ -16,6 +16,7 @@ export const OPERATIONS = {
   "files.createKnowledgeFromArtifact": { method: "POST", path: "/v1/artifacts/{artifact_id}/knowledge" },
   "files.approveArtifactKnowledge": { method: "POST", path: "/v1/artifacts/{artifact_id}/knowledge/approve" },
   "files.moveArtifact": { method: "POST", path: "/v1/artifacts/{artifact_id}/move" },
+  "files.listArtifactVersions": { method: "GET", path: "/v1/artifacts/{artifact_id}/versions" },
   "files.downloadUrl": { method: "POST", path: "/v1/artifacts/download-url" },
   "files.readFile": { method: "POST", path: "/v1/artifacts/read" },
   "uploads.getDownloadUrl": { method: "GET", path: "/v1/artifacts/versions/{version_id}/download-url" },
@@ -60,6 +61,18 @@ export const OPERATIONS = {
   "knowledge.research": { method: "POST", path: "/v1/knowledge/research" },
   "knowledge.runWikiCommand": { method: "POST", path: "/v1/knowledge/wiki/command" },
   "knowledge.ingestionEventTrail": { method: "GET", path: "/v1/knowledge/wiki/ingestion-events/{event_id}/trail" },
+  "knowledge.listWikiPageTypes": { method: "GET", path: "/v1/knowledge/wiki/page-types" },
+  "knowledge.updateWikiPageType": { method: "PATCH", path: "/v1/knowledge/wiki/page-types/{key}" },
+  "knowledge.removeWikiPageTypeOverride": { method: "DELETE", path: "/v1/knowledge/wiki/page-types/{key}" },
+  "knowledge.renameWikiPageTypeFields": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/rename-fields" },
+  "knowledge.retypeWikiPageTypeCards": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/retype-cards" },
+  "knowledge.convertRowTypeToField": { method: "POST", path: "/v1/knowledge/wiki/page-types/{key}/to-field" },
+  "knowledge.copyWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/copy" },
+  "knowledge.listCardTypeHistory": { method: "GET", path: "/v1/knowledge/wiki/page-types/history" },
+  "knowledge.promoteWikiPageTypes": { method: "POST", path: "/v1/knowledge/wiki/page-types/promote" },
+  "knowledge.changeCardTypeSettings": { method: "PUT", path: "/v1/knowledge/wiki/page-types/settings" },
+  "knowledge.listCardTypeSuggestions": { method: "GET", path: "/v1/knowledge/wiki/page-types/suggestions" },
+  "knowledge.dismissCardTypeSuggestion": { method: "POST", path: "/v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss" },
   "knowledge.listWikiPages": { method: "GET", path: "/v1/knowledge/wiki/pages" },
   "knowledge.getWikiPage": { method: "GET", path: "/v1/knowledge/wiki/pages/{page_id}" },
   "knowledge.getWikiPageRevisions": { method: "GET", path: "/v1/knowledge/wiki/pages/{page_id}/revisions" },
@@ -70,7 +83,12 @@ export const OPERATIONS = {
   "knowledge.createProposal": { method: "POST", path: "/v1/knowledge/wiki/proposals" },
   "knowledge.getProposal": { method: "GET", path: "/v1/knowledge/wiki/proposals/{proposal_id}" },
   "knowledge.acceptProposal": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/accept" },
+  "knowledge.getProposalConflict": { method: "GET", path: "/v1/knowledge/wiki/proposals/{proposal_id}/conflict" },
   "knowledge.dismissProposal": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/dismiss" },
+  "knowledge.generateProposalConflictResolutions": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/resolutions" },
+  "knowledge.resolveProposalConflict": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/resolve" },
+  "knowledge.resolveConflictOnEveryCard": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards" },
+  "knowledge.resolveConflictWithRows": { method: "POST", path: "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows" },
   "knowledge.proposalTrail": { method: "GET", path: "/v1/knowledge/wiki/proposals/{proposal_id}/trail" },
   "knowledge.searchWikiPages": { method: "GET", path: "/v1/knowledge/wiki/search" },
   "knowledge.revertWikiSource": { method: "POST", path: "/v1/knowledge/wiki/sources/{source_type}/{source_id}/revert" },
@@ -125,11 +143,14 @@ export const OPERATIONS = {
   "projects.deleteProject": { method: "DELETE", path: "/v1/projects/{project_id}" },
   "projects.getCrossProjectGuard": { method: "GET", path: "/v1/projects/{project_id}/cross-project-guard" },
   "projects.setCrossProjectGuard": { method: "PUT", path: "/v1/projects/{project_id}/cross-project-guard" },
+  "interviews.draftInterviewFromReviews": { method: "POST", path: "/v1/projects/{project_id}/interviews/from-reviews" },
   "projects.createProjectMembershipInvitation": { method: "POST", path: "/v1/projects/{project_id}/invite" },
   "projects.getProjectKnowledgeProfile": { method: "GET", path: "/v1/projects/{project_id}/knowledge-profile" },
   "projects.putProjectKnowledgeProfile": { method: "PUT", path: "/v1/projects/{project_id}/knowledge-profile" },
   "projects.patchProjectKnowledgeProfile": { method: "PATCH", path: "/v1/projects/{project_id}/knowledge-profile" },
   "projects.getProjectKnowledgeStatus": { method: "GET", path: "/v1/projects/{project_id}/knowledge-summary" },
+  "knowledge.getCompileQueue": { method: "GET", path: "/v1/projects/{project_id}/knowledge/compiles" },
+  "knowledge.cancelQueuedCompiles": { method: "POST", path: "/v1/projects/{project_id}/knowledge/compiles/cancel" },
   "projects.listKnowledgeFailedFiles": { method: "GET", path: "/v1/projects/{project_id}/knowledge/failed-files" },
   "projects.retryFailedKnowledge": { method: "POST", path: "/v1/projects/{project_id}/knowledge/retry-failed" },
   "projects.listMembers": { method: "GET", path: "/v1/projects/{project_id}/members" },
@@ -140,6 +161,7 @@ export const OPERATIONS = {
   "projects.getModelRefusalSummary": { method: "GET", path: "/v1/projects/{project_id}/model-refusals/summary" },
   "projects.listProjectPendingInvitations": { method: "GET", path: "/v1/projects/{project_id}/pending-invitations" },
   "projects.revokeProjectMembershipInvitation": { method: "DELETE", path: "/v1/projects/{project_id}/pending-invitations/{invitation_id}" },
+  "integrations.cancelSourceSync": { method: "POST", path: "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel" },
   "threads.listSharedThreads": { method: "GET", path: "/v1/projects/{project_id}/threads" },
   "openapi.publicOpenapi": { method: "GET", path: "/v1/public/openapi.json" },
   "runs.startChatRun": { method: "POST", path: "/v1/runs" },
@@ -413,6 +435,18 @@ export class FilesApi {
     return this.transport.request(request);
   }
 
+  /** GET /v1/artifacts/{artifact_id}/versions (List a file's versions) */
+  listArtifactVersions(args: { path: operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]["parameters"]["path"]; query?: NonNullable<operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/artifacts/${enc(String(args.path.artifact_id))}/versions`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/artifacts/{artifact_id}/versions, following its cursor. */
+  listArtifactVersionsAll(args: { path: operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]["parameters"]["path"]; query?: NonNullable<operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/artifacts/${enc(String(args.path.artifact_id))}/versions`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
   /** POST /v1/artifacts/download-url (Get a download link by reference) */
   downloadUrl(args: { body: NonNullable<operations["download_url_route_v1_artifacts_download_url_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["download_url_route_v1_artifacts_download_url_post"]>> {
     const request: RequestOptions = { method: "POST", path: "/v1/artifacts/download-url", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
@@ -530,6 +564,12 @@ export class IntegrationsApi {
     const request: RequestOptions = { method: "POST", path: `/v1/integrations/tools/${enc(String(args.path.tool_name))}/call`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
+
+  /** POST /v1/projects/{project_id}/sources/{attachment_id}/sync/cancel (Cancel a source's running sync) */
+  cancelSourceSync(args: { path: operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/sync/cancel`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
 }
 
 /** Public operations tagged interviews. */
@@ -581,6 +621,12 @@ export class InterviewsApi {
   /** POST /v1/interview/sendables/links/{link_id}/revoke (Revoke an interview link) */
   revokeLink(args: { path: operations["revoke_link_v1_interview_sendables_links__link_id__revoke_post"]["parameters"]["path"] }, options?: CallOptions): Promise<void> {
     const request: RequestOptions = { method: "POST", path: `/v1/interview/sendables/links/${enc(String(args.path.link_id))}/revoke`, idempotent: true, responseType: "none", idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/projects/{project_id}/interviews/from-reviews (Draft an interview from review flags) */
+  draftInterviewFromReviews(args: { path: operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"]["parameters"]["path"]; body: NonNullable<operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/interviews/from-reviews`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 }
@@ -639,6 +685,90 @@ export class KnowledgeApi {
   /** GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail (Get an ingestion event's read trail) */
   ingestionEventTrail(args: { path: operations["ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get"]>> {
     const request: RequestOptions = { method: "GET", path: `/v1/knowledge/wiki/ingestion-events/${enc(String(args.path.event_id))}/trail`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/knowledge/wiki/page-types (List card types) */
+  listWikiPageTypes(args?: { query?: NonNullable<operations["list_wiki_page_types_v1_knowledge_wiki_page_types_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_wiki_page_types_v1_knowledge_wiki_page_types_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/page-types", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PATCH /v1/knowledge/wiki/page-types/{key} (Change a card type) */
+  updateWikiPageType(args: { path: operations["update_wiki_page_type_v1_knowledge_wiki_page_types__key__patch"]["parameters"]["path"]; body: NonNullable<operations["update_wiki_page_type_v1_knowledge_wiki_page_types__key__patch"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["update_wiki_page_type_v1_knowledge_wiki_page_types__key__patch"]>> {
+    const request: RequestOptions = { method: "PATCH", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}`, body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** DELETE /v1/knowledge/wiki/page-types/{key} (Remove a card type copy) */
+  removeWikiPageTypeOverride(args: { path: operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"]["parameters"]["path"]; query?: NonNullable<operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete"]>> {
+    const request: RequestOptions = { method: "DELETE", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/{key}/rename-fields (Rename fields on existing cards) */
+  renameWikiPageTypeFields(args: { path: operations["rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post"]["parameters"]["path"]; body: NonNullable<operations["rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}/rename-fields`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/{key}/retype-cards (Move existing cards to another type) */
+  retypeWikiPageTypeCards(args: { path: operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]["parameters"]["path"]; body: NonNullable<operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}/retype-cards`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/{key}/to-field (Make a row type a field) */
+  convertRowTypeToField(args: { path: operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"]["parameters"]["path"]; body: NonNullable<operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/${enc(String(args.path.key))}/to-field`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/copy (Copy card types between projects) */
+  copyWikiPageTypes(args: { body: NonNullable<operations["copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/knowledge/wiki/page-types/copy", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/knowledge/wiki/page-types/history (List card type changes) */
+  listCardTypeHistory(args?: { query?: NonNullable<operations["list_card_type_history_v1_knowledge_wiki_page_types_history_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_card_type_history_v1_knowledge_wiki_page_types_history_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/page-types/history", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/knowledge/wiki/page-types/history, following its cursor. */
+  listCardTypeHistoryAll(args?: { query?: NonNullable<operations["list_card_type_history_v1_knowledge_wiki_page_types_history_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_card_type_history_v1_knowledge_wiki_page_types_history_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/page-types/history", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/promote (Promote card types to the organization) */
+  promoteWikiPageTypes(args: { body: NonNullable<operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"]>> {
+    const request: RequestOptions = { method: "POST", path: "/v1/knowledge/wiki/page-types/promote", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** PUT /v1/knowledge/wiki/page-types/settings (Change a project's card type settings) */
+  changeCardTypeSettings(args: { body: NonNullable<operations["change_card_type_settings_v1_knowledge_wiki_page_types_settings_put"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["change_card_type_settings_v1_knowledge_wiki_page_types_settings_put"]>> {
+    const request: RequestOptions = { method: "PUT", path: "/v1/knowledge/wiki/page-types/settings", body: args?.body, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/knowledge/wiki/page-types/suggestions (List card type suggestions) */
+  listCardTypeSuggestions(args?: { query?: NonNullable<operations["list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/page-types/suggestions", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/knowledge/wiki/page-types/suggestions, following its cursor. */
+  listCardTypeSuggestionsAll(args?: { query?: NonNullable<operations["list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get"]>> {
+    const request: RequestOptions = { method: "GET", path: "/v1/knowledge/wiki/page-types/suggestions", query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** POST /v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss (Dismiss a card type suggestion) */
+  dismissCardTypeSuggestion(args: { path: operations["dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post"]["parameters"]["path"]; body: NonNullable<operations["dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/page-types/suggestions/${enc(String(args.path.suggestion_id))}/dismiss`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
@@ -726,9 +856,39 @@ export class KnowledgeApi {
     return this.transport.request(request);
   }
 
+  /** GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict (Get a review flag) */
+  getProposalConflict(args: { path: operations["get_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__conflict_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__conflict_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/conflict`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
   /** POST /v1/knowledge/wiki/proposals/{proposal_id}/dismiss (Dismiss a Knowledge proposal) */
   dismissProposal(args: { path: operations["dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["dismiss_proposal_v1_knowledge_wiki_proposals__proposal_id__dismiss_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/dismiss`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/proposals/{proposal_id}/resolutions (Draft review flag resolutions) */
+  generateProposalConflictResolutions(args: { path: operations["generate_proposal_conflict_resolutions_v1_knowledge_wiki_proposals__proposal_id__resolutions_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["generate_proposal_conflict_resolutions_v1_knowledge_wiki_proposals__proposal_id__resolutions_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/resolutions`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve (Resolve a review flag) */
+  resolveProposalConflict(args: { path: operations["resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post"]["parameters"]["path"]; body: NonNullable<operations["resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["resolve_proposal_conflict_v1_knowledge_wiki_proposals__proposal_id__resolve_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/resolve`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards (Resolve a contradiction everywhere) */
+  resolveConflictOnEveryCard(args: { path: operations["resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post"]["parameters"]["path"]; body: NonNullable<operations["resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["resolve_conflict_on_every_card_v1_knowledge_wiki_proposals__proposal_id__resolve_cards_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/resolve-cards`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows (Resolve a flag with rows) */
+  resolveConflictWithRows(args: { path: operations["resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post"]["parameters"]["path"]; body: NonNullable<operations["resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["resolve_conflict_with_rows_v1_knowledge_wiki_proposals__proposal_id__resolve_rows_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/knowledge/wiki/proposals/${enc(String(args.path.proposal_id))}/resolve-rows`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 
@@ -759,6 +919,18 @@ export class KnowledgeApi {
   /** POST /v1/knowledge/wiki/write (Propose a Knowledge change) */
   runWikiWrite(args: { body: NonNullable<operations["run_wiki_write_v1_knowledge_wiki_write_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["run_wiki_write_v1_knowledge_wiki_write_post"]>> {
     const request: RequestOptions = { method: "POST", path: "/v1/knowledge/wiki/write", body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** GET /v1/projects/{project_id}/knowledge/compiles (Read the Knowledge compile queue) */
+  getCompileQueue(args: { path: operations["get_compile_queue_v1_projects__project_id__knowledge_compiles_get"]["parameters"]["path"]; query?: NonNullable<operations["get_compile_queue_v1_projects__project_id__knowledge_compiles_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["get_compile_queue_v1_projects__project_id__knowledge_compiles_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge/compiles`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/projects/{project_id}/knowledge/compiles/cancel (Cancel queued Knowledge compiles) */
+  cancelQueuedCompiles(args: { path: operations["cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post"]["parameters"]["path"]; body?: NonNullable<operations["cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/knowledge/compiles/cancel`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
   }
 }

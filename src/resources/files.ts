@@ -52,7 +52,27 @@ export interface ReadFileOptions {
  * Files: reading a file by any reference a Knowledge read hands out, and the
  * download helpers (the Python SDK's `files.read`, `download_url`, `download`).
  */
+/** One page of a file's versions, oldest first: `data`, `next_cursor`, `has_more`. */
+export type FileVersions = ResponseOf<"/v1/artifacts/{artifact_id}/versions", "get">;
+
 export class Files extends Resource {
+  /**
+   * One page of a file's versions, oldest first. Each has `version_no`,
+   * `size_bytes`, `content_hash`, `created_at` and `written_by_agent` (whether
+   * the upload that added it was marked as an agent's work).
+   */
+  versions(
+    artifactId: string,
+    options: { limit?: number; cursor?: string; signal?: AbortSignal } = {},
+  ): Promise<FileVersions> {
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/artifacts/${enc(artifactId)}/versions`,
+      query: { limit: options.limit, cursor: options.cursor },
+      signal: options.signal,
+    });
+  }
+
   /**
    * Read a file's extracted text by a file id, a version id, a source record's
    * `source_ref` (`beakr-source:v1:...`, from any Knowledge read or research

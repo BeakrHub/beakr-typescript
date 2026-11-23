@@ -26,6 +26,18 @@ export interface UploadManyOptions {
   includeHidden?: boolean;
   /** Compile the files into Knowledge (default true). */
   ingest?: boolean;
+  /**
+   * When a file's folder already holds a file with its name: `"version"` (the
+   * default here, as for a single upload; the API's own batch default is
+   * `"new"`) adds the file to it as a new version, and each entry of
+   * `artifacts` says what happened in `result` with `version_no`; `"new"`
+   * always creates a separate file. A folder holding several files of that
+   * name, or one you cannot change, leaves that file out: it is in `failed`
+   * with `error_code` (`ambiguous_path`, `file_not_writable`).
+   */
+  onExisting?: "version" | "new";
+  /** Mark the batch's files as an agent's work rather than a person's. */
+  writtenByAgent?: boolean;
   signal?: AbortSignal;
 }
 
@@ -119,7 +131,13 @@ export async function uploadBatch(
   return transport.request<BatchUpload>({
     method: "POST",
     path: "/v1/bulk/complete",
-    body: { batch_id: prepared.batch_id, files: completed, ingest_to_wiki: options.ingest ?? true },
+    body: cleanBody({
+      batch_id: prepared.batch_id,
+      files: completed,
+      ingest_to_wiki: options.ingest ?? true,
+      on_existing: options.onExisting ?? "version",
+      written_by_agent: options.writtenByAgent,
+    }),
     idempotent: true,
   });
 }
