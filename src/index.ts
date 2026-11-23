@@ -182,7 +182,9 @@ export {
   UploadInterruptedError,
   type BatchStatus,
   type FileBody,
+  type OnExisting,
   type UploadComplete,
+  type UploadResult,
   type UploadManyResult,
   type UploadFileOptions,
   type UploadSession,
@@ -206,6 +208,7 @@ export type {
   DownloadedReference,
   FileRead,
   ReadFileOptions,
+  FileVersions,
 } from "./resources/files.js";
 export type {
   BodyOf,

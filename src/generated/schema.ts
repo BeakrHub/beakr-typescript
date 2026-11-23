@@ -205,6 +205,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/artifacts/{artifact_id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a file's versions
+         * @description A file's versions, oldest first, one page at a time: each version's number, size, type, content hash, when it was added, and whether it is marked as an agent's work (`written_by_agent`). A file is given a new version by uploading to its path or with `artifact_id` on `POST /v1/uploads/{upload_id}/complete`. A file the caller cannot see, or that does not exist, answers `404`.
+         */
+        get: operations["list_artifact_versions_route_v1_artifacts__artifact_id__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/end-user-tokens": {
         parameters: {
             query?: never;
@@ -3075,7 +3095,18 @@ export interface paths {
         put?: never;
         /**
          * Complete an upload
-         * @description Assemble the parts and create the file; answers with its indexing job.
+         * @description Assemble the parts and create the file, or add it as a version.
+         *
+         *     When the upload's folder already holds a file with the name this file would
+         *     get, ``on_existing`` (default ``version``) adds the upload to that file as a
+         *     new version and updates the Knowledge built from it, instead of creating a
+         *     second file; ``new`` always creates one. ``result`` says which happened
+         *     (``created``, ``versioned``, ``restored`` or ``unchanged``). Several files of
+         *     that name in the folder answer ``409 ambiguous_path``, and a file the caller
+         *     cannot change answers ``403 file_not_writable``; either way nothing is created
+         *     and the upload stays open to complete again. ``artifact_id`` instead names
+         *     the file to add the upload to as a new version. ``written_by_agent`` marks
+         *     the upload as an agent's work. Answers with the file's indexing job.
          */
         post: operations["complete_upload_v1_uploads__upload_id__complete_post"];
         delete?: never;
@@ -4224,6 +4255,103 @@ export interface components {
              * @description Optional new title for the artifact.
              */
             title?: string | null;
+        };
+        /**
+         * ArtifactVersionOut
+         * @description Serialized representation of an artifact version.
+         *
+         *     Attributes:
+         *         id: Unique identifier for the version row.
+         *         artifact_id: Identifier of the artifact that owns the version.
+         *         version_no: Monotonic version number assigned by the server.
+         *         mime_type: Optional MIME type for the stored binary.
+         *         size_bytes: Optional size in bytes of the payload.
+         *         content_hash: Optional integrity hash for deduplication.
+         *         metadata: Arbitrary metadata captured for the version.
+         *         created_at: Timestamp when the version was created.
+         *         managed_blob: if beakr owns the lifecycle of this blob
+         */
+        ArtifactVersionOut: {
+            /**
+             * Artifact Id
+             * Format: uuid
+             * @description The file this version belongs to
+             * @example 3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40
+             */
+            artifact_id: string;
+            /**
+             * Content Hash
+             * @description Lowercase SHA-256 hex digest of the version's bytes
+             */
+            content_hash?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             * @description When the version was added
+             * @example 2026-10-01T14:32:08Z
+             */
+            created_at: string;
+            /**
+             * Id
+             * Format: uuid
+             * @description The version's id
+             */
+            id: string;
+            /**
+             * Managed Blob
+             * @description Whether Beakr stores and deletes this version's bytes
+             * @default true
+             */
+            managed_blob?: boolean;
+            /**
+             * Metadata
+             * @description Details recorded with the version, such as `original_filename`
+             */
+            metadata: {
+                [key: string]: unknown;
+            };
+            /**
+             * Mime Type
+             * @description The version's MIME type
+             */
+            mime_type?: string | null;
+            /**
+             * Size Bytes
+             * @description The version's size in bytes
+             */
+            size_bytes?: number | null;
+            /**
+             * Version No
+             * @description The version's number within its file (1 = first)
+             */
+            version_no: number;
+            /**
+             * Written By Agent
+             * @description Whether this version was uploaded marked as an agent's work (`written_by_agent` on the upload)
+             * @default false
+             */
+            written_by_agent?: boolean;
+        };
+        /** ArtifactVersionOutPage */
+        ArtifactVersionOutPage: {
+            /**
+             * Data
+             * @description The items on this page.
+             */
+            data: components["schemas"]["ArtifactVersionOut"][];
+            /**
+             * Has More
+             * @description Whether another page follows.
+             * @default false
+             * @example false
+             */
+            has_more?: boolean;
+            /**
+             * Next Cursor
+             * @description Pass as `cursor` to read the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
         };
         /**
          * BatchKnowledgeSummary
@@ -13389,10 +13517,18 @@ export interface components {
          * @description Finish an upload. Omit ``parts`` to let the server use every part S3 holds.
          * @example {
          *       "artifact_type": "protocol",
-         *       "title": "protocol.pdf"
+         *       "on_existing": "version",
+         *       "title": "protocol.pdf",
+         *       "written_by_agent": false
          *     }
          */
         UploadCompleteRequest: {
+            /**
+             * Artifact Id
+             * @description Add this upload as a new version of this file, which must be an uploaded file in the upload's project. Its Knowledge is updated as for any new version; `on_existing`, `title`, `artifact_type`, `description` and `relative_path` do not apply.
+             * @example 3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40
+             */
+            artifact_id?: string | null;
             /**
              * @description Kind of file.
              * @default doc
@@ -13403,6 +13539,13 @@ export interface components {
              * @description Description of the upload complete, in plain text.
              */
             description?: string | null;
+            /**
+             * On Existing
+             * @description What to do when the upload's folder already holds a file with the name this file would get (`title`, else the last part of `path`; exact, case-sensitive match). `version` (the default) adds this upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. `new` always creates a separate file.
+             * @default version
+             * @enum {string}
+             */
+            on_existing?: "version" | "new";
             /**
              * Parts
              * @description The parts.
@@ -13418,6 +13561,12 @@ export interface components {
              * @description Defaults to the file name
              */
             title?: string | null;
+            /**
+             * Written By Agent
+             * @description Mark this upload as written by an agent rather than a person. The mark is kept on the version this upload creates; when the upload creates the file, the file is also marked as Beakr-written (`is_ai_generated`), so search and agents treat it as an agent's output rather than a source.
+             * @default false
+             */
+            written_by_agent?: boolean;
         };
         /**
          * UploadCompleteResponse
@@ -13434,6 +13583,7 @@ export interface components {
          *       "batch_status_url": "/v1/jobs/a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
          *       "folders": [],
          *       "job_id": "a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
+         *       "result": "versioned",
          *       "status_url": "/v1/jobs/a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
          *       "upload": {
          *         "artifact_id": "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40",
@@ -13449,7 +13599,9 @@ export interface components {
          *         "path": "protocol.pdf",
          *         "project_id": "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d",
          *         "status": "completed"
-         *       }
+         *       },
+         *       "version_no": 2,
+         *       "written_by_agent": false
          *     }
          */
         UploadCompleteResponse: {
@@ -13468,10 +13620,17 @@ export interface components {
             /**
              * Job Id
              * Format: uuid
-             * @description The new file's processing job (kind artifact_index in GET /v1/jobs)
+             * @description The file's processing job (kind artifact_index in GET /v1/jobs). When `result` is `unchanged` and nothing needed processing, the job that processed that version earlier.
              * @example a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63
              */
             job_id: string;
+            /**
+             * Result
+             * @description `created`: a new file. `versioned`: a new version of the file already at this path (`artifact.id`), now its current version. `restored`: the bytes match an earlier version of that file, which is current again; no version is added. `unchanged`: the bytes match the file's current version; no version is added. Detecting identical bytes needs `content_hash` on the upload; without it, identical bytes are added as a new version.
+             * @default created
+             * @enum {string}
+             */
+            result?: "created" | "versioned" | "restored" | "unchanged";
             /**
              * Status Url
              * @description GET /v1/jobs/{job_id}: poll this until it is final
@@ -13479,6 +13638,18 @@ export interface components {
             status_url: string;
             /** @description The finished upload session. */
             upload: components["schemas"]["UploadSessionOut"];
+            /**
+             * Version No
+             * @description The number of `artifact.version_id` within its file (1 = first)
+             * @default 1
+             */
+            version_no?: number;
+            /**
+             * Written By Agent
+             * @description Whether `artifact.version_id` is marked as written by an agent
+             * @default false
+             */
+            written_by_agent?: boolean;
         };
         /** UploadPartUrl */
         UploadPartUrl: {
@@ -16590,6 +16761,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArtifactOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_artifact_versions_route_v1_artifacts__artifact_id__versions_get: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                artifact_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactVersionOutPage"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
@@ -24917,8 +25142,17 @@ export interface operations {
                     "application/json": components["schemas"]["UploadCompleteResponse"];
                 };
             };
-            /** @description The `parts` list on completion does not name each part from 1 to `part_count` exactly once. The file was assembled but Beakr could not create it; `message` says why. */
+            /** @description The `parts` list on completion does not name each part from 1 to `part_count` exactly once. `artifact_id` does not name an uploaded file in the upload's project that you can see (a document written in Beakr cannot take an uploaded version). The file was assembled but Beakr could not create it; `message` says why. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description With `on_existing: "version"`, the file already at this path is one you cannot change, so no version was added and no second file was created. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -24935,7 +25169,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description The upload is completing, completed, aborted or expired, so it takes no more parts; or another request finished it first. Some parts have not arrived; `missing_parts` lists up to 100 of them. S3 no longer holds the uploaded data, so the file cannot be assembled. The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted. */
+            /** @description The upload is completing, completed, aborted or expired, so it takes no more parts; or another request finished it first. Some parts have not arrived; `missing_parts` lists up to 100 of them. S3 no longer holds the uploaded data, so the file cannot be assembled. The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted. With `on_existing: "version"`, the upload's folder holds more than one file with that name (or more than one folder of a name on its path), so Beakr cannot tell which file to add the version to. Nothing was created. */
             409: {
                 headers: {
                     [name: string]: unknown;
