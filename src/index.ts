@@ -93,6 +93,8 @@ export {
   publicSource,
   UPLOAD_PROVIDER,
   sourceWhere,
+  type ExcerptKind,
+  type PassageExcerptKind,
   type SourceEvidence,
   type SourceExcerpt,
   type SourceLocation,

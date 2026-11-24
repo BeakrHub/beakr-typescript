@@ -25,9 +25,26 @@ export interface SourceLocation {
   version_id?: string;
 }
 
+/**
+ * Whose words a source's `evidence.excerpt` is. `quote`: the source's own words,
+ * the only kind to show in quotation marks. `description`: Beakr's own wording,
+ * such as a description of a figure or a computed value, and words that were not
+ * found in the source as written. `person`: a person's attribution, or the words
+ * its writer gave for a record in a system outside Beakr.
+ */
+export type ExcerptKind = "quote" | "description" | "person";
+
+/** Whose words a compact record's excerpt `text` is when they are not the source's own. */
+export type PassageExcerptKind = Exclude<ExcerptKind, "quote">;
+
+const EXCERPT_KINDS: readonly ExcerptKind[] = ["quote", "description", "person"];
+const PASSAGE_EXCERPT_KINDS: readonly PassageExcerptKind[] = ["description", "person"];
+
 export interface SourceEvidence {
-  /** The quote: the words of the source the citation rests on. */
+  /** The words the citation rests on; `excerpt_kind` says whose words they are. */
   excerpt?: string;
+  /** Whose words `excerpt` is; absent from an engine that predates it. */
+  excerpt_kind?: ExcerptKind;
   /** The passage around the quote, when the citation recorded one. */
   context_excerpt?: string;
   locator?: string;
@@ -36,8 +53,11 @@ export interface SourceEvidence {
    * ISO 8601 time with its offset, or a date (`2026-03-04`) for an all-day event.
    */
   source_recorded_at?: string;
+  /** @deprecated Use `excerpt_kind`. */
   fidelity?: string;
+  /** @deprecated Use `excerpt_kind`. */
   evidence_kind?: string;
+  /** @deprecated Use `excerpt_kind`. */
   anchor_status?: string;
 }
 
@@ -47,6 +67,8 @@ export interface SourceExcerpt {
   section_id?: string;
   unit_locator?: string;
   text?: string;
+  /** Whose words `text` is when they are not the source's own; absent for a quote. */
+  excerpt_kind?: PassageExcerptKind;
 }
 
 export interface SourceStatus {
@@ -99,6 +121,13 @@ const isEmpty = (value: unknown): boolean =>
 
 const asRow = (value: unknown): Row =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as Row) : {};
+
+/** `value` when it is one of the documented `allowed` kinds, else `undefined`. */
+function known<K extends string>(value: unknown, allowed: readonly K[]): K | undefined {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? (value as K)
+    : undefined;
+}
 
 function cleaned<T extends object>(value: Record<string, unknown>): T | undefined {
   const kept = Object.fromEntries(
@@ -197,6 +226,7 @@ export function publicSource(source: Row, citationKey?: string): SourceRecord {
     }),
     evidence: cleaned<SourceEvidence>({
       excerpt: str(evidence["excerpt"] ?? first("excerpt", "excerpt_text", "quote")),
+      excerpt_kind: known(evidence["excerpt_kind"] ?? first("excerpt_kind"), EXCERPT_KINDS),
       // A page sources row carries these two beside `excerpt`.
       context_excerpt: str(evidence["context_excerpt"] ?? first("context_excerpt")),
       locator: str(evidence["locator"] ?? first("locator", "chunk_ref")),
@@ -225,13 +255,16 @@ export function publicSource(source: Row, citationKey?: string): SourceRecord {
   const excerpts = (Array.isArray(source["excerpts"]) ? source["excerpts"] : [])
     .map(asRow)
     .filter((excerpt) => !isEmpty(excerpt["text"]))
-    .map((excerpt) =>
-      Object.fromEntries(
+    .map((excerpt) => {
+      const passage = Object.fromEntries(
         (["citation_key", "section_id", "unit_locator", "text"] as const)
           .filter((key) => !isEmpty(excerpt[key]))
           .map((key) => [key, String(excerpt[key])]),
-      ) as SourceExcerpt,
-    );
+      ) as SourceExcerpt;
+      const kind = known(excerpt["excerpt_kind"], PASSAGE_EXCERPT_KINDS);
+      if (kind) passage.excerpt_kind = kind;
+      return passage;
+    });
   if (excerpts.length) item["excerpts"] = excerpts;
   if (typeof source["cited_passages"] === "number" && Number.isInteger(source["cited_passages"])) {
     item["cited_passages"] = source["cited_passages"];

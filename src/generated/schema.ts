@@ -2409,10 +2409,33 @@ export interface paths {
          *     Without one, it is a draft: a person edits it (`edit_url`) and sends it.
          *
          *     Each flag records the question that asks about it. When a link of this
-         *     interview finishes, Beakr attaches each answer to its flag as a suggestion
+         *     interview finishes, Beakr attaches each answer to its flag
          *     (`interview_answers` on `GET /v1/knowledge/wiki/proposals/{proposal_id}`),
-         *     with the drafted resolution it matches; a person applies it with the
-         *     resolve routes. Nothing is ever applied automatically.
+         *     with whether it settles the question (`decisive`), the drafted resolution
+         *     it points to (`points_to_option`) and the passage of the transcript it
+         *     quotes (`source`). The transcript is kept in the project as a file that is
+         *     not compiled into Knowledge: the answers reach Knowledge through their
+         *     flags. An answer is a suggestion a person applies with the resolve routes,
+         *     and resolving with the option an answer points to makes the changed row or
+         *     section cite that answer. Several answers accumulate on a flag;
+         *     `interview_answers_note` says in one line when the decisive ones agree or
+         *     disagree, and when they disagree none is offered as the suggestion.
+         *
+         *     Beakr applies an answer by itself in one case only: you drafted the
+         *     interview in your own signed-in session (the web app, not an API key, an
+         *     agent's or the CLI's token), named yourself as the `participant` (your own
+         *     `user_id`), answered your own interview, and the answer settles the
+         *     question and matches a resolution Beakr checked against it. Then the page changes as that resolution says, as your own
+         *     change, citing your answer; the flag becomes `resolved` (its
+         *     `resolved_by_change` says which answer and option); another open flag
+         *     about the same rows closes with it; and the answer reads
+         *     `suggestion_status: applied`. An answer given through a link by anyone
+         *     else, a member of the project included, never changes a page by itself.
+         *     Nor does an unsure answer, one that another answer contradicts, one to a
+         *     page that changed since, or any answer in a project that requires a person
+         *     to commit Knowledge (`agent_proposals_need_a_person`);
+         *     `auto_resolution.reason` on the answer says which. A question the
+         *     participant skipped leaves its flag untouched.
          *
          *     A project with nothing to ask about answers 200 with `interview: null` and
          *     `empty_reason`. One model call; when no model answers, each question is
@@ -12703,10 +12726,16 @@ export interface components {
             context_excerpt?: string | null;
             /**
              * Excerpt
-             * @description The quote: the words of the source the citation rests on. A long one is shortened on a compact read and on a research answer.
+             * @description The words the citation rests on. A long one is shortened on a compact read and on a research answer. Only a `quote` (see `excerpt_kind`) is the source's own words.
              * @default null
              */
             excerpt?: string | null;
+            /**
+             * Excerpt Kind
+             * @description Whose words `excerpt` is. `quote`: the source's own words, the only kind to show in quotation marks. `description`: Beakr's own wording, such as a description of a figure or a computed value, and words that were not found in the source as written. `person`: a person's attribution, or the words its writer gave for a record in a system outside Beakr. Present whenever `excerpt` is.
+             * @default null
+             */
+            excerpt_kind?: ("quote" | "description" | "person") | null;
             /**
              * Locator
              * @description Where in the source the quote sits, as the citation recorded it: a page, a slide, a block, a message or a character range. `location.unit_locator` is the same place written for a reader.
@@ -12733,6 +12762,12 @@ export interface components {
              * @default null
              */
             citation_key?: string | null;
+            /**
+             * Excerpt Kind
+             * @description Whose words `text` is when they are not the source's own (see `evidence.excerpt_kind`). Absent for a quote from the source.
+             * @default null
+             */
+            excerpt_kind?: ("description" | "person") | null;
             /**
              * Section Id
              * @description Id of the page section.
@@ -14558,6 +14593,13 @@ export interface components {
          * @description ``POST .../resolve`` and ``POST .../resolve-rows``: the flag is resolved.
          */
         WikiConflictResolved: {
+            /**
+             * Cited Answers
+             * @description The interview answers the changed row or section now cites: set when the option applied is the one those answers point to (`answered_by`, `answered_at`, `interview_id`, `link_id`, and the transcript file as `artifact_id` and `file_name`). Empty when no answer points to it, or the caller wrote their own text.
+             */
+            cited_answers?: {
+                [key: string]: unknown;
+            }[];
             /**
              * New Revision
              * @description The page's revision after the change.
@@ -21076,7 +21118,7 @@ export interface operations {
                                 label?: string;
                                 /** @description Where in the source this passage sits, copied from the position the source locator guide declared for it (for example 'Page 4 Paragraph 2', a part id, or a section label). Supply it whenever the guide gave you one: citations carrying a locator verify against the source about 90% of the time and those without it under 10%, because a locator means the passage was read at a declared position rather than recalled. */
                                 locator?: string;
-                                /** @description The exact passage from the source that this claim rests on, copied CONTIGUOUSLY and character for character from text you actually read. One unbroken span: never stitch two passages together with '...' or an ellipsis, never tidy the wording, and never retype it from memory of the document. A stitched or retyped quote cannot be located in the source, and is stored as an unverified assertion with its quotation marks removed. If the claim needs two separated passages, write two citations. */
+                                /** @description The exact passage from the source that this claim rests on, copied CONTIGUOUSLY and character for character from text you actually read. One unbroken span: never stitch two passages together with '...' or an ellipsis, never tidy the wording, and never retype it from memory of the document. A stitched or retyped quote cannot be located in the source, and is then shown as Beakr's description, never as the source's words. If the claim needs two separated passages, write two citations. */
                                 quote?: string;
                             };
                             /** @description RE-CITES a source this wiki already stores. Only ever an opaque `beakr-source:v1:...` handle handed back by a knowledge_base read -- never a citation token, project, artifact or unit id. The server redeems it for that stored row's exact source, version and excerpt, so an existing source is re-cited without internal IDs. It cannot introduce a source being cited for the first time; use `key` for that. */
