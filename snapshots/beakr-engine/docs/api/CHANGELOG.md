@@ -11,11 +11,75 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=478e7ac05592d9bc045eebfeb63cbfdffc7841b3be5f9d89d0d3585478e00962 changelog sha256=b59a91acdae4b40a7e571abaed5aed7359bb4cc38c13c41b32354c8347c6df03 -->
+<!-- contract-stamp: public-openapi sha256=6d5cca13e567436a1a8a9fc7bab06082e37dc69cd49302bc2bd25421588584d7 changelog sha256=f468843f59cef5a897b6ef1588de0350f332dff86c51a0e16cba1c734c0873c1 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A source that names one item now respects the limit an organization admin
+  set on a shared connection. Attaching a folder, library or mail folder that
+  is not at or inside what the admin shared from a Google Drive, OneDrive,
+  SharePoint, Box, Dropbox or Outlook mail connection is refused with
+  `403 outside_connector_limit`, and so is previewing what its rules would
+  keep; the account's top level counts as outside. Nothing is attached and
+  nothing is listed. Attach a folder inside what was shared, use another
+  connection, or ask an admin to share the folder. A source attached earlier
+  that is outside the limit stays attached and keeps what it already brought
+  in, but its syncs bring nothing more in: `GET /v1/jobs/{job_id}` reports
+  `empty_reason` for its `integration_sync` job. Connections with no limit,
+  personal connections and whole-account sources are unchanged.
+- Row types can no longer be created, copied or brought back by any operation.
+  `POST /v1/knowledge/wiki/write` (`action: "page_type"`) creates nothing when
+  `metadata_schema.grain` is `row`, and its result says row types were removed
+  and to add a field to the type the rows belong on. `POST
+  /v1/knowledge/wiki/page-types/copy` and `.../promote` leave a row type
+  behind: its key is listed in `skipped` with the new reason `row_type`, and
+  the other types named are copied. Convert it first with `POST
+  /v1/knowledge/wiki/page-types/{key}/to-field` to carry it across. Undoing a
+  card type change is refused, saying row types were removed, where it would
+  make a type rows again, which includes undoing a `to-field` conversion's
+  change to the row type; `DELETE /v1/knowledge/wiki/page-types/{key}` answers
+  409 for a card copy whose broader type is still rows. `PATCH
+  /v1/knowledge/wiki/page-types/{key}` with `grain: "row"` now always answers
+  422 with that reason, including where it used to say the type was the
+  project's last. A row type that already exists and was not converted works
+  as before.
+- A copied or promoted card type carries its definition only. What Beakr
+  recorded about the source project's own cards of the type (its record
+  profile and the field names it settled on) is no longer copied with it, and
+  a destination that already has the type keeps its own on `replace`.
+  `POST /v1/knowledge/wiki/page-types/copy`, `POST
+  /v1/knowledge/wiki/page-types/promote`.
+- `GET /v1/knowledge/wiki/page-types` without `project_id` no longer serves a
+  guest of the organization a list cached for its members, or the reverse: a
+  guest is listed the built-in types only, as its access allows.
+- A citation's quote is now part of the documented contract. The fields were
+  already returned; nothing about the responses changes.
+  `GET /v1/knowledge/wiki/pages/{page_id}/sources` documents, on each source:
+  `excerpt` (the quote: the words of the source the citation rests on),
+  `context_excerpt` (the passage around it), `quote` (the quote as the
+  citation's writer gave it; read `excerpt` first), `locator` (where in the
+  source the quote sits), `page_number`, `slide_number` and `block_id`,
+  `source_recorded_at` (when the source system recorded the quoted part) and
+  the links `url` and `web_view_url`. Each is present only when the citation
+  recorded it. `POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write`
+  and `POST /v1/knowledge/research` document the same on each source record's
+  `evidence`: `excerpt`, `context_excerpt`, `locator` and `source_recorded_at`
+  (a research answer shortens `excerpt` and leaves `context_excerpt` out).
+  `source_recorded_at` is the source system's own time, passed on as recorded:
+  an ISO 8601 time with that system's offset, or a date (`2026-03-04`) for an
+  all-day event, so the contract declares it a plain string rather than
+  `date-time`.
+- Creating a card type with `POST /v1/knowledge/wiki/write` (`action:
+  "page_type"`) now takes the rights that editing one takes. A project's type
+  (`type_scope: "project"`, the default) is created by that project's owners
+  and admins; an organization's type (`type_scope: "org"`) only by an
+  organization admin or owner, with a credential that is not limited to
+  projects. Anyone else gets a result with `outcome.status` `error` and
+  `outcome.error_code` `permission_denied` that names what is needed, and no
+  type is created. A key limited to projects and an end-user token cannot
+  create an organization's type. Beakr's own background and scheduled work
+  creates project types only, where the project lets it add types.
 - A connected source's tracked items can be listed with a key:
   `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`
   (scope `projects:read`) lists every item the source's syncs picked and what

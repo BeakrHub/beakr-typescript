@@ -1079,8 +1079,10 @@ export interface paths {
          *     The destination gets its own copies, so later edits in either project stay
          *     there. Only types the source project itself defines are copied; a type it
          *     inherits is already available to the destination. ``skipped`` lists each
-         *     key not copied: ``not_found`` in the source, or ``exists`` in the
-         *     destination when ``replace`` is false. Cards are not copied or changed.
+         *     key not copied: ``not_found`` in the source, ``exists`` in the
+         *     destination when ``replace`` is false, or ``row_type`` when the source's
+         *     type is a row type (row types were removed; make it a field with
+         *     ``to-field`` first). Cards are not copied or changed.
          *     Requires being able to see the source and being an owner of the destination.
          */
         post: operations["copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post"];
@@ -1132,8 +1134,9 @@ export interface paths {
          *     Every project without a copy of its own inherits a promoted type from then
          *     on, and every member of the organization can read its definition, so this
          *     takes an organization admin. ``skipped`` lists each key not promoted:
-         *     ``not_found`` in the source, or ``exists`` in the organization when
-         *     ``replace`` is false. The source project keeps its own copy.
+         *     ``not_found`` in the source, ``exists`` in the organization when
+         *     ``replace`` is false, or ``row_type`` when the source's type is a row type
+         *     (row types were removed). The source project keeps its own copy.
          */
         post: operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"];
         delete?: never;
@@ -12688,6 +12691,38 @@ export interface components {
             reason: "not_found" | "not_open" | "not_a_review_flag" | "over_question_limit";
         };
         /**
+         * SourceEvidence
+         * @description What a citation quotes from its source.
+         */
+        SourceEvidence: {
+            /**
+             * Context Excerpt
+             * @description The passage around the quote, for reading it in place. Present on a `sources` read when the citation recorded one; a research answer leaves it out.
+             * @default null
+             */
+            context_excerpt?: string | null;
+            /**
+             * Excerpt
+             * @description The quote: the words of the source the citation rests on. A long one is shortened on a compact read and on a research answer.
+             * @default null
+             */
+            excerpt?: string | null;
+            /**
+             * Locator
+             * @description Where in the source the quote sits, as the citation recorded it: a page, a slide, a block, a message or a character range. `location.unit_locator` is the same place written for a reader.
+             * @default null
+             */
+            locator?: string | null;
+            /**
+             * Source Recorded At
+             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.
+             * @default null
+             */
+            source_recorded_at?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * SourceExcerpt
          * @description One cited passage of a compact record's document.
          */
@@ -12878,13 +12913,10 @@ export interface components {
              */
             cited_places?: string[] | null;
             /**
-             * Evidence
-             * @description The evidence that supports it.
+             * @description What the citation quotes from the source: the quote (`excerpt`), the passage around it (`context_excerpt`), where it sits (`locator`) and when the source system recorded it (`source_recorded_at`). Absent when the citation recorded none of them.
              * @default null
              */
-            evidence?: {
-                [key: string]: unknown;
-            } | null;
+            evidence?: components["schemas"]["SourceEvidence"] | null;
             /**
              * Excerpts
              * @description On a compact read: brief excerpts of this document's cited passages, each with its token and place.
@@ -14856,11 +14888,29 @@ export interface components {
              */
             added_at?: string | null;
             /**
+             * Block Id
+             * @description The block of the source's extracted layout the quote is in, keyed by page and position (`p3-table`).
+             * @default null
+             */
+            block_id?: string | null;
+            /**
              * Chunk Ref
              * @description Which part of the source fed the page: a chunk, a message or a page range.
              * @default null
              */
             chunk_ref?: string | null;
+            /**
+             * Context Excerpt
+             * @description The passage around the quote, for reading it in place, when recorded.
+             * @default null
+             */
+            context_excerpt?: string | null;
+            /**
+             * Excerpt
+             * @description The quote: the words of the source this citation rests on. Absent when the citation recorded none.
+             * @default null
+             */
+            excerpt?: string | null;
             /**
              * Key
              * @description The key.
@@ -14868,13 +14918,31 @@ export interface components {
              */
             key?: string | null;
             /**
+             * Locator
+             * @description Where in the source the quote sits, as the citation recorded it: a page, a slide, a block, a message or a character range.
+             * @default null
+             */
+            locator?: string | null;
+            /**
              * Meta
-             * @description Extra details, as key-value pairs.
+             * @description The citation's details as stored, as key-value pairs that vary by source. The quote, place, time and link fields above are the ones to read.
              * @default null
              */
             meta?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Page Number
+             * @description The page of the source the quote is on, for a paged document.
+             * @default null
+             */
+            page_number?: number | null;
+            /**
+             * Quote
+             * @description The quote as the citation's writer gave it, on citations that recorded one this way. Read `excerpt` first and this when `excerpt` is absent.
+             * @default null
+             */
+            quote?: string | null;
             /**
              * Section Id
              * @description Id of the page section.
@@ -14882,11 +14950,23 @@ export interface components {
              */
             section_id?: string | null;
             /**
+             * Slide Number
+             * @description The slide the quote is on, for a presentation.
+             * @default null
+             */
+            slide_number?: number | null;
+            /**
              * Source Id
              * @description Id of the source.
              * @default null
              */
             source_id?: string | null;
+            /**
+             * Source Recorded At
+             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.
+             * @default null
+             */
+            source_recorded_at?: string | null;
             /**
              * Source Ref
              * @description Opaque reference to a source, the same on every read of it; pass it back in a citation.
@@ -14911,6 +14991,18 @@ export interface components {
              * @default null
              */
             stance?: string | null;
+            /**
+             * Url
+             * @description The source's address: the cited item's own link in its service (a message permalink, a comment anchor) when the citation recorded one, else the source's page there, a web page's address or a publication's page.
+             * @default null
+             */
+            url?: string | null;
+            /**
+             * Web View Url
+             * @description The link that opens the source in its service's own web app, when one is known.
+             * @default null
+             */
+            web_view_url?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -15419,7 +15511,7 @@ export interface components {
             key: string;
             /**
              * Reason
-             * @description not_found in the source, or exists at the destination
+             * @description not_found in the source, exists at the destination, or row_type: the source's type is a row type, and row types were removed, so it is not copied.
              */
             reason: string;
         };
@@ -21031,7 +21123,7 @@ export interface operations {
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
                     /**
-                     * @description Scope for action=page_type. Project is default; global requires admin review.
+                     * @description Scope for action=page_type. Project is the default and what a run proposes. org (a type every project is offered) is created only at an organization admin's own direct request, never by background or scheduled work; global requires admin review.
                      * @enum {string}
                      */
                     type_scope?: "global" | "org" | "project";

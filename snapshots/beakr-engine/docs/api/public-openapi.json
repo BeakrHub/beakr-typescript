@@ -16584,6 +16584,66 @@
         "title": "SkippedFlagOut",
         "type": "object"
       },
+      "SourceEvidence": {
+        "additionalProperties": true,
+        "description": "What a citation quotes from its source.",
+        "properties": {
+          "context_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The passage around the quote, for reading it in place. Present on a `sources` read when the citation recorded one; a research answer leaves it out.",
+            "title": "Context Excerpt"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The quote: the words of the source the citation rests on. A long one is shortened on a compact read and on a research answer.",
+            "title": "Excerpt"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Where in the source the quote sits, as the citation recorded it: a page, a slide, a block, a message or a character range. `location.unit_locator` is the same place written for a reader.",
+            "title": "Locator"
+          },
+          "source_recorded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.",
+            "title": "Source Recorded At"
+          }
+        },
+        "title": "SourceEvidence",
+        "type": "object"
+      },
       "SourceExcerpt": {
         "additionalProperties": true,
         "description": "One cited passage of a compact record's document.",
@@ -16975,16 +17035,14 @@
           "evidence": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/SourceEvidence"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "The evidence that supports it.",
-            "title": "Evidence"
+            "description": "What the citation quotes from the source: the quote (`excerpt`), the passage around it (`context_excerpt`), where it sits (`locator`) and when the source system recorded it (`source_recorded_at`). Absent when the citation recorded none of them."
           },
           "excerpts": {
             "anyOf": [
@@ -20567,6 +20625,19 @@
             "description": "When it was added (ISO 8601, UTC), or null.",
             "title": "Added At"
           },
+          "block_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The block of the source's extracted layout the quote is in, keyed by page and position (`p3-table`).",
+            "title": "Block Id"
+          },
           "chunk_ref": {
             "anyOf": [
               {
@@ -20579,6 +20650,32 @@
             "default": null,
             "description": "Which part of the source fed the page: a chunk, a message or a page range.",
             "title": "Chunk Ref"
+          },
+          "context_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The passage around the quote, for reading it in place, when recorded.",
+            "title": "Context Excerpt"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The quote: the words of the source this citation rests on. Absent when the citation recorded none.",
+            "title": "Excerpt"
           },
           "key": {
             "anyOf": [
@@ -20593,6 +20690,19 @@
             "description": "The key.",
             "title": "Key"
           },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Where in the source the quote sits, as the citation recorded it: a page, a slide, a block, a message or a character range.",
+            "title": "Locator"
+          },
           "meta": {
             "anyOf": [
               {
@@ -20604,8 +20714,34 @@
               }
             ],
             "default": null,
-            "description": "Extra details, as key-value pairs.",
+            "description": "The citation's details as stored, as key-value pairs that vary by source. The quote, place, time and link fields above are the ones to read.",
             "title": "Meta"
+          },
+          "page_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The page of the source the quote is on, for a paged document.",
+            "title": "Page Number"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The quote as the citation's writer gave it, on citations that recorded one this way. Read `excerpt` first and this when `excerpt` is absent.",
+            "title": "Quote"
           },
           "section_id": {
             "anyOf": [
@@ -20620,6 +20756,19 @@
             "description": "Id of the page section.",
             "title": "Section Id"
           },
+          "slide_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The slide the quote is on, for a presentation.",
+            "title": "Slide Number"
+          },
           "source_id": {
             "anyOf": [
               {
@@ -20632,6 +20781,19 @@
             "default": null,
             "description": "Id of the source.",
             "title": "Source Id"
+          },
+          "source_recorded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.",
+            "title": "Source Recorded At"
           },
           "source_ref": {
             "anyOf": [
@@ -20684,6 +20846,32 @@
             "default": null,
             "description": "Whether the source supports or contradicts the claim.",
             "title": "Stance"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The source's address: the cited item's own link in its service (a message permalink, a comment anchor) when the citation recorded one, else the source's page there, a web page's address or a publication's page.",
+            "title": "Url"
+          },
+          "web_view_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The link that opens the source in its service's own web app, when one is known.",
+            "title": "Web View Url"
           }
         },
         "title": "WikiPageSource",
@@ -21543,7 +21731,7 @@
             "type": "string"
           },
           "reason": {
-            "description": "not_found in the source, or exists at the destination",
+            "description": "not_found in the source, exists at the destination, or row_type: the source's type is a row type, and row types were removed, so it is not copied.",
             "title": "Reason",
             "type": "string"
           }
@@ -28466,7 +28654,7 @@
     },
     "/v1/knowledge/wiki/page-types/copy": {
       "post": {
-        "description": "Copy card types one project defines into another project.\n\nThe destination gets its own copies, so later edits in either project stay\nthere. Only types the source project itself defines are copied; a type it\ninherits is already available to the destination. ``skipped`` lists each\nkey not copied: ``not_found`` in the source, or ``exists`` in the\ndestination when ``replace`` is false. Cards are not copied or changed.\nRequires being able to see the source and being an owner of the destination.",
+        "description": "Copy card types one project defines into another project.\n\nThe destination gets its own copies, so later edits in either project stay\nthere. Only types the source project itself defines are copied; a type it\ninherits is already available to the destination. ``skipped`` lists each\nkey not copied: ``not_found`` in the source, ``exists`` in the\ndestination when ``replace`` is false, or ``row_type`` when the source's\ntype is a row type (row types were removed; make it a field with\n``to-field`` first). Cards are not copied or changed.\nRequires being able to see the source and being an owner of the destination.",
         "operationId": "copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post",
         "requestBody": {
           "content": {
@@ -28699,7 +28887,7 @@
     },
     "/v1/knowledge/wiki/page-types/promote": {
       "post": {
-        "description": "Copy card types one project defines up to the organization.\n\nEvery project without a copy of its own inherits a promoted type from then\non, and every member of the organization can read its definition, so this\ntakes an organization admin. ``skipped`` lists each key not promoted:\n``not_found`` in the source, or ``exists`` in the organization when\n``replace`` is false. The source project keeps its own copy.",
+        "description": "Copy card types one project defines up to the organization.\n\nEvery project without a copy of its own inherits a promoted type from then\non, and every member of the organization can read its definition, so this\ntakes an organization admin. ``skipped`` lists each key not promoted:\n``not_found`` in the source, ``exists`` in the organization when\n``replace`` is false, or ``row_type`` when the source's type is a row type\n(row types were removed). The source project keeps its own copy.",
         "operationId": "promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post",
         "requestBody": {
           "content": {
@@ -31755,7 +31943,7 @@
                     "type": "string"
                   },
                   "type_scope": {
-                    "description": "Scope for action=page_type. Project is default; global requires admin review.",
+                    "description": "Scope for action=page_type. Project is the default and what a run proposes. org (a type every project is offered) is created only at an organization admin's own direct request, never by background or scheduled work; global requires admin review.",
                     "enum": [
                       "global",
                       "org",

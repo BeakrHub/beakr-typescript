@@ -26,8 +26,16 @@ export interface SourceLocation {
 }
 
 export interface SourceEvidence {
+  /** The quote: the words of the source the citation rests on. */
   excerpt?: string;
+  /** The passage around the quote, when the citation recorded one. */
+  context_excerpt?: string;
   locator?: string;
+  /**
+   * When the source system recorded the quoted part, as that system gave it: an
+   * ISO 8601 time with its offset, or a date (`2026-03-04`) for an all-day event.
+   */
+  source_recorded_at?: string;
   fidelity?: string;
   evidence_kind?: string;
   anchor_status?: string;
@@ -189,7 +197,10 @@ export function publicSource(source: Row, citationKey?: string): SourceRecord {
     }),
     evidence: cleaned<SourceEvidence>({
       excerpt: str(evidence["excerpt"] ?? first("excerpt", "excerpt_text", "quote")),
+      // A page sources row carries these two beside `excerpt`.
+      context_excerpt: str(evidence["context_excerpt"] ?? first("context_excerpt")),
       locator: str(evidence["locator"] ?? first("locator", "chunk_ref")),
+      source_recorded_at: str(evidence["source_recorded_at"] ?? first("source_recorded_at")),
       fidelity: str(evidence["fidelity"] ?? first("fidelity")),
       evidence_kind: str(evidence["evidence_kind"] ?? first("evidence_kind")),
       anchor_status: str(evidence["anchor_status"] ?? first("anchor_status")),

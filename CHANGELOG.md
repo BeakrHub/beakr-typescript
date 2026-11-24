@@ -7,6 +7,70 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- A source that names one item now respects the limit an organization admin
+  set on a shared connection. Attaching a folder, library or mail folder that
+  is not at or inside what the admin shared from a Google Drive, OneDrive,
+  SharePoint, Box, Dropbox or Outlook mail connection is refused with
+  `403 outside_connector_limit`, and so is previewing what its rules would
+  keep; the account's top level counts as outside. Nothing is attached and
+  nothing is listed. Attach a folder inside what was shared, use another
+  connection, or ask an admin to share the folder. A source attached earlier
+  that is outside the limit stays attached and keeps what it already brought
+  in, but its syncs bring nothing more in: `GET /v1/jobs/{job_id}` reports
+  `empty_reason` for its `integration_sync` job. Connections with no limit,
+  personal connections and whole-account sources are unchanged.
+- Row types can no longer be created, copied or brought back by any operation.
+  `POST /v1/knowledge/wiki/write` (`action: "page_type"`) creates nothing when
+  `metadata_schema.grain` is `row`, and its result says row types were removed
+  and to add a field to the type the rows belong on. `POST
+  /v1/knowledge/wiki/page-types/copy` and `.../promote` leave a row type
+  behind: its key is listed in `skipped` with the new reason `row_type`, and
+  the other types named are copied. Convert it first with `POST
+  /v1/knowledge/wiki/page-types/{key}/to-field` to carry it across. Undoing a
+  card type change is refused, saying row types were removed, where it would
+  make a type rows again, which includes undoing a `to-field` conversion's
+  change to the row type; `DELETE /v1/knowledge/wiki/page-types/{key}` answers
+  409 for a card copy whose broader type is still rows. `PATCH
+  /v1/knowledge/wiki/page-types/{key}` with `grain: "row"` now always answers
+  422 with that reason, including where it used to say the type was the
+  project's last. A row type that already exists and was not converted works
+  as before.
+- A copied or promoted card type carries its definition only. What Beakr
+  recorded about the source project's own cards of the type (its record
+  profile and the field names it settled on) is no longer copied with it, and
+  a destination that already has the type keeps its own on `replace`.
+  `POST /v1/knowledge/wiki/page-types/copy`, `POST
+  /v1/knowledge/wiki/page-types/promote`.
+- `GET /v1/knowledge/wiki/page-types` without `project_id` no longer serves a
+  guest of the organization a list cached for its members, or the reverse: a
+  guest is listed the built-in types only, as its access allows.
+- A citation's quote is now part of the documented contract. The fields were
+  already returned; nothing about the responses changes.
+  `GET /v1/knowledge/wiki/pages/{page_id}/sources` documents, on each source:
+  `excerpt` (the quote: the words of the source the citation rests on),
+  `context_excerpt` (the passage around it), `quote` (the quote as the
+  citation's writer gave it; read `excerpt` first), `locator` (where in the
+  source the quote sits), `page_number`, `slide_number` and `block_id`,
+  `source_recorded_at` (when the source system recorded the quoted part) and
+  the links `url` and `web_view_url`. Each is present only when the citation
+  recorded it. `POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write`
+  and `POST /v1/knowledge/research` document the same on each source record's
+  `evidence`: `excerpt`, `context_excerpt`, `locator` and `source_recorded_at`
+  (a research answer shortens `excerpt` and leaves `context_excerpt` out).
+  `source_recorded_at` is the source system's own time, passed on as recorded:
+  an ISO 8601 time with that system's offset, or a date (`2026-03-04`) for an
+  all-day event, so the contract declares it a plain string rather than
+  `date-time`.
+- Creating a card type with `POST /v1/knowledge/wiki/write` (`action:
+  "page_type"`) now takes the rights that editing one takes. A project's type
+  (`type_scope: "project"`, the default) is created by that project's owners
+  and admins; an organization's type (`type_scope: "org"`) only by an
+  organization admin or owner, with a credential that is not limited to
+  projects. Anyone else gets a result with `outcome.status` `error` and
+  `outcome.error_code` `permission_denied` that names what is needed, and no
+  type is created. A key limited to projects and an end-user token cannot
+  create an organization's type. Beakr's own background and scheduled work
+  creates project types only, where the project lets it add types.
 - A connected source's tracked items can be listed with a key:
   `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`
   (scope `projects:read`) lists every item the source's syncs picked and what
@@ -21,9 +85,6 @@ Each release lists the public API changes it supports, taken from the API change
   `skipped`, `pending`, `removed`, `failed`, `cancelled`) and by reason, the
   first 25 items with their reasons (set-aside ones first), and
   `tracked_items_path`, this list narrowed to the sync.
-- `integrations.trackedItems(projectId, attachmentId, query)` reads one page of a
-  source's tracked items (filters `state`, `reasonCode`, `search`, `since`);
-  `integrations.iterTrackedItems` follows the cursor through all of them.
 - Creating a service account
   (`POST /v1/organizations/{org_id}/service-accounts`) and minting a
   service-account key
@@ -35,6 +96,46 @@ Each release lists the public API changes it supports, taken from the API change
   `403 session_required` whatever the organization's step-up setting.
   Disabling a service account and revoking a member's credential still need
   step-up where the organization requires it.
+- A second upload to the same path adds a version to the file already there,
+  instead of creating a second file. `POST /v1/uploads/{upload_id}/complete`
+  takes `on_existing`: `version` (the default) looks in the upload's folder for
+  a file with the name the upload would get (its `title`, else the last part of
+  `path`; exact, case-sensitive) and adds the upload to it as a new version,
+  which is indexed and compiled into Knowledge as a version added in the app
+  is, so the Knowledge built from the file is updated. With no such file, the
+  file is created as before. `new` always creates a separate file. The response
+  says which happened in `result` (`created`, `versioned`, `restored` when the
+  bytes match an earlier version, which becomes current again, or `unchanged`
+  when they match the current version and nothing is added) and gives
+  `version_no`. Identical bytes are recognized only when the upload was started
+  with `content_hash`. When nothing needed processing, `job_id` is the job that
+  processed that version earlier. Two or more files of that name in the folder
+  answer `409 ambiguous_path`, and a file the caller cannot change answers
+  `403 file_not_writable`; in both cases nothing is created and the upload stays
+  open, so it can be completed again with `on_existing: "new"`. Completions to the same
+  path at the same time are serialized, so they become versions of one file. The
+  same request takes `written_by_agent` (default false) to mark the upload as an
+  agent's work: the version records it, the response returns it, and a file the
+  upload creates is marked as written by Beakr (`is_ai_generated`), so search and
+  agents treat it as an agent's output rather than a source. `title`,
+  `artifact_type`, `description` and `relative_path` apply only when the upload
+  creates a file. `POST /v1/bulk/complete` takes the same choice, as
+  `on_existing` for the batch (default `new`, so a batch keeps creating
+  separate files unless asked) and on each file to override it: with `version`,
+  a file whose folder already holds a file with its `title` is added to that
+  file as a new version. Each entry in `artifacts` gives `result` and
+  `version_no`. A file whose folder holds two or more files of that name, or one
+  the caller cannot change, is left out and listed in `failed` with `error_code`
+  `ambiguous_path` or `file_not_writable`; the rest of the batch completes. The
+  batch request also takes `written_by_agent`, which marks its files and
+  versions as above. To add an upload to
+  a specific file whatever its name, send `artifact_id` on the same request: the
+  file must be an uploaded file in the upload's project (else `400
+  invalid_artifact`, and the upload stays open). `GET
+  /v1/artifacts/{artifact_id}/versions` (`projects:read`) is now documented: a
+  file's versions, oldest first, as a cursor-paged list, each with `version_no`,
+  `size_bytes`, `mime_type`, `content_hash`, `created_at` and
+  `written_by_agent`. A file the caller cannot see answers `404`.
 - A project's open review flags can now become one interview.
   `POST /v1/projects/{project_id}/interviews/from-reviews` (`interviews:write`
   and `kb:read`) writes one plain-language key question per open review flag,
@@ -81,56 +182,6 @@ Each release lists the public API changes it supports, taken from the API change
   `profile_types` on `GET /v1/knowledge/wiki/page-types` gains `as_details`:
   the kinds of thing a project's profile names that Beakr recorded as a field
   of another type, each with `name`, `page_type` and `field`.
-- A second upload to the same path adds a version to the file already there,
-  instead of creating a second file. `POST /v1/uploads/{upload_id}/complete`
-  takes `on_existing`: `version` (the default) looks in the upload's folder for
-  a file with the name the upload would get (its `title`, else the last part of
-  `path`; exact, case-sensitive) and adds the upload to it as a new version,
-  which is indexed and compiled into Knowledge as a version added in the app
-  is, so the Knowledge built from the file is updated. With no such file, the
-  file is created as before. `new` always creates a separate file. The response
-  says which happened in `result` (`created`, `versioned`, `restored` when the
-  bytes match an earlier version, which becomes current again, or `unchanged`
-  when they match the current version and nothing is added) and gives
-  `version_no`. Identical bytes are recognized only when the upload was started
-  with `content_hash`. When nothing needed processing, `job_id` is the job that
-  processed that version earlier. Two or more files of that name in the folder
-  answer `409 ambiguous_path`, and a file the caller cannot change answers
-  `403 file_not_writable`; in both cases nothing is created and the upload stays
-  open, so it can be completed again with `on_existing: "new"`. Completions to the same
-  path at the same time are serialized, so they become versions of one file. The
-  same request takes `written_by_agent` (default false) to mark the upload as an
-  agent's work: the version records it, the response returns it, and a file the
-  upload creates is marked as written by Beakr (`is_ai_generated`), so search and
-  agents treat it as an agent's output rather than a source. `title`,
-  `artifact_type`, `description` and `relative_path` apply only when the upload
-  creates a file. `POST /v1/bulk/complete` takes the same choice, as
-  `on_existing` for the batch (default `new`, so a batch keeps creating
-  separate files unless asked) and on each file to override it: with `version`,
-  a file whose folder already holds a file with its `title` is added to that
-  file as a new version. Each entry in `artifacts` gives `result` and
-  `version_no`. A file whose folder holds two or more files of that name, or one
-  the caller cannot change, is left out and listed in `failed` with `error_code`
-  `ambiguous_path` or `file_not_writable`; the rest of the batch completes. The
-  batch request also takes `written_by_agent`, which marks its files and
-  versions as above. To add an upload to
-  a specific file whatever its name, send `artifact_id` on the same request: the
-  file must be an uploaded file in the upload's project (else `400
-  invalid_artifact`, and the upload stays open). `GET
-  /v1/artifacts/{artifact_id}/versions` (`projects:read`) is now documented: a
-  file's versions, oldest first, as a cursor-paged list, each with `version_no`,
-  `size_bytes`, `mime_type`, `content_hash`, `created_at` and
-  `written_by_agent`. A file the caller cannot see answers `404`.
-- Listing a project's card types also says what Beakr did with the kinds of
-  thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
-  `project_id` returns `profile_types`: `working` (true while Beakr is still
-  defining types from the profile), `made` (keys of the types it created),
-  `matched` (a name an existing type already covers, with `name`, `page_type`,
-  `scope` and `reason`), `suggested` (keys kept as suggestions in a project
-  whose types only people change) and `skipped` (a name that got no type, with
-  `name` and `reason`). The lists are empty for a project whose profile has
-  named nothing, and a `matched` item's `reason` may be empty. `profile_types`
-  is left out when no project is named.
 - A review flag (a proposal of type `review`: a section Knowledge flagged as
   contradicted, unverifiable or unclear) can be resolved through the API, not
   only accepted or dismissed. `GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict`
@@ -153,6 +204,16 @@ Each release lists the public API changes it supports, taken from the API change
   pending answers `400`. `GET /v1/knowledge/wiki/proposals` takes
   `proposal_type`: `proposal_type=review` lists only review flags (with
   `status=pending`, the default, the open ones).
+- Listing a project's card types also says what Beakr did with the kinds of
+  thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
+  `project_id` returns `profile_types`: `working` (true while Beakr is still
+  defining types from the profile), `made` (keys of the types it created),
+  `matched` (a name an existing type already covers, with `name`, `page_type`,
+  `scope` and `reason`), `suggested` (keys kept as suggestions in a project
+  whose types only people change) and `skipped` (a name that got no type, with
+  `name` and `reason`). The lists are empty for a project whose profile has
+  named nothing, and a `matched` item's `reason` may be empty. `profile_types`
+  is left out when no project is named.
 - A card type's field can say what to record under it. Each item of `fields`
   takes an optional `description` (up to 300 characters) on
   `PATCH /v1/knowledge/wiki/page-types/{key}` and on the `card_types` of
@@ -348,6 +409,15 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- `publicSource` keeps the passage around a quote and when it was recorded:
+  a record's `evidence` gains `context_excerpt` and `source_recorded_at`
+  beside `excerpt` and `locator` (both optional on the `SourceEvidence` type),
+  each present only when the citation recorded it. The generated
+  `SourceRecord.evidence` is typed as the contract's `SourceEvidence`, and
+  `WikiPageSource` declares the quote fields a page sources row carries.
+- `integrations.trackedItems(projectId, attachmentId, query)` reads one page of a
+  source's tracked items (filters `state`, `reasonCode`, `search`, `since`);
+  `integrations.iterTrackedItems` follows the cursor through all of them.
 - `uploads.uploadMany` adds a version to a file already at a file's path, as a
   single upload does: it sends `on_existing: "version"` (the API's batch
   default is `"new"`), and each entry of `artifacts` gives `result` and
