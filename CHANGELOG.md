@@ -39,7 +39,12 @@ Each release lists the public API changes it supports, taken from the API change
   `recompile_cooldown`, with `Retry-After`), up to 500 items each (`over_cap`
   counts the rest). `dry_run: true` counts what would be sent and sends nothing.
   409 `connection_unusable` when the attacher's connection can no longer read
-  the source, 409 `knowledge_off` when Knowledge is off for it.
+  the source, 409 `knowledge_off` when Knowledge is off for it, and 409
+  `sync_running` while a sync of the source is running (what it reads is
+  already on its way). `mode: retry` leaves alone every item the tracked-items
+  list reads `ingested`, and neither mode sends a pending item still on its way
+  into Knowledge (its compile queued or running, or read in the last 30
+  minutes); `in_progress_left` counts those.
 - `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: `state`
   now describes an item's newest version. An item edited at its source whose
   new version is still waiting for its compile reads `pending`, and one whose
