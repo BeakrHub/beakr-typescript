@@ -204,7 +204,9 @@ export class Integrations extends Resource {
    * Knowledge) or `removed`. A skipped, failed or partial item carries
    * `reason_code` and `reason`, including when Knowledge read the item and
    * found nothing to add (`nothing_to_add`) and why a compile failed
-   * (`compile_failed`, `import_gave_up`).
+   * (`compile_failed`, `import_gave_up`, `retry_gave_up`). A pending item, and a
+   * partial one Beakr retries, says why it waits (`pending_reason`,
+   * `pending_reason_text`) and when Beakr tries next (`next_attempt_at`).
    * `counts` cover the whole source; `matched` is how many the filters keep.
    * A sync's own outcomes (`jobs.get(syncJobId)`, `result.outcomes`) link here
    * with `since` set to the sync's start. Scope `projects:read`.

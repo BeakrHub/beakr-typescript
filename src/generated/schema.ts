@@ -14262,11 +14262,26 @@ export interface components {
              */
             last_synced_at?: string | null;
             /**
+             * Next Attempt At
+             * @description When Beakr next reads or sends the item (ISO 8601), when known.
+             */
+            next_attempt_at?: string | null;
+            /**
              * Older Version In Knowledge
              * @description An earlier version of the item is in Knowledge while its newest one is pending, failed or skipped: the item is being updated, or its update failed.
              * @default false
              */
             older_version_in_knowledge?: boolean;
+            /**
+             * Pending Reason
+             * @description For a pending item, or a partial one Beakr retries: why it is waiting, as a stable code. queued, compiling, waiting_for_compile (sent in the last half hour), retrying (partial; the next try lands the changes left), held_back (the source's last sync hit its limit or the quota), import_followup (a history import's follow-up sends it), resend_scheduled (its compile didn't finish; Beakr sends it again), waiting_for_sync (the source's next scheduled sync takes it) or auto_sync_off (nothing scheduled will; Sync now or send it again). Null for any other item.
+             */
+            pending_reason?: string | null;
+            /**
+             * Pending Reason Text
+             * @description The same, and what happens next, for a person to read.
+             */
+            pending_reason_text?: string | null;
             /**
              * Reason
              * @description Why a skipped item was set aside, a failed one failed, or a partial one is not finished, for a person.
@@ -14274,7 +14289,7 @@ export interface components {
             reason?: string | null;
             /**
              * Reason Code
-             * @description Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Partial: compile_partial (the next sync retries the changes left), compile_not_converging (they could not be applied; not sent again until it changes). Failed: compile_failed (the next sync sends it again), import_gave_up (a history import stopped trying it). Null otherwise, and for items skipped before reasons were recorded.
+             * @description Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Partial: compile_partial (the next sync retries the changes left), compile_not_converging (they could not be applied; not sent again until it changes). Failed: compile_failed (the next sync sends it again), import_gave_up (a history import stopped trying it), retry_gave_up (Beakr sent it again 3 times and its compile never finished). Null otherwise, and for items skipped before reasons were recorded.
              */
             reason_code?: string | null;
             /**
