@@ -73,6 +73,25 @@ export class Integrations extends Resource {
     return this.transport.paginate({ method: "GET", path: "/v1/integrations" }, pageSize);
   }
 
+  /**
+   * One page of the connections a project's sources can be attached from: your
+   * own and the organization's active connections, the ones
+   * `POST /v1/projects/{project_id}/sources` takes as `connector_id`. Items have
+   * the shape `list` gives, with `projects` naming only this project's sources.
+   * A key limited to projects may call it for one of them, where the
+   * organization-wide `list` is refused (403). Scope `integrations:read`.
+   */
+  listForProject(
+    projectId: string,
+    query: { cursor?: string; limit?: number } = {},
+  ): Promise<{ data: JsonObject[]; next_cursor?: string | null; has_more?: boolean }> {
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/projects/${enc(projectId)}/integrations`,
+      query: { cursor: query.cursor, limit: query.limit },
+    });
+  }
+
   /** Returns `connect_url`; open it in a browser to finish connecting. */
   connect(provider: string, options: { scope?: "user" | "org" } = {}): Promise<JsonObject> {
     return this.transport.request({

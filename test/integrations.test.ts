@@ -25,4 +25,15 @@ describe("integrations", () => {
       "DELETE /v1/integrations/c1",
     ]);
   });
+
+  it("lists the connections one project can attach sources from", async () => {
+    const drive = { id: "c1", provider: "gdrive:nango", projects: [{ project_id: "p 1" }] };
+    const { fetch, calls } = mockFetch([json({ data: [drive], has_more: false, next_cursor: null })]);
+    const { beakr } = client(fetch);
+    const page = await beakr.integrations.listForProject("p 1", { limit: 5 });
+    expect(page.data.map((row) => row.id)).toEqual(["c1"]);
+    expect(`${calls[0]!.method} ${path(calls[0]!.url)}`).toBe(
+      "GET /v1/projects/p%201/integrations?limit=5",
+    );
+  });
 });

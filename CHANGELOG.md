@@ -7,6 +7,34 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- New: `GET /v1/projects/{project_id}/integrations` (`integrations:read`) lists
+  the connections the caller can attach that project's sources from: their own
+  and the organization's active connections, the ones
+  `POST /v1/projects/{project_id}/sources` accepts as `connector_id`. Items have
+  the shape of `GET /v1/integrations`, but `projects` lists only that project's
+  sources. A key limited to projects may call it for one of them; the
+  organization-wide `GET /v1/integrations` stays refused to such a key. An
+  end-user token is refused it, as it lists the minting credential's
+  connections. A key limited to projects may now also call
+  `GET /v1/knowledge/wiki/page-types`, `.../page-types/history` and
+  `.../page-types/suggestions` with one of its projects, and change that
+  project's cards and settings through `.../page-types/{key}/rename-fields`,
+  `.../page-types/{key}/retype-cards`, `PUT .../page-types/settings` and
+  `.../page-types/suggestions/{suggestion_id}/dismiss`. Another project, or
+  none, answers 403 `insufficient_scope`.
+- `POST /v1/knowledge/wiki/proposals/{proposal_id}/accept` refuses, with 400
+  `citation_source_unresolved`, a proposal whose citations name a file or a
+  connected item the accepting caller cannot open (one held only by projects
+  they cannot read) and the page does not already cite, with the same answer as
+  an id that names nothing; the proposal stays pending for someone who can open
+  it. A connected item no project tracks, such as a message an agent read live,
+  is accepted as before. The page section edit route now resolves a `unit`,
+  `external_item` or `artifact` citation within its writer's reach, as the other
+  page edit routes do. A `{{unit:...}}` or `{{external_item:...}}` token a
+  person writes into a page with no citation of its own is recorded only for an
+  item its writer can reach, and `GET /v1/knowledge/wiki/pages/{page_id}/sources`
+  resolves such a token only for an item the reader can reach or the page
+  already cites.
 - A citation's `meta.quote` on `POST /v1/knowledge/wiki/write` is described
   without the word "unverified": a stitched or retyped quote that cannot be
   located in its source is shown as Beakr's description, never as the
@@ -101,7 +129,9 @@ Each release lists the public API changes it supports, taken from the API change
   sent interview; `creator_cannot_resolve`: the interview was drafted with an
   API key, an agent's or the CLI's token, or a credential that could not
   resolve the flag itself; `person_required`: the project requires a person to accept
-  changes; `no_verified_option`; `answers_disagree`; `answer_not_citable`;
+  changes; `no_verified_option`; `answer_values_unknown`: the answer names no
+  value the resolution could be checked against; `answers_disagree`;
+  `answer_not_citable`;
   `several_cards`; `page_changed`; `not_permitted`; `not_applicable`) and
   `suggestion_note` says why in a sentence. A skipped question leaves its flag
   untouched.
@@ -515,6 +545,9 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- `integrations.listForProject(projectId)` lists the connections a project's
+  sources can be attached from, for a key limited to that project too, where
+  `integrations.list()` is refused.
 - `publicSource` keeps the passage around a quote and when it was recorded:
   a record's `evidence` gains `context_excerpt` and `source_recorded_at`
   beside `excerpt` and `locator` (both optional on the `SourceEvidence` type),

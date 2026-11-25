@@ -133,6 +133,7 @@ export const OPERATIONS = {
   "projects.getProject": { method: "GET", path: "/v1/projects/{project_id}" },
   "projects.updateProject": { method: "PATCH", path: "/v1/projects/{project_id}" },
   "projects.deleteProject": { method: "DELETE", path: "/v1/projects/{project_id}" },
+  "integrations.listProjectIntegrations": { method: "GET", path: "/v1/projects/{project_id}/integrations" },
   "interviews.draftInterviewFromReviews": { method: "POST", path: "/v1/projects/{project_id}/interviews/from-reviews" },
   "projects.createProjectMembershipInvitation": { method: "POST", path: "/v1/projects/{project_id}/invite" },
   "projects.getProjectKnowledgeProfile": { method: "GET", path: "/v1/projects/{project_id}/knowledge-profile" },
@@ -543,6 +544,18 @@ export class IntegrationsApi {
   callIntegrationTool(args: { path: operations["call_integration_tool_v1_integrations_tools__tool_name__call_post"]["parameters"]["path"]; body?: NonNullable<operations["call_integration_tool_v1_integrations_tools__tool_name__call_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["call_integration_tool_v1_integrations_tools__tool_name__call_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/integrations/tools/${enc(String(args.path.tool_name))}/call`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
+  }
+
+  /** GET /v1/projects/{project_id}/integrations (List integrations usable in a project) */
+  listProjectIntegrations(args: { path: operations["list_project_integrations_v1_projects__project_id__integrations_get"]["parameters"]["path"]; query?: NonNullable<operations["list_project_integrations_v1_projects__project_id__integrations_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_project_integrations_v1_projects__project_id__integrations_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/integrations`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/projects/{project_id}/integrations, following its cursor. */
+  listProjectIntegrationsAll(args: { path: operations["list_project_integrations_v1_projects__project_id__integrations_get"]["parameters"]["path"]; query?: NonNullable<operations["list_project_integrations_v1_projects__project_id__integrations_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_project_integrations_v1_projects__project_id__integrations_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/integrations`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
   }
 
   /** POST /v1/projects/{project_id}/sources/{attachment_id}/sync/cancel (Cancel a source's running sync) */
