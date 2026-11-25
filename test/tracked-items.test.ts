@@ -74,4 +74,27 @@ describe("tracked items", () => {
     await beakr.integrations.trackedItems("p/1", "s/1");
     expect(path(calls[0]!.url)).toBe("/v1/projects/p%2F1/sources/s%2F1/tracked-items");
   });
+
+  it("filters failed items by their state", async () => {
+    const failed = { ...skipped, external_id: "conn:t3", state: "failed", reason_code: "compile_failed" };
+    const { fetch, calls } = mockFetch([json(page([failed], null))]);
+    const { beakr } = client(fetch);
+    const first = await beakr.integrations.trackedItems("p1", "s1", { state: "failed" });
+    expect(first.data[0]!.state).toBe("failed");
+    expect(query(calls[0]!.url)).toEqual({ state: "failed" });
+  });
+
+  it("reads how a source's last history import ended", async () => {
+    const ended = {
+      provider: "gdrive:nango",
+      supported: true,
+      status: "idle",
+      last_outcome: { in_knowledge: 492, skipped: 93, failed: 26, left: 0, state: "finished" },
+    };
+    const { fetch, calls } = mockFetch([json(ended)]);
+    const { beakr } = client(fetch);
+    const status = await beakr.integrations.historyImportStatus("p/1", "s1");
+    expect(status.status).toBe("idle");
+    expect(path(calls[0]!.url)).toBe("/v1/projects/p%2F1/sources/s1/history-import/status");
+  });
 });
