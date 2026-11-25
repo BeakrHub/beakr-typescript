@@ -254,6 +254,30 @@ const stopped = await beakr.integrations.cancelSourceSync(projectId, sourceId); 
 console.log((await beakr.jobs.get(stopped.sync_job_id)).status); // running (cancelling), then cancelled
 ```
 
+### Connections a project can use
+
+A key limited to projects may not list the organization's connections
+(`integrations.list()` answers 403); it lists the ones a project's sources can
+be attached from instead:
+
+```ts
+const { data } = await beakr.integrations.listForProject(projectId);
+for (const connection of data) console.log(connection.id, connection.provider, connection.label);
+```
+
+### Why items were set aside
+
+Every item a connected source tracks says what became of it: `pending`,
+`ingested`, `skipped` (with `reason_code` and `reason`, including Knowledge's
+own `nothing_to_add` after reading it) or `removed`. A sync's job carries the
+same outcomes for the items it brought in:
+
+```ts
+const page = await beakr.integrations.trackedItems(projectId, sourceId, { state: "skipped" });
+for (const item of page.data) console.log(item.title, item.reason_code, item.reason);
+for await (const item of beakr.integrations.iterTrackedItems(projectId, sourceId)) console.log(item.state);
+```
+
 ### Ask a person about review flags
 
 Turn a project's open review flags into one interview, one question per flag

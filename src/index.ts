@@ -103,6 +103,8 @@ export {
   publicSource,
   UPLOAD_PROVIDER,
   sourceWhere,
+  type ExcerptKind,
+  type PassageExcerptKind,
   type SourceEvidence,
   type SourceExcerpt,
   type SourceLocation,
@@ -134,6 +136,10 @@ export type {
   IntegrationToolResult,
   SourceSyncCancelled,
   ToolsQuery,
+  TrackedItem,
+  TrackedItemsPage,
+  TrackedItemsQuery,
+  TrackedItemState,
 } from "./resources/integrations.js";
 export type {
   CreateLinkOptions,

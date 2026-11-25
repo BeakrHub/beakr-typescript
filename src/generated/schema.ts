@@ -1102,8 +1102,10 @@ export interface paths {
          *     The destination gets its own copies, so later edits in either project stay
          *     there. Only types the source project itself defines are copied; a type it
          *     inherits is already available to the destination. ``skipped`` lists each
-         *     key not copied: ``not_found`` in the source, or ``exists`` in the
-         *     destination when ``replace`` is false. Cards are not copied or changed.
+         *     key not copied: ``not_found`` in the source, ``exists`` in the
+         *     destination when ``replace`` is false, or ``row_type`` when the source's
+         *     type is a row type (row types were removed; make it a field with
+         *     ``to-field`` first). Cards are not copied or changed.
          *     Requires being able to see the source and being an owner of the destination.
          */
         post: operations["copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post"];
@@ -1155,8 +1157,9 @@ export interface paths {
          *     Every project without a copy of its own inherits a promoted type from then
          *     on, and every member of the organization can read its definition, so this
          *     takes an organization admin. ``skipped`` lists each key not promoted:
-         *     ``not_found`` in the source, or ``exists`` in the organization when
-         *     ``replace`` is false. The source project keeps its own copy.
+         *     ``not_found`` in the source, ``exists`` in the organization when
+         *     ``replace`` is false, or ``row_type`` when the source's type is a row type
+         *     (row types were removed). The source project keeps its own copy.
          */
         post: operations["promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post"];
         delete?: never;
@@ -1613,6 +1616,11 @@ export interface paths {
          *     ``already_accepted: true`` with ``reviewed_at``, ``reviewed_by_name`` (the
          *     person who accepted it; null when auto-approve did) and ``auto_approved``.
          *     A dismissed or otherwise closed proposal answers 400 saying so.
+         *
+         *     A proposal whose citations name a file or connected item the caller cannot
+         *     open (one only projects they cannot read hold), and the page does not
+         *     already cite, answers 400 ``citation_source_unresolved``, as for an id that
+         *     names nothing, and stays pending for someone who can open it.
          */
         post: operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"];
         delete?: never;
@@ -2559,6 +2567,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integrations usable in a project
+         * @description Connections the caller can attach this project's sources from.
+         *
+         *     The caller's own and the organization's active connections: the ones
+         *     ``POST /v1/projects/{project_id}/sources`` accepts as ``connector_id``. Each
+         *     item has the shape of ``GET /v1/integrations``, but its ``projects`` lists
+         *     only this project's sources. A credential limited to projects may call it
+         *     for one of them, where the organization-wide list is refused. Answers 404
+         *     for a project the caller cannot read.
+         */
+        get: operations["list_project_integrations_v1_projects__project_id__integrations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/interviews/from-reviews": {
         parameters: {
             query?: never;
@@ -2589,10 +2624,33 @@ export interface paths {
          *     Without one, it is a draft: a person edits it (`edit_url`) and sends it.
          *
          *     Each flag records the question that asks about it. When a link of this
-         *     interview finishes, Beakr attaches each answer to its flag as a suggestion
+         *     interview finishes, Beakr attaches each answer to its flag
          *     (`interview_answers` on `GET /v1/knowledge/wiki/proposals/{proposal_id}`),
-         *     with the drafted resolution it matches; a person applies it with the
-         *     resolve routes. Nothing is ever applied automatically.
+         *     with whether it settles the question (`decisive`), the drafted resolution
+         *     it points to (`points_to_option`) and the passage of the transcript it
+         *     quotes (`source`). The transcript is kept in the project as a file that is
+         *     not compiled into Knowledge: the answers reach Knowledge through their
+         *     flags. An answer is a suggestion a person applies with the resolve routes,
+         *     and resolving with the option an answer points to makes the changed row or
+         *     section cite that answer. Several answers accumulate on a flag;
+         *     `interview_answers_note` says in one line when the decisive ones agree or
+         *     disagree, and when they disagree none is offered as the suggestion.
+         *
+         *     Beakr applies an answer by itself in one case only: you drafted the
+         *     interview in your own signed-in session (the web app, not an API key, an
+         *     agent's or the CLI's token), named yourself as the `participant` (your own
+         *     `user_id`), answered your own interview, and the answer settles the
+         *     question and matches a resolution Beakr checked against it. Then the page changes as that resolution says, as your own
+         *     change, citing your answer; the flag becomes `resolved` (its
+         *     `resolved_by_change` says which answer and option); another open flag
+         *     about the same rows closes with it; and the answer reads
+         *     `suggestion_status: applied`. An answer given through a link by anyone
+         *     else, a member of the project included, never changes a page by itself.
+         *     Nor does an unsure answer, one that another answer contradicts, one to a
+         *     page that changed since, or any answer in a project that requires a person
+         *     to commit Knowledge (`agent_proposals_need_a_person`);
+         *     `auto_resolution.reason` on the answer says which. A question the
+         *     participant skipped leaves its flag untouched.
          *
          *     A project with nothing to ask about answers 200 with `interview: null` and
          *     `empty_reason`. One model call; when no model answers, each question is
@@ -2985,6 +3043,33 @@ export interface paths {
          *     project admin or an org admin may cancel it. 409 when nothing is syncing.
          */
         post: operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a source's tracked items
+         * @description List a source's tracked items.
+         *
+         *     Every item a connected source's syncs picked, and what became of it: read
+         *     into Knowledge, still pending, skipped (with the reason it was set aside,
+         *     including what Knowledge decided after reading it) or removed from the
+         *     source. ``counts`` cover the whole source; ``state``, ``reason_code``,
+         *     ``search`` and ``since`` narrow the page and ``matched`` says how many they
+         *     keep. Pages by ``cursor``, newest picked first.
+         */
+        get: operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -14131,6 +14216,44 @@ export interface components {
             reason: "not_found" | "not_open" | "not_a_review_flag" | "over_question_limit";
         };
         /**
+         * SourceEvidence
+         * @description What a citation quotes from its source.
+         */
+        SourceEvidence: {
+            /**
+             * Context Excerpt
+             * @description The passage around the quote, for reading it in place. Present on a `sources` read when the citation recorded one; a research answer leaves it out.
+             * @default null
+             */
+            context_excerpt?: string | null;
+            /**
+             * Excerpt
+             * @description The words the citation rests on. A long one is shortened on a compact read and on a research answer. Only a `quote` (see `excerpt_kind`) is the source's own words.
+             * @default null
+             */
+            excerpt?: string | null;
+            /**
+             * Excerpt Kind
+             * @description Whose words `excerpt` is. `quote`: the source's own words, the only kind to show in quotation marks. `description`: Beakr's own wording, such as a description of a figure or a computed value, and words that were not found in the source as written. `person`: a person's attribution, or the words its writer gave for a record in a system outside Beakr. Present whenever `excerpt` is.
+             * @default null
+             */
+            excerpt_kind?: ("quote" | "description" | "person") | null;
+            /**
+             * Locator
+             * @description Where in the source the quote sits, as the citation recorded it: a page, a slide, a block, a message or a character range. `location.unit_locator` is the same place written for a reader.
+             * @default null
+             */
+            locator?: string | null;
+            /**
+             * Source Recorded At
+             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.
+             * @default null
+             */
+            source_recorded_at?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * SourceExcerpt
          * @description One cited passage of a compact record's document.
          */
@@ -14141,6 +14264,12 @@ export interface components {
              * @default null
              */
             citation_key?: string | null;
+            /**
+             * Excerpt Kind
+             * @description Whose words `text` is when they are not the source's own (see `evidence.excerpt_kind`). Absent for a quote from the source.
+             * @default null
+             */
+            excerpt_kind?: ("description" | "person") | null;
             /**
              * Section Id
              * @description Id of the page section.
@@ -14321,13 +14450,10 @@ export interface components {
              */
             cited_places?: string[] | null;
             /**
-             * Evidence
-             * @description The evidence that supports it.
+             * @description What the citation quotes from the source: the quote (`excerpt`), the passage around it (`context_excerpt`), where it sits (`locator`) and when the source system recorded it (`source_recorded_at`). Absent when the citation recorded none of them.
              * @default null
              */
-            evidence?: {
-                [key: string]: unknown;
-            } | null;
+            evidence?: components["schemas"]["SourceEvidence"] | null;
             /**
              * Excerpts
              * @description On a compact read: brief excerpts of this document's cited passages, each with its token and place.
@@ -15050,6 +15176,125 @@ export interface components {
              * @description The tool's name.
              */
             name: string;
+        };
+        /** TrackedItemCounts */
+        TrackedItemCounts: {
+            /**
+             * Ingested
+             * @description Items read into Knowledge.
+             */
+            ingested: number;
+            /**
+             * Pending
+             * @description Items tracked and not read into Knowledge yet.
+             */
+            pending: number;
+            /**
+             * Removed
+             * @description Items gone from the source.
+             */
+            removed: number;
+            /**
+             * Skipped
+             * @description Items set aside; each one's reason says why.
+             */
+            skipped: number;
+            /**
+             * Total
+             * @description Every item the source tracks, whatever the filters.
+             */
+            total: number;
+        };
+        /** TrackedItemOut */
+        TrackedItemOut: {
+            /**
+             * External Id
+             * @description The item's key in Beakr, stable across syncs.
+             */
+            external_id: string;
+            /**
+             * Ingested At
+             * @description When the item was last read into Knowledge (ISO 8601).
+             */
+            ingested_at?: string | null;
+            /**
+             * Kind
+             * @description What one item is: file, channel, thread, event, page or item.
+             */
+            kind: string;
+            /**
+             * Last Synced At
+             * @description When a sync last read the item or Knowledge last decided on it (ISO 8601).
+             */
+            last_synced_at?: string | null;
+            /**
+             * Reason
+             * @description Why a skipped item was set aside, for a person to read.
+             */
+            reason?: string | null;
+            /**
+             * Reason Code
+             * @description Why a skipped item was set aside, as a stable code: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Null unless skipped, and for items skipped before reasons were recorded.
+             */
+            reason_code?: string | null;
+            /**
+             * Selected At
+             * @description When the source's sync picked the item (ISO 8601).
+             */
+            selected_at?: string | null;
+            /**
+             * Selected Reason
+             * @description Why the source's sync picked the item.
+             */
+            selected_reason?: string | null;
+            /**
+             * State
+             * @description pending (tracked, not read into Knowledge yet), ingested, skipped (set aside; reason says why) or removed (gone from the source).
+             * @enum {string}
+             */
+            state: "pending" | "ingested" | "skipped" | "removed";
+            /**
+             * Title
+             * @description The item's title, or its key when it has none.
+             */
+            title: string;
+        };
+        /** TrackedItemsPage */
+        TrackedItemsPage: {
+            /** @description How many items are in each state, over the whole source, unfiltered. */
+            counts: components["schemas"]["TrackedItemCounts"];
+            /**
+             * Data
+             * @description One page of items, newest picked first.
+             */
+            data: components["schemas"]["TrackedItemOut"][];
+            /**
+             * Has More
+             * @description Whether more items match after this page.
+             * @example false
+             */
+            has_more: boolean;
+            /**
+             * Kind
+             * @description What one item is for this source.
+             */
+            kind: string;
+            /**
+             * Matched
+             * @description How many items the filters keep.
+             */
+            matched: number;
+            /**
+             * Next Cursor
+             * @description Pass as cursor for the next page; null on the last page.
+             * @example null
+             */
+            next_cursor?: string | null;
+            /**
+             * Provider
+             * @description The service the items come from, e.g. gdrive or notion.
+             */
+            provider: string;
         };
         /** TrailGroup */
         TrailGroup: {
@@ -16007,6 +16252,13 @@ export interface components {
          */
         WikiConflictResolved: {
             /**
+             * Cited Answers
+             * @description The interview answers the changed row or section now cites: set when the option applied is the one those answers point to (`answered_by`, `answered_at`, `interview_id`, `link_id`, and the transcript file as `artifact_id` and `file_name`). Empty when no answer points to it, or the caller wrote their own text.
+             */
+            cited_answers?: {
+                [key: string]: unknown;
+            }[];
+            /**
              * New Revision
              * @description The page's revision after the change.
              * @default null
@@ -16336,11 +16588,29 @@ export interface components {
              */
             added_at?: string | null;
             /**
+             * Block Id
+             * @description The block of the source's extracted layout the quote is in, keyed by page and position (`p3-table`).
+             * @default null
+             */
+            block_id?: string | null;
+            /**
              * Chunk Ref
              * @description Which part of the source fed the page: a chunk, a message or a page range.
              * @default null
              */
             chunk_ref?: string | null;
+            /**
+             * Context Excerpt
+             * @description The passage around the quote, for reading it in place, when recorded.
+             * @default null
+             */
+            context_excerpt?: string | null;
+            /**
+             * Excerpt
+             * @description The quote: the words of the source this citation rests on. Absent when the citation recorded none.
+             * @default null
+             */
+            excerpt?: string | null;
             /**
              * Key
              * @description The key.
@@ -16348,13 +16618,31 @@ export interface components {
              */
             key?: string | null;
             /**
+             * Locator
+             * @description Where in the source the quote sits, as the citation recorded it: a page, a slide, a block, a message or a character range.
+             * @default null
+             */
+            locator?: string | null;
+            /**
              * Meta
-             * @description Extra details, as key-value pairs.
+             * @description The citation's details as stored, as key-value pairs that vary by source. The quote, place, time and link fields above are the ones to read.
              * @default null
              */
             meta?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Page Number
+             * @description The page of the source the quote is on, for a paged document.
+             * @default null
+             */
+            page_number?: number | null;
+            /**
+             * Quote
+             * @description The quote as the citation's writer gave it, on citations that recorded one this way. Read `excerpt` first and this when `excerpt` is absent.
+             * @default null
+             */
+            quote?: string | null;
             /**
              * Section Id
              * @description Id of the page section.
@@ -16362,11 +16650,23 @@ export interface components {
              */
             section_id?: string | null;
             /**
+             * Slide Number
+             * @description The slide the quote is on, for a presentation.
+             * @default null
+             */
+            slide_number?: number | null;
+            /**
              * Source Id
              * @description Id of the source.
              * @default null
              */
             source_id?: string | null;
+            /**
+             * Source Recorded At
+             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.
+             * @default null
+             */
+            source_recorded_at?: string | null;
             /**
              * Source Ref
              * @description Opaque reference to a source, the same on every read of it; pass it back in a citation.
@@ -16391,6 +16691,18 @@ export interface components {
              * @default null
              */
             stance?: string | null;
+            /**
+             * Url
+             * @description The source's address: the cited item's own link in its service (a message permalink, a comment anchor) when the citation recorded one, else the source's page there, a web page's address or a publication's page.
+             * @default null
+             */
+            url?: string | null;
+            /**
+             * Web View Url
+             * @description The link that opens the source in its service's own web app, when one is known.
+             * @default null
+             */
+            web_view_url?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -16899,7 +17211,7 @@ export interface components {
             key: string;
             /**
              * Reason
-             * @description not_found in the source, or exists at the destination
+             * @description not_found in the source, exists at the destination, or row_type: the source's type is a row type, and row types were removed, so it is not copied.
              */
             reason: string;
         };
@@ -22794,7 +23106,7 @@ export interface operations {
                                 label?: string;
                                 /** @description Where in the source this passage sits, copied from the position the source locator guide declared for it (for example 'Page 4 Paragraph 2', a part id, or a section label). Supply it whenever the guide gave you one: citations carrying a locator verify against the source about 90% of the time and those without it under 10%, because a locator means the passage was read at a declared position rather than recalled. */
                                 locator?: string;
-                                /** @description The exact passage from the source that this claim rests on, copied CONTIGUOUSLY and character for character from text you actually read. One unbroken span: never stitch two passages together with '...' or an ellipsis, never tidy the wording, and never retype it from memory of the document. A stitched or retyped quote cannot be located in the source, and is stored as an unverified assertion with its quotation marks removed. If the claim needs two separated passages, write two citations. */
+                                /** @description The exact passage from the source that this claim rests on, copied CONTIGUOUSLY and character for character from text you actually read. One unbroken span: never stitch two passages together with '...' or an ellipsis, never tidy the wording, and never retype it from memory of the document. A stitched or retyped quote cannot be located in the source, and is then shown as Beakr's description, never as the source's words. If the claim needs two separated passages, write two citations. */
                                 quote?: string;
                             };
                             /** @description RE-CITES a source this wiki already stores. Only ever an opaque `beakr-source:v1:...` handle handed back by a knowledge_base read -- never a citation token, project, artifact or unit id. The server redeems it for that stored row's exact source, version and excerpt, so an existing source is re-cited without internal IDs. It cannot introduce a source being cited for the first time; use `key` for that. */
@@ -22841,7 +23153,7 @@ export interface operations {
                     /** @description With `help`: one command or action to describe instead of all of them. */
                     topic?: string;
                     /**
-                     * @description Scope for action=page_type. Project is default; global requires admin review.
+                     * @description Scope for action=page_type. Project is the default and what a run proposes. org (a type every project is offered) is created only at an organization admin's own direct request, never by background or scheduled work; global requires admin review.
                      * @enum {string}
                      */
                     type_scope?: "global" | "org" | "project";
@@ -25470,6 +25782,60 @@ export interface operations {
             };
         };
     };
+    list_project_integrations_v1_projects__project_id__integrations_get: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationPage"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post: {
         parameters: {
             query?: never;
@@ -26451,6 +26817,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SyncCancelOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get: {
+        parameters: {
+            query?: {
+                /** @description Keep items in this state only. */
+                state?: ("pending" | "ingested" | "skipped" | "removed") | null;
+                /** @description Keep skipped items set aside for this reason (e.g. nothing_to_add). */
+                reason_code?: string | null;
+                /** @description Keep items whose title holds this text (case-insensitive). */
+                search?: string | null;
+                /** @description Keep items a sync read, or Knowledge decided on, at or after this time (ISO 8601). A sync status's outcomes link here with its run's start. */
+                since?: string | null;
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackedItemsPage"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
