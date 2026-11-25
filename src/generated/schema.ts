@@ -14077,6 +14077,12 @@ export interface components {
              */
             last_synced_at?: string | null;
             /**
+             * Older Version In Knowledge
+             * @description An earlier version of the item is in Knowledge while its newest one is pending, failed or skipped: the item is being updated, or its update failed.
+             * @default false
+             */
+            older_version_in_knowledge?: boolean;
+            /**
              * Reason
              * @description Why a skipped item was set aside, or a failed one failed, for a person.
              */
@@ -14098,7 +14104,7 @@ export interface components {
             selected_reason?: string | null;
             /**
              * State
-             * @description pending (tracked, not read into Knowledge yet, or sent and compiling), ingested, skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source).
+             * @description The state of the item's newest version: pending (tracked, not read into Knowledge yet, or sent and compiling), ingested (in Knowledge), skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source). An older version may still be in Knowledge: see older_version_in_knowledge.
              * @enum {string}
              */
             state: "pending" | "ingested" | "skipped" | "failed" | "removed";
