@@ -1570,6 +1570,11 @@ export interface paths {
          *     ``already_accepted: true`` with ``reviewed_at``, ``reviewed_by_name`` (the
          *     person who accepted it; null when auto-approve did) and ``auto_approved``.
          *     A dismissed or otherwise closed proposal answers 400 saying so.
+         *
+         *     A proposal whose citations name a file or connected item the caller cannot
+         *     open (one only projects they cannot read hold), and the page does not
+         *     already cite, answers 400 ``citation_source_unresolved``, as for an id that
+         *     names nothing, and stays pending for someone who can open it.
          */
         post: operations["accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post"];
         delete?: never;
@@ -2377,6 +2382,33 @@ export interface paths {
          * @description Change a project's name, description, status or tags; fields left out are kept. Project admins and owners only.
          */
         patch: operations["update_project_route_v1_projects__project_id__patch"];
+        trace?: never;
+    };
+    "/v1/projects/{project_id}/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integrations usable in a project
+         * @description Connections the caller can attach this project's sources from.
+         *
+         *     The caller's own and the organization's active connections: the ones
+         *     ``POST /v1/projects/{project_id}/sources`` accepts as ``connector_id``. Each
+         *     item has the shape of ``GET /v1/integrations``, but its ``projects`` lists
+         *     only this project's sources. A credential limited to projects may call it
+         *     for one of them, where the organization-wide list is refused. Answers 404
+         *     for a project the caller cannot read.
+         */
+        get: operations["list_project_integrations_v1_projects__project_id__integrations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/projects/{project_id}/interviews/from-reviews": {
@@ -23457,6 +23489,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_project_integrations_v1_projects__project_id__integrations_get: {
+        parameters: {
+            query?: {
+                /** @description Opaque cursor from a previous page's `next_cursor`. */
+                cursor?: string | null;
+                /** @description Page size, 1 to 200. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationPage"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
