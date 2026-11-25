@@ -223,11 +223,13 @@ export class Integrations extends Resource {
    * Send a source's tracked items to Knowledge again, in any state: the items
    * in `externalIds`, or every item with `all: true` (up to 500 per request;
    * `over_cap` counts the rest). A sync starts at once through the attaching
-   * person's connection (`sync` is `started` with its `sync_job_id`, or
-   * `waiting_for_running_sync`); `dryRun` counts and sends nothing. Anyone who
-   * can edit the project may; one request per source every ten minutes (429
-   * `recompile_cooldown`). 409 `connection_unusable` or `knowledge_off` when the
-   * source cannot be read or Knowledge is off for it.
+   * person's connection (`sync` is `started` with its `sync_job_id`); `dryRun`
+   * counts and sends nothing. Pending items still on their way into Knowledge
+   * are left out and counted in `in_progress_left`. Anyone who can edit the
+   * project may; one request per source every ten minutes (429
+   * `recompile_cooldown`). 409 `connection_unusable`, `knowledge_off` or
+   * `sync_running` when the source cannot be read, Knowledge is off for it, or a
+   * sync of it is running.
    */
   recompile(projectId: string, attachmentId: string, options: RecompileOptions): Promise<SourceRecompiled> {
     const { externalIds, all = false, mode = "retry", dryRun = false } = options;

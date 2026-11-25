@@ -2886,7 +2886,10 @@ export interface paths {
          *     it, whatever its version. Not held by Sync now's hourly cooldown: one
          *     request per source every 10 minutes, up to 500 items each. Anyone who can
          *     edit the project may ask. `dry_run` counts without sending. Usage counts
-         *     against the organization's Knowledge allowance as a sync does.
+         *     against the organization's Knowledge allowance as a sync does. Pending
+         *     items still on their way into Knowledge are left out (`in_progress_left`),
+         *     and while a sync of the source runs the request is refused (409
+         *     `sync_running`).
          */
         post: operations["recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post"];
         delete?: never;
@@ -13404,6 +13407,12 @@ export interface components {
              * @description In retry mode, chosen items already in Knowledge and left alone; else 0.
              */
             in_knowledge_left: number;
+            /**
+             * In Progress Left
+             * @description Chosen pending items still on their way into Knowledge (their compile is queued or running, or they were read in the last 30 minutes), left out; send them again once they finish.
+             * @default 0
+             */
+            in_progress_left?: number;
             /**
              * Mode
              * @description The mode the request used.
