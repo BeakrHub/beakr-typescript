@@ -152,6 +152,7 @@ export const OPERATIONS = {
   "projects.getModelRefusalSummary": { method: "GET", path: "/v1/projects/{project_id}/model-refusals/summary" },
   "projects.listProjectPendingInvitations": { method: "GET", path: "/v1/projects/{project_id}/pending-invitations" },
   "projects.revokeProjectMembershipInvitation": { method: "DELETE", path: "/v1/projects/{project_id}/pending-invitations/{invitation_id}" },
+  "integrations.getHistoryImportStatus": { method: "GET", path: "/v1/projects/{project_id}/sources/{attachment_id}/history-import/status" },
   "integrations.cancelSourceSync": { method: "POST", path: "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel" },
   "integrations.listTrackedItems": { method: "GET", path: "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items" },
   "threads.listSharedThreads": { method: "GET", path: "/v1/projects/{project_id}/threads" },
@@ -556,6 +557,12 @@ export class IntegrationsApi {
   listProjectIntegrationsAll(args: { path: operations["list_project_integrations_v1_projects__project_id__integrations_get"]["parameters"]["path"]; query?: NonNullable<operations["list_project_integrations_v1_projects__project_id__integrations_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_project_integrations_v1_projects__project_id__integrations_get"]>> {
     const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/integrations`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status (Get a source's history import status) */
+  getHistoryImportStatus(args: { path: operations["get_history_import_status_v1_projects__project_id__sources__attachment_id__history_import_status_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_history_import_status_v1_projects__project_id__sources__attachment_id__history_import_status_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/history-import/status`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
   }
 
   /** POST /v1/projects/{project_id}/sources/{attachment_id}/sync/cancel (Cancel a source's running sync) */

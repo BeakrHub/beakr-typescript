@@ -118,6 +118,7 @@ export type {
   TrackedItemsPage,
   TrackedItemsQuery,
   TrackedItemState,
+  HistoryImportStatus,
 } from "./resources/integrations.js";
 export type {
   CreateLinkOptions,
