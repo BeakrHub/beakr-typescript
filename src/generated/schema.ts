@@ -3021,6 +3021,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/sources/{attachment_id}/history-import/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a source's history import status
+         * @description Get a source's history import status.
+         *
+         *     Whether an import is waiting or running and how far it has got, and how
+         *     the last import ended: how many of its items are in Knowledge, skipped,
+         *     failed (each with why) and still left, and when it finished. Any caller
+         *     who can read the project's source may read it; a key limited to projects
+         *     may read it for one of them.
+         */
+        get: operations["get_history_import_status_v1_projects__project_id__sources__attachment_id__history_import_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel": {
         parameters: {
             query?: never;
@@ -3062,8 +3088,8 @@ export interface paths {
          *
          *     Every item a connected source's syncs picked, and what became of it: read
          *     into Knowledge, still pending, skipped (with the reason it was set aside,
-         *     including what Knowledge decided after reading it) or removed from the
-         *     source. ``counts`` cover the whole source; ``state``, ``reason_code``,
+         *     including what Knowledge decided after reading it), failed (its compile did
+         *     not finish, with why) or removed from the source. ``counts`` cover the whole source; ``state``, ``reason_code``,
          *     ``search`` and ``since`` narrow the page and ``matched`` says how many they
          *     keep. Pages by ``cursor``, newest picked first.
          */
@@ -7519,6 +7545,245 @@ export interface components {
              * @description Id of the parent folder.
              */
             parent_folder_id?: string | null;
+        };
+        /** HistoryImportFollowupOut */
+        HistoryImportFollowupOut: {
+            /**
+             * Attempts
+             * @description How many times it has sent the leftovers again.
+             */
+            attempts: number;
+            /**
+             * Last Sent
+             * @description How many items it sent last time.
+             */
+            last_sent?: number | null;
+            /**
+             * Last Sent At
+             * @description When it last sent items again (ISO 8601).
+             */
+            last_sent_at?: string | null;
+            /**
+             * Max Attempts
+             * @description The most times it sends them before it stops.
+             */
+            max_attempts?: number | null;
+            /**
+             * Next At
+             * @description When it looks at the import next (ISO 8601).
+             */
+            next_at?: string | null;
+            /**
+             * Status
+             * @description waiting (Beakr is still sending what the import left), finished, or gave_up (it stopped and marked what was left failed).
+             * @enum {string}
+             */
+            status: "waiting" | "finished" | "gave_up";
+        };
+        /** HistoryImportLeftReason */
+        HistoryImportLeftReason: {
+            /**
+             * Count
+             * @description How many items it applies to.
+             */
+            count: number;
+            /**
+             * Label
+             * @description The same, for a person to read.
+             */
+            label: string;
+            /**
+             * Reason
+             * @description Why these items are not finished yet, as a stable code.
+             * @enum {string}
+             */
+            reason: "compiling" | "waiting_for_compile" | "retry_after_failure" | "not_read_yet";
+        };
+        /** HistoryImportOutcomeOut */
+        HistoryImportOutcomeOut: {
+            /**
+             * Failed
+             * @description Items Beakr stopped trying; failed_reasons says why.
+             */
+            failed: number;
+            /**
+             * Failed Reasons
+             * @description Failed items by reason code, largest first.
+             */
+            failed_reasons: components["schemas"]["HistoryImportReasonCount"][];
+            /**
+             * Finished At
+             * @description When the import finished (ISO 8601); null while working.
+             */
+            finished_at?: string | null;
+            /** @description How Beakr is finishing the import; null for a running or an older import. */
+            followup?: components["schemas"]["HistoryImportFollowupOut"] | null;
+            /**
+             * In Knowledge
+             * @description Items compiled into Knowledge.
+             */
+            in_knowledge: number;
+            /**
+             * Left
+             * @description Items not finished yet; left_reasons says why.
+             */
+            left: number;
+            /**
+             * Left Reasons
+             * @description Why the items left are not finished, largest first.
+             */
+            left_reasons: components["schemas"]["HistoryImportLeftReason"][];
+            /**
+             * Of
+             * @description The import's items: in Knowledge, skipped, failed and left.
+             */
+            of: number;
+            /**
+             * Removed
+             * @description Items removed from the source (deleted or trashed); in no other count.
+             */
+            removed: number;
+            /**
+             * Skipped
+             * @description Items set aside; skipped_reasons says why.
+             */
+            skipped: number;
+            /**
+             * Skipped Reasons
+             * @description Skipped items by reason code, largest first.
+             */
+            skipped_reasons: components["schemas"]["HistoryImportReasonCount"][];
+            /**
+             * State
+             * @description finished once every item has ended; working until then.
+             * @enum {string}
+             */
+            state: "working" | "finished";
+            /**
+             * Summary
+             * @description One sentence for a person, e.g. Import finished on ...
+             */
+            summary: string;
+        };
+        /** HistoryImportProgressOut */
+        HistoryImportProgressOut: {
+            /**
+             * Brought In
+             * @description Of those, how many were read from the source.
+             */
+            brought_in: number;
+            /**
+             * Compiled
+             * @description Of those, how many were compiled into Knowledge.
+             */
+            compiled: number;
+            /**
+             * Tracked
+             * @description Items the import added and still tracks.
+             */
+            tracked: number;
+            /**
+             * Unprocessable
+             * @description Of those, how many were read and set aside.
+             */
+            unprocessable: number;
+        };
+        /** HistoryImportReasonCount */
+        HistoryImportReasonCount: {
+            /**
+             * Count
+             * @description How many items carry it.
+             */
+            count: number;
+            /**
+             * Reason Code
+             * @description Why the items were skipped or failed, as a stable code.
+             */
+            reason_code: string;
+        };
+        /** HistoryImportRequestOut */
+        HistoryImportRequestOut: {
+            /**
+             * Back To
+             * @description The first day imported (YYYY-MM-DD); null for no lower bound.
+             */
+            back_to?: string | null;
+            /**
+             * Cancel Requested At
+             * @description When it was cancelled (ISO 8601), if it was.
+             */
+            cancel_requested_at?: string | null;
+            /**
+             * Max Items
+             * @description The most items the import takes; null for the default.
+             */
+            max_items?: number | null;
+            /**
+             * Requested At
+             * Format: date-time
+             * @description When the import was requested (ISO 8601).
+             */
+            requested_at: string;
+            /**
+             * Started At
+             * @description When a sync first picked it up (ISO 8601); null while waiting.
+             */
+            started_at?: string | null;
+            /**
+             * Until
+             * @description The last day imported, included (YYYY-MM-DD); null for up to now.
+             */
+            until?: string | null;
+        };
+        /** HistoryImportStatusOut */
+        HistoryImportStatusOut: {
+            /**
+             * Attachment Id
+             * Format: uuid
+             * @description The source.
+             */
+            attachment_id: string;
+            /** @description The last import that ended, whatever became of it. */
+            last_import?: components["schemas"]["HistoryImportRequestOut"] | null;
+            /**
+             * Last Import Cancelled
+             * @description Whether the last import was cancelled.
+             */
+            last_import_cancelled: boolean;
+            /** @description Where the last import's items stand: while Beakr is still finishing it, and for a week after it ends. Null for a cancelled import. */
+            last_outcome?: components["schemas"]["HistoryImportOutcomeOut"] | null;
+            /** @description Where the running import's items stand. */
+            outcome?: components["schemas"]["HistoryImportOutcomeOut"] | null;
+            /** @description How far the running import has got. */
+            progress?: components["schemas"]["HistoryImportProgressOut"] | null;
+            /**
+             * Provider
+             * @description The source's provider, as the source lists it (e.g. gdrive:nango).
+             */
+            provider: string;
+            /** @description The import waiting or running; null when idle. */
+            request?: components["schemas"]["HistoryImportRequestOut"] | null;
+            /**
+             * Retrying
+             * @description A sync picked it up and stopped partway; the next sync runs it again.
+             */
+            retrying: boolean;
+            /**
+             * Status
+             * @description idle (none waiting or running), pending (waiting for the source's sync, or to be run again after a sync that stopped partway), running, or cancelling.
+             * @enum {string}
+             */
+            status: "idle" | "pending" | "running" | "cancelling";
+            /**
+             * Supported
+             * @description Whether this source takes a history import.
+             */
+            supported: boolean;
+            /**
+             * Unsupported Reason
+             * @description Why it does not, when it does not.
+             */
+            unsupported_reason?: string | null;
         };
         /**
          * ImportBundleIn
@@ -15180,6 +15445,11 @@ export interface components {
         /** TrackedItemCounts */
         TrackedItemCounts: {
             /**
+             * Failed
+             * @description Items whose compile did not finish; each one's reason says why.
+             */
+            failed: number;
+            /**
              * Ingested
              * @description Items read into Knowledge.
              */
@@ -15229,12 +15499,12 @@ export interface components {
             last_synced_at?: string | null;
             /**
              * Reason
-             * @description Why a skipped item was set aside, for a person to read.
+             * @description Why a skipped item was set aside, or a failed one failed, for a person.
              */
             reason?: string | null;
             /**
              * Reason Code
-             * @description Why a skipped item was set aside, as a stable code: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Null unless skipped, and for items skipped before reasons were recorded.
+             * @description Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Failed: compile_failed and compile_partial (the next sync sends it again), compile_not_converging (not sent again until it changes), import_gave_up (a history import stopped trying it). Null otherwise, and for items skipped before reasons were recorded.
              */
             reason_code?: string | null;
             /**
@@ -15249,10 +15519,10 @@ export interface components {
             selected_reason?: string | null;
             /**
              * State
-             * @description pending (tracked, not read into Knowledge yet), ingested, skipped (set aside; reason says why) or removed (gone from the source).
+             * @description pending (tracked, not read into Knowledge yet, or sent and compiling), ingested, skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source).
              * @enum {string}
              */
-            state: "pending" | "ingested" | "skipped" | "removed";
+            state: "pending" | "ingested" | "skipped" | "failed" | "removed";
             /**
              * Title
              * @description The item's title, or its key when it has none.
@@ -26798,6 +27068,56 @@ export interface operations {
             };
         };
     };
+    get_history_import_status_v1_projects__project_id__sources__attachment_id__history_import_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryImportStatusOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post: {
         parameters: {
             query?: never;
@@ -26852,8 +27172,8 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Keep items in this state only. */
-                state?: ("pending" | "ingested" | "skipped" | "removed") | null;
-                /** @description Keep skipped items set aside for this reason (e.g. nothing_to_add). */
+                state?: ("pending" | "ingested" | "skipped" | "failed" | "removed") | null;
+                /** @description Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed). */
                 reason_code?: string | null;
                 /** @description Keep items whose title holds this text (case-insensitive). */
                 search?: string | null;
