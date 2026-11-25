@@ -192,6 +192,31 @@ describe("uploads", () => {
     expect(complete.title).toBe("summary.md");
   });
 
+  it("sends authoredBy and authoredAt on completion, not on start (R11)", async () => {
+    const { fetch, calls } = mockFetch([
+      json(session({ part_count: 1, part_size: 25 }), 201),
+      json(session({ part_count: 1, part_size: 25 })),
+      presigned([1]),
+      etag(1),
+      json({ upload: session({ status: "completed" }), artifact: { id: "a1", version_id: "v1", job_id: "j1" }, job_id: "j1", status_url: "/v1/jobs/j1" }),
+      json({ upload: session(), artifact: { id: "a1", version_id: "v1" }, job_id: "j1", status_url: "/v1/jobs/j1" }),
+    ]);
+    const { beakr } = client(fetch);
+    await beakr.uploads.upload(new Uint8Array(25), {
+      projectId: "p1",
+      path: "notes/summary.md",
+      authoredBy: "Jane Doe <jane@example.com>",
+      authoredAt: "2026-06-14",
+    });
+    const start = calls[0]!.body as Record<string, unknown>;
+    expect(start).not.toHaveProperty("authored_by");
+    const complete = calls[4]!.body as Record<string, unknown>;
+    expect(complete.authored_by).toBe("Jane Doe <jane@example.com>");
+    expect(complete.authored_at).toBe("2026-06-14");
+    await beakr.uploads.complete("u1", { authoredBy: "" });
+    expect(calls[5]!.body).toEqual({ authored_by: "" });
+  });
+
   it("leaves them out when unset, so the server's default applies", async () => {
     const { fetch, calls } = mockFetch([
       json(session({ part_count: 1, part_size: 25 })),
