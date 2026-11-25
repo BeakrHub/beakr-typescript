@@ -19,6 +19,26 @@ export type TrackedItemsPage = ResponseOf<
 export type TrackedItem = TrackedItemsPage["data"][number];
 /** The state of a tracked item: pending, ingested, skipped, failed or removed. */
 export type TrackedItemState = TrackedItem["state"];
+/** What sending a source's items to Knowledge again did. */
+export type SourceRecompiled = ResponseOf<
+  "/v1/projects/{project_id}/sources/{attachment_id}/recompile",
+  "post"
+>;
+
+export interface RecompileOptions {
+  /** The items to send again, by their tracked-items `external_id`. */
+  externalIds?: string[];
+  /** Every item the source tracks (up to 500 per request) instead of a list. */
+  all?: boolean;
+  /**
+   * `retry` (the default) sends again only items not in Knowledge at their
+   * current version; `full` also sends items already in Knowledge and has each
+   * whole document read again.
+   */
+  mode?: "retry" | "full";
+  /** Count what would be sent and send nothing. */
+  dryRun?: boolean;
+}
 /** Whether a source takes a history import, whether one runs, and how the last one ended. */
 export type HistoryImportStatus = ResponseOf<
   "/v1/projects/{project_id}/sources/{attachment_id}/history-import/status",
@@ -196,6 +216,29 @@ export class Integrations extends Resource {
       method: "GET",
       path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/tracked-items`,
       query: { ...trackedItemsQuery(query), cursor: query.cursor, limit: query.limit },
+    });
+  }
+
+  /**
+   * Send a source's tracked items to Knowledge again, in any state: the items
+   * in `externalIds`, or every item with `all: true` (up to 500 per request;
+   * `over_cap` counts the rest). A sync starts at once through the attaching
+   * person's connection (`sync` is `started` with its `sync_job_id`, or
+   * `waiting_for_running_sync`); `dryRun` counts and sends nothing. Anyone who
+   * can edit the project may; one request per source every ten minutes (429
+   * `recompile_cooldown`). 409 `connection_unusable` or `knowledge_off` when the
+   * source cannot be read or Knowledge is off for it.
+   */
+  recompile(projectId: string, attachmentId: string, options: RecompileOptions): Promise<SourceRecompiled> {
+    const { externalIds, all = false, mode = "retry", dryRun = false } = options;
+    if ((externalIds === undefined) === !all) {
+      throw new TypeError("recompile: pass externalIds or all: true, not both or neither");
+    }
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/recompile`,
+      body: all ? { mode, dry_run: dryRun, all: true } : { mode, dry_run: dryRun, external_ids: externalIds },
+      idempotent: true,
     });
   }
 

@@ -2864,6 +2864,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/sources/{attachment_id}/recompile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a source's items again
+         * @description Send a source's items to Knowledge again.
+         *
+         *     Sends chosen tracked items (`external_ids`), or every item (`all`), to
+         *     Knowledge again in any state: pending, failed, skipped, or already in
+         *     Knowledge (`mode: full`, for example after changing the source's guidance,
+         *     or when a compile took in too little). The items are marked and a sync of
+         *     the source starts at once, run through the connection of the person who
+         *     attached it; that sync reads each marked item from its service and compiles
+         *     it, whatever its version. Not held by Sync now's hourly cooldown: one
+         *     request per source every 10 minutes, up to 500 items each. Anyone who can
+         *     edit the project may ask. `dry_run` counts without sending. Usage counts
+         *     against the organization's Knowledge allowance as a sync does.
+         */
+        post: operations["recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel": {
         parameters: {
             query?: never;
@@ -13222,6 +13253,83 @@ export interface components {
             version_id?: string | null;
         };
         /**
+         * SourceRecompileIn
+         * @description Which of a source's tracked items to send to Knowledge again, and how.
+         */
+        SourceRecompileIn: {
+            /**
+             * All
+             * @description Send every item the source tracks (up to 500 per request) instead of a list.
+             * @default false
+             */
+            all?: boolean;
+            /**
+             * Dry Run
+             * @description Count what would be sent and send nothing (for a confirm step).
+             * @default false
+             */
+            dry_run?: boolean;
+            /**
+             * External Ids
+             * @description The items to send again, by their tracked-items `external_id`. Leave out and set `all` to send every item the source tracks.
+             */
+            external_ids?: string[] | null;
+            /**
+             * Mode
+             * @description retry: send again only items not in Knowledge at their current version (pending, failed, skipped). full: send every chosen item, items in Knowledge included, and have the compiler read each whole document again.
+             * @enum {string}
+             */
+            mode: "retry" | "full";
+        };
+        /**
+         * SourceRecompileOut
+         * @description What sending a source's items to Knowledge again did.
+         */
+        SourceRecompileOut: {
+            /**
+             * Dry Run
+             * @description True when nothing was sent and only counted.
+             */
+            dry_run: boolean;
+            /**
+             * In Knowledge Left
+             * @description In retry mode, chosen items already in Knowledge and left alone; else 0.
+             */
+            in_knowledge_left: number;
+            /**
+             * Mode
+             * @description The mode the request used.
+             * @enum {string}
+             */
+            mode: "retry" | "full";
+            /**
+             * Not Found
+             * @description Requested external_ids this source does not track; nothing was sent for them.
+             */
+            not_found: string[];
+            /**
+             * Over Cap
+             * @description Chosen items past the 500-item limit, not sent; send them in a later request.
+             */
+            over_cap: number;
+            /**
+             * Requested
+             * @description Items marked to be sent again (the count a dry run would mark).
+             */
+            requested: number;
+            /**
+             * Sync
+             * @description started: a sync reading the marked items is running (follow it with sync_job_id). waiting_for_running_sync: a sync was already running; a new one starts when it ends. not_started: nothing was marked, or this was a dry run.
+             * @enum {string}
+             */
+            sync: "started" | "waiting_for_running_sync" | "not_started";
+            /**
+             * Sync Job Id
+             * @description The started sync's job id (GET /v1/jobs/{job_id}), or null.
+             */
+            sync_job_id?: string | null;
+        };
+        /**
          * SourceRecord
          * @description A structured public source record (``source_ref`` is reusable in writes).
          */
@@ -13969,6 +14077,12 @@ export interface components {
              */
             last_synced_at?: string | null;
             /**
+             * Older Version In Knowledge
+             * @description An earlier version of the item is in Knowledge while its newest one is pending, failed or skipped: the item is being updated, or its update failed.
+             * @default false
+             */
+            older_version_in_knowledge?: boolean;
+            /**
              * Reason
              * @description Why a skipped item was set aside, or a failed one failed, for a person.
              */
@@ -13990,7 +14104,7 @@ export interface components {
             selected_reason?: string | null;
             /**
              * State
-             * @description pending (tracked, not read into Knowledge yet, or sent and compiling), ingested, skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source).
+             * @description The state of the item's newest version: pending (tracked, not read into Knowledge yet, or sent and compiling), ingested (in Knowledge), skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source). An older version may still be in Knowledge: see older_version_in_knowledge.
              * @enum {string}
              */
             state: "pending" | "ingested" | "skipped" | "failed" | "removed";
@@ -24825,6 +24939,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HistoryImportStatusOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceRecompileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceRecompileOut"];
                 };
             };
             /** @description Validation error: `error.details.errors` lists every failing field. */
