@@ -120,7 +120,7 @@ export interface paths {
         head?: never;
         /**
          * Update a file
-         * @description Change a file's `title`, `description` or `artifact_type`; fields left out are kept. Needs write access to the file.
+         * @description Change a file's `title`, `description` or `artifact_type`, or who wrote it and when (`authored_by`, `authored_at`; `""` clears one); fields left out are kept. Knowledge built from the file earlier keeps its attribution until it is compiled again. Needs write access to the file.
          */
         patch: operations["update_artifact_route_v1_artifacts__artifact_id__patch"];
         trace?: never;
@@ -3686,6 +3686,21 @@ export interface components {
             /** @description Kind of file. */
             artifact_type: components["schemas"]["ArtifactType"];
             /**
+             * Authored At
+             * @description When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.
+             */
+            readonly authored_at: string | null;
+            /**
+             * Authored By
+             * @description Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.
+             */
+            readonly authored_by: string | null;
+            /**
+             * Authored By User Id
+             * @description The org member `authored_by` matched, if any.
+             */
+            readonly authored_by_user_id: string | null;
+            /**
              * Can Delete
              * @description Whether the caller can delete.
              * @default false
@@ -4023,6 +4038,9 @@ export interface components {
          *         created_at: Timestamp of the last create propagated from the resource row.
          * @example {
          *       "artifact_type": "protocol",
+         *       "authored_at": null,
+         *       "authored_by": null,
+         *       "authored_by_user_id": null,
          *       "can_delete": true,
          *       "can_edit": true,
          *       "can_move": true,
@@ -4056,6 +4074,21 @@ export interface components {
             access_via?: string | null;
             /** @description Stored artifact type. */
             artifact_type: components["schemas"]["ArtifactType"];
+            /**
+             * Authored At
+             * @description When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.
+             */
+            readonly authored_at: string | null;
+            /**
+             * Authored By
+             * @description Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.
+             */
+            readonly authored_by: string | null;
+            /**
+             * Authored By User Id
+             * @description The org member `authored_by` matched, if any.
+             */
+            readonly authored_by_user_id: string | null;
             /**
              * Can Delete
              * @description Whether the caller can delete.
@@ -4382,6 +4415,8 @@ export interface components {
          *         title: Optional new title for the artifact.
          *         artifact_type: Optional new artifact type.
          *         description: Optional new description for the artifact.
+         *         authored_by: Who wrote the file ("" clears it).
+         *         authored_at: When the file was written ("" clears it).
          * @example {
          *       "description": "Extraction protocol, revision 4",
          *       "title": "protocol.pdf"
@@ -4390,6 +4425,16 @@ export interface components {
         ArtifactUpdate: {
             /** @description Optional new artifact type. */
             artifact_type?: components["schemas"]["ArtifactType"] | null;
+            /**
+             * Authored At
+             * @description When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.
+             */
+            authored_at?: string | null;
+            /**
+             * Authored By
+             * @description Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.
+             */
+            authored_by?: string | null;
             /**
              * Description
              * @description Optional new description for the artifact.
@@ -4596,6 +4641,16 @@ export interface components {
              * @default doc
              */
             artifact_type?: components["schemas"]["ArtifactType"];
+            /**
+             * Authored At
+             * @description When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.
+             */
+            authored_at?: string | null;
+            /**
+             * Authored By
+             * @description Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.
+             */
+            authored_by?: string | null;
             /**
              * Content Hash
              * @description Lowercase SHA-256 hex digest of the uploaded bytes
@@ -5798,6 +5853,21 @@ export interface components {
          * @description Created artifact info.
          */
         CreatedArtifactOut: {
+            /**
+             * Authored At
+             * @description When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.
+             */
+            authored_at?: string | null;
+            /**
+             * Authored By
+             * @description Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.
+             */
+            authored_by?: string | null;
+            /**
+             * Authored By User Id
+             * @description The org member `authored_by` matched, if any.
+             */
+            authored_by_user_id?: string | null;
             /**
              * Folder Id
              * @description Id of the folder.
@@ -13072,7 +13142,7 @@ export interface components {
             locator?: string | null;
             /**
              * Source Recorded At
-             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.
+             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. For a file, the date it gives itself, else the date its upload recorded (`authored_at`). Absent for a source with no time of its own.
              * @default null
              */
             source_recorded_at?: string | null;
@@ -13431,6 +13501,43 @@ export interface components {
             status?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * @description On a citation of an uploaded file whose upload recorded its author (`authored_by`): who wrote it. The file's recorded date is the citation's `evidence.source_recorded_at` when its text states no date of its own.
+             * @default null
+             */
+            written_by?: components["schemas"]["SourceWrittenBy"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SourceWrittenBy
+         * @description Who wrote a cited file, as its upload recorded it (`authored_by`).
+         */
+        SourceWrittenBy: {
+            /**
+             * By Agent
+             * @description True when an agent wrote the file for this person (`written_by_agent`).
+             * @default null
+             */
+            by_agent?: boolean | null;
+            /**
+             * Name
+             * @description The author's name, as recorded.
+             * @default null
+             */
+            name?: string | null;
+            /**
+             * Org Member
+             * @description True when the author is a member of the org.
+             * @default null
+             */
+            org_member?: boolean | null;
+            /**
+             * Text
+             * @description One line for a reader: "Jane Doe" or "an agent for Jane Doe".
+             * @default null
+             */
+            text?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -14199,6 +14306,16 @@ export interface components {
              * @default doc
              */
             artifact_type?: components["schemas"]["ArtifactType"];
+            /**
+             * Authored At
+             * @description When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.
+             */
+            authored_at?: string | null;
+            /**
+             * Authored By
+             * @description Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.
+             */
+            authored_by?: string | null;
             /**
              * Description
              * @description Description of the upload complete, in plain text.
@@ -15421,7 +15538,7 @@ export interface components {
             source_id?: string | null;
             /**
              * Source Recorded At
-             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.
+             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. For a file, the date it gives itself, else the date its upload recorded (`authored_at`). Absent for a source with no time of its own.
              * @default null
              */
             source_recorded_at?: string | null;
