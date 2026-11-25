@@ -132,6 +132,18 @@ export interface UploadFileOptions {
    * whatever the upload is called. Sent on completion as `artifact_id`.
    */
   versionOf?: string;
+  /**
+   * Who wrote the file, apart from who uploads it: a name, `Name <email>` or an
+   * email (matched to an organization member by email, then by exact display
+   * name). Its compile attributes what the file states to them. Sent on completion.
+   */
+  authoredBy?: string;
+  /**
+   * When it was written: `YYYY-MM-DD` or an ISO 8601 date-time, not in the
+   * future. Its rows are dated by it when the text states no date of its own.
+   * Sent on completion.
+   */
+  authoredAt?: string;
   partSize?: number;
   signal?: AbortSignal;
 }
@@ -180,6 +192,8 @@ export class Uploads extends Resource {
       | "onExisting"
       | "writtenByAgent"
       | "versionOf"
+      | "authoredBy"
+      | "authoredAt"
     > & {
       contentLength: number;
       contentHash?: string;
@@ -235,6 +249,9 @@ export class Uploads extends Resource {
       writtenByAgent?: boolean;
       /** Add the upload as a new version of this file (`artifact_id`). */
       artifactId?: string;
+      /** Who wrote the file and when (`UploadFileOptions.authoredBy`/`authoredAt`). */
+      authoredBy?: string;
+      authoredAt?: string;
     } = {},
   ): Promise<UploadComplete> {
     return this.transport.request({
@@ -249,6 +266,8 @@ export class Uploads extends Resource {
         on_existing: options.onExisting,
         written_by_agent: options.writtenByAgent,
         artifact_id: options.artifactId,
+        authored_by: options.authoredBy,
+        authored_at: options.authoredAt,
       }),
       idempotent: true,
     });
@@ -443,6 +462,8 @@ export class Uploads extends Resource {
       | "onExisting"
       | "writtenByAgent"
       | "versionOf"
+      | "authoredBy"
+      | "authoredAt"
       | "signal"
     > = {},
   ): Promise<UploadComplete> {
@@ -461,6 +482,8 @@ export class Uploads extends Resource {
       | "onExisting"
       | "writtenByAgent"
       | "versionOf"
+      | "authoredBy"
+      | "authoredAt"
       | "signal"
     > & {
       path?: string;
@@ -501,6 +524,8 @@ export class Uploads extends Resource {
         onExisting: options.onExisting,
         writtenByAgent: options.writtenByAgent,
         artifactId: options.versionOf,
+        authoredBy: options.authoredBy,
+        authoredAt: options.authoredAt,
       });
     } catch (error) {
       if (resumable(error)) throw new UploadInterruptedError(uploadId, error);

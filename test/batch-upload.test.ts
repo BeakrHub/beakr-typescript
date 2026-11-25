@@ -92,6 +92,25 @@ describe("uploads.uploadMany (/v1/bulk)", () => {
     expect(calls[5]!.body).toMatchObject({ on_existing: "new", written_by_agent: true });
   });
 
+  it("sends each file's author and date, over the batch's own (R11)", async () => {
+    const { fetch, calls } = mockFetch([prepared(["a.md", "b.md", "c.md"]), stored(), stored(), stored(), completion()]);
+    const { beakr } = client(fetch);
+    await beakr.uploads.uploadMany(
+      [
+        { path: "a.md", data: bytes("a") },
+        { path: "b.md", data: bytes("b"), authoredBy: "Sam Roe", authoredAt: "2026-05-01" },
+        { path: "c.md", data: bytes("c"), authoredAt: "2026-04-30" },
+      ],
+      { projectId: "p1", authoredBy: "Jane Doe" },
+    );
+    const files = (calls[4]!.body as { files: Record<string, unknown>[] }).files;
+    expect(files.map((f) => [f.path, f.authored_by, f.authored_at])).toEqual([
+      ["a.md", "Jane Doe", undefined],
+      ["b.md", "Sam Roe", "2026-05-01"],
+      ["c.md", "Jane Doe", "2026-04-30"],
+    ]);
+  });
+
   it("reads files and directories from disk and can wait for indexing", async () => {
     root = await mkdtemp(join(tmpdir(), "beakr-batch-"));
     await mkdir(join(root, "docs", "deep"), { recursive: true });

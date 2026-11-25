@@ -50,6 +50,9 @@ export interface FolderEntry {
    * uploader's machine. Defaults to `path` when that names directories.
    */
   relativePath?: string;
+  /** Who wrote this file and when, over the batch's or folder's own (`UploadFileOptions`). */
+  authoredBy?: string;
+  authoredAt?: string;
 }
 
 /**
@@ -90,6 +93,9 @@ export interface UploadFolderOptions {
   onExisting?: "version" | "new";
   /** Mark every upload as an agent's work. */
   writtenByAgent?: boolean;
+  /** Who wrote the files and when, for every file (`UploadFileOptions.authoredBy`). */
+  authoredBy?: string;
+  authoredAt?: string;
   signal?: AbortSignal;
 }
 
@@ -223,6 +229,8 @@ export async function uploadEntries(
       ingest: options.ingest ?? true,
       onExisting: options.onExisting,
       writtenByAgent: options.writtenByAgent,
+      authoredBy: entry.authoredBy ?? options.authoredBy,
+      authoredAt: entry.authoredAt ?? options.authoredAt,
       signal: options.signal,
     });
     results.push({ path: displayPath(entry), ...uploaded });
