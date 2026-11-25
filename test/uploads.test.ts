@@ -205,16 +205,16 @@ describe("uploads", () => {
     await beakr.uploads.upload(new Uint8Array(25), {
       projectId: "p1",
       path: "notes/summary.md",
-      authoredBy: "Jane Doe <jane@example.com>",
+      authoredBy: ["Jane Doe <jane@example.com>", "Bob Smith"],
       authoredAt: "2026-06-14",
     });
     const start = calls[0]!.body as Record<string, unknown>;
     expect(start).not.toHaveProperty("authored_by");
     const complete = calls[4]!.body as Record<string, unknown>;
-    expect(complete.authored_by).toBe("Jane Doe <jane@example.com>");
+    expect(complete.authored_by).toEqual(["Jane Doe <jane@example.com>", "Bob Smith"]);
     expect(complete.authored_at).toBe("2026-06-14");
-    await beakr.uploads.complete("u1", { authoredBy: "" });
-    expect(calls[5]!.body).toEqual({ authored_by: "" });
+    await beakr.uploads.complete("u1", { authoredBy: [] });
+    expect(calls[5]!.body).toEqual({ authored_by: [] });
   });
 
   it("leaves them out when unset, so the server's default applies", async () => {

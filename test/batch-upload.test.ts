@@ -98,7 +98,7 @@ describe("uploads.uploadMany (/v1/bulk)", () => {
     await beakr.uploads.uploadMany(
       [
         { path: "a.md", data: bytes("a") },
-        { path: "b.md", data: bytes("b"), authoredBy: "Sam Roe", authoredAt: "2026-05-01" },
+        { path: "b.md", data: bytes("b"), authoredBy: ["Sam Roe", "Ana Li"], authoredAt: "2026-05-01" },
         { path: "c.md", data: bytes("c"), authoredAt: "2026-04-30" },
       ],
       { projectId: "p1", authoredBy: "Jane Doe" },
@@ -106,7 +106,7 @@ describe("uploads.uploadMany (/v1/bulk)", () => {
     const files = (calls[4]!.body as { files: Record<string, unknown>[] }).files;
     expect(files.map((f) => [f.path, f.authored_by, f.authored_at])).toEqual([
       ["a.md", "Jane Doe", undefined],
-      ["b.md", "Sam Roe", "2026-05-01"],
+      ["b.md", ["Sam Roe", "Ana Li"], "2026-05-01"],
       ["c.md", "Jane Doe", "2026-04-30"],
     ]);
   });

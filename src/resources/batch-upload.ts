@@ -42,7 +42,7 @@ export interface UploadManyOptions {
    * Who wrote the files and when, for every file (`UploadFileOptions.authoredBy`);
    * an entry's own `authoredBy`/`authoredAt` wins.
    */
-  authoredBy?: string;
+  authoredBy?: string | string[];
   authoredAt?: string;
   signal?: AbortSignal;
 }
