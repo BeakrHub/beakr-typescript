@@ -117,4 +117,13 @@ describe("tracked items", () => {
     expect(() => beakr.integrations.recompile("p1", "s1", {})).toThrow(TypeError);
     expect(() => beakr.integrations.recompile("p1", "s1", { externalIds: ["x"], all: true })).toThrow(TypeError);
   });
+
+  it("filters partial items by their state", async () => {
+    const partial = { ...skipped, external_id: "conn:t4", state: "partial", reason_code: "compile_partial", unfinished_changes: 3 };
+    const { fetch, calls } = mockFetch([json(page([partial], null))]);
+    const { beakr } = client(fetch);
+    const first = await beakr.integrations.trackedItems("p1", "s1", { state: "partial" });
+    expect(first.data[0]!.unfinished_changes).toBe(3);
+    expect(query(calls[0]!.url)).toEqual({ state: "partial" });
+  });
 });

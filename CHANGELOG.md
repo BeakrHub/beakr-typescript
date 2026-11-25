@@ -7,6 +7,18 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items` has a
+  new `state`, `partial`: an item whose latest compile wrote to Knowledge and
+  left some planned changes undone. `unfinished_changes` says how many;
+  `reason_code` `compile_partial` means the next sync retries them, and
+  `compile_not_converging` that they could not be applied (Beakr stopped after
+  its tries made no progress, or after 3 tries). Such items used to read
+  `pending` or `failed`; `failed` now means nothing of the item's version
+  reached Knowledge. `counts.partial` counts them, and `state=partial` and
+  `reason_code` filter them. A sync's `result.outcomes` from
+  `GET /v1/jobs/{job_id}` counts them as `partial`, with their reasons.
+  `GET .../history-import/status` counts them in `in_knowledge`, with
+  `finishing` (retried) and `partly_applied` (could not be applied) beside it.
 - A file can record who wrote it and when, apart from who uploaded it.
   `POST /v1/uploads/{upload_id}/complete`, each `files[]` item of
   `POST /v1/bulk/complete` and `PATCH /v1/artifacts/{artifact_id}` take
@@ -612,6 +624,7 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- `integrations.trackedItems` takes `state: "partial"` (`TrackedItemState`).
 - Uploads take `authoredBy` (one author or a list of up to 20) and `authoredAt`
   (who wrote a file and when): on the upload options, `uploads.complete`,
   `uploadFolder` and `uploadMany`, where each entry may carry its own.
