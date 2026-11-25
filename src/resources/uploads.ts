@@ -134,10 +134,13 @@ export interface UploadFileOptions {
   versionOf?: string;
   /**
    * Who wrote the file, apart from who uploads it: a name, `Name <email>` or an
-   * email (matched to an organization member by email, then by exact display
-   * name). Its compile attributes what the file states to them. Sent on completion.
+   * email, or a list of up to 20 for a co-written file (each matched to an
+   * organization member by email, then by exact display name). Its compile
+   * attributes what the file states to them. Sent on completion; the file then
+   * answers `authors` (`[{ name, user_id, email }]`) and `authored_by` as one
+   * display line ("Jane Doe and Bob Smith").
    */
-  authoredBy?: string;
+  authoredBy?: string | string[];
   /**
    * When it was written: `YYYY-MM-DD` or an ISO 8601 date-time, not in the
    * future. Its rows are dated by it when the text states no date of its own.
@@ -250,7 +253,7 @@ export class Uploads extends Resource {
       /** Add the upload as a new version of this file (`artifact_id`). */
       artifactId?: string;
       /** Who wrote the file and when (`UploadFileOptions.authoredBy`/`authoredAt`). */
-      authoredBy?: string;
+      authoredBy?: string | string[];
       authoredAt?: string;
     } = {},
   ): Promise<UploadComplete> {

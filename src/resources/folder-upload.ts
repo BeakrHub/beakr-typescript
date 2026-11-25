@@ -51,7 +51,7 @@ export interface FolderEntry {
    */
   relativePath?: string;
   /** Who wrote this file and when, over the batch's or folder's own (`UploadFileOptions`). */
-  authoredBy?: string;
+  authoredBy?: string | string[];
   authoredAt?: string;
 }
 
@@ -94,7 +94,7 @@ export interface UploadFolderOptions {
   /** Mark every upload as an agent's work. */
   writtenByAgent?: boolean;
   /** Who wrote the files and when, for every file (`UploadFileOptions.authoredBy`). */
-  authoredBy?: string;
+  authoredBy?: string | string[];
   authoredAt?: string;
   signal?: AbortSignal;
 }

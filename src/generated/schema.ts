@@ -3692,14 +3692,19 @@ export interface components {
             readonly authored_at: string | null;
             /**
              * Authored By
-             * @description Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.
+             * @description The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.
              */
             readonly authored_by: string | null;
             /**
              * Authored By User Id
-             * @description The org member `authored_by` matched, if any.
+             * @description Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.
              */
             readonly authored_by_user_id: string | null;
+            /**
+             * Authors
+             * @description Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.
+             */
+            readonly authors: components["schemas"]["AuthorOut"][];
             /**
              * Can Delete
              * @description Whether the caller can delete.
@@ -4041,6 +4046,7 @@ export interface components {
          *       "authored_at": null,
          *       "authored_by": null,
          *       "authored_by_user_id": null,
+         *       "authors": [],
          *       "can_delete": true,
          *       "can_edit": true,
          *       "can_move": true,
@@ -4081,14 +4087,19 @@ export interface components {
             readonly authored_at: string | null;
             /**
              * Authored By
-             * @description Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.
+             * @description The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.
              */
             readonly authored_by: string | null;
             /**
              * Authored By User Id
-             * @description The org member `authored_by` matched, if any.
+             * @description Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.
              */
             readonly authored_by_user_id: string | null;
+            /**
+             * Authors
+             * @description Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.
+             */
+            readonly authors: components["schemas"]["AuthorOut"][];
             /**
              * Can Delete
              * @description Whether the caller can delete.
@@ -4415,7 +4426,7 @@ export interface components {
          *         title: Optional new title for the artifact.
          *         artifact_type: Optional new artifact type.
          *         description: Optional new description for the artifact.
-         *         authored_by: Who wrote the file ("" clears it).
+         *         authored_by: Who wrote the file: one author or a list ([] or "" clears them).
          *         authored_at: When the file was written ("" clears it).
          * @example {
          *       "description": "Extraction protocol, revision 4",
@@ -4432,9 +4443,9 @@ export interface components {
             authored_at?: string | null;
             /**
              * Authored By
-             * @description Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.
+             * @description Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `""` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.
              */
-            authored_by?: string | null;
+            authored_by?: string | string[] | null;
             /**
              * Description
              * @description Optional new description for the artifact.
@@ -4544,6 +4555,28 @@ export interface components {
             next_cursor?: string | null;
         };
         /**
+         * AuthorOut
+         * @description One author of a file, as recorded.
+         */
+        AuthorOut: {
+            /**
+             * Email
+             * @description The author's email, when given.
+             * @example dana@example.com
+             */
+            email?: string | null;
+            /**
+             * Name
+             * @description The author's name; an email when only that was given.
+             */
+            name: string;
+            /**
+             * User Id
+             * @description The org member this author matched, if any.
+             */
+            user_id?: string | null;
+        };
+        /**
          * BatchKnowledgeSummary
          * @description How a batch's files are doing in reaching the project's Knowledge.
          */
@@ -4648,9 +4681,9 @@ export interface components {
             authored_at?: string | null;
             /**
              * Authored By
-             * @description Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.
+             * @description Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `""` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.
              */
-            authored_by?: string | null;
+            authored_by?: string | string[] | null;
             /**
              * Content Hash
              * @description Lowercase SHA-256 hex digest of the uploaded bytes
@@ -5860,14 +5893,19 @@ export interface components {
             authored_at?: string | null;
             /**
              * Authored By
-             * @description Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.
+             * @description The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.
              */
             authored_by?: string | null;
             /**
              * Authored By User Id
-             * @description The org member `authored_by` matched, if any.
+             * @description Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.
              */
             authored_by_user_id?: string | null;
+            /**
+             * Authors
+             * @description Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.
+             */
+            authors?: components["schemas"]["AuthorOut"][];
             /**
              * Folder Id
              * @description Id of the folder.
@@ -13502,7 +13540,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /**
-             * @description On a citation of an uploaded file whose upload recorded its author (`authored_by`): who wrote it. The file's recorded date is the citation's `evidence.source_recorded_at` when its text states no date of its own.
+             * @description On a citation of an uploaded file whose upload recorded its authors (`authored_by`): who wrote it. The file's recorded date is the citation's `evidence.source_recorded_at` when its text states no date of its own.
              * @default null
              */
             written_by?: components["schemas"]["SourceWrittenBy"] | null;
@@ -13515,11 +13553,31 @@ export interface components {
          */
         SourceWrittenBy: {
             /**
+             * Authors
+             * @description Each author, in the order recorded.
+             * @default null
+             */
+            authors?: components["schemas"]["SourceWrittenByAuthor"][] | null;
+            /**
              * By Agent
-             * @description True when an agent wrote the file for this person (`written_by_agent`).
+             * @description True when an agent wrote the file for these authors (`written_by_agent`).
              * @default null
              */
             by_agent?: boolean | null;
+            /**
+             * Text
+             * @description One line for a reader: "Jane Doe", "Jane Doe and Bob Smith" or "an agent for Jane Doe and Bob Smith".
+             * @default null
+             */
+            text?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SourceWrittenByAuthor
+         * @description One author of a cited file, as its upload recorded them.
+         */
+        SourceWrittenByAuthor: {
             /**
              * Name
              * @description The author's name, as recorded.
@@ -13532,12 +13590,6 @@ export interface components {
              * @default null
              */
             org_member?: boolean | null;
-            /**
-             * Text
-             * @description One line for a reader: "Jane Doe" or "an agent for Jane Doe".
-             * @default null
-             */
-            text?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -14313,9 +14365,9 @@ export interface components {
             authored_at?: string | null;
             /**
              * Authored By
-             * @description Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.
+             * @description Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `""` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.
              */
-            authored_by?: string | null;
+            authored_by?: string | string[] | null;
             /**
              * Description
              * @description Description of the upload complete, in plain text.
