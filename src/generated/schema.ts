@@ -7164,11 +7164,17 @@ export interface components {
              * @description When the import finished (ISO 8601); null while working.
              */
             finished_at?: string | null;
+            /**
+             * Finishing
+             * @description Of in_knowledge: items partly in Knowledge whose planned changes left are retried.
+             * @default 0
+             */
+            finishing?: number;
             /** @description How Beakr is finishing the import; null for a running or an older import. */
             followup?: components["schemas"]["HistoryImportFollowupOut"] | null;
             /**
              * In Knowledge
-             * @description Items compiled into Knowledge.
+             * @description Items compiled into Knowledge, those partly in Knowledge included.
              */
             in_knowledge: number;
             /**
@@ -7186,6 +7192,12 @@ export interface components {
              * @description The import's items: in Knowledge, skipped, failed and left.
              */
             of: number;
+            /**
+             * Partly Applied
+             * @description Of in_knowledge: items partly in Knowledge with changes that couldn't be applied.
+             * @default 0
+             */
+            partly_applied?: number;
             /**
              * Removed
              * @description Items removed from the source (deleted or trashed); in no other count.
@@ -14202,6 +14214,11 @@ export interface components {
              */
             ingested: number;
             /**
+             * Partial
+             * @description Items in Knowledge with planned changes that did not land (not in ingested).
+             */
+            partial: number;
+            /**
              * Pending
              * @description Items tracked and not read into Knowledge yet.
              */
@@ -14252,12 +14269,12 @@ export interface components {
             older_version_in_knowledge?: boolean;
             /**
              * Reason
-             * @description Why a skipped item was set aside, or a failed one failed, for a person.
+             * @description Why a skipped item was set aside, a failed one failed, or a partial one is not finished, for a person.
              */
             reason?: string | null;
             /**
              * Reason Code
-             * @description Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Failed: compile_failed and compile_partial (the next sync sends it again), compile_not_converging (not sent again until it changes), import_gave_up (a history import stopped trying it). Null otherwise, and for items skipped before reasons were recorded.
+             * @description Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Partial: compile_partial (the next sync retries the changes left), compile_not_converging (they could not be applied; not sent again until it changes). Failed: compile_failed (the next sync sends it again), import_gave_up (a history import stopped trying it). Null otherwise, and for items skipped before reasons were recorded.
              */
             reason_code?: string | null;
             /**
@@ -14272,15 +14289,20 @@ export interface components {
             selected_reason?: string | null;
             /**
              * State
-             * @description The state of the item's newest version: pending (tracked, not read into Knowledge yet, or sent and compiling), ingested (in Knowledge), skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source). An older version may still be in Knowledge: see older_version_in_knowledge.
+             * @description The state of the item's newest version: pending (tracked, not read into Knowledge yet, or sent and compiling), ingested (in Knowledge), partial (in Knowledge, with unfinished_changes planned changes that did not land; reason_code compile_partial means the next sync retries them, compile_not_converging that they could not be applied), skipped (set aside; reason says why), failed (nothing of it reached Knowledge; reason says why and whether a sync sends it again) or removed (gone from the source). An older version may still be in Knowledge: see older_version_in_knowledge.
              * @enum {string}
              */
-            state: "pending" | "ingested" | "skipped" | "failed" | "removed";
+            state: "pending" | "ingested" | "partial" | "skipped" | "failed" | "removed";
             /**
              * Title
              * @description The item's title, or its key when it has none.
              */
             title: string;
+            /**
+             * Unfinished Changes
+             * @description For a partial item: how many planned changes to Knowledge did not land; null otherwise, or when the count is not known.
+             */
+            unfinished_changes?: number | null;
         };
         /** TrackedItemsPage */
         TrackedItemsPage: {
@@ -25256,8 +25278,8 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Keep items in this state only. */
-                state?: ("pending" | "ingested" | "skipped" | "failed" | "removed") | null;
-                /** @description Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed). */
+                state?: ("pending" | "ingested" | "partial" | "skipped" | "failed" | "removed") | null;
+                /** @description Keep skipped, failed or partial items with this reason (e.g. nothing_to_add, compile_failed, compile_partial). */
                 reason_code?: string | null;
                 /** @description Keep items whose title holds this text (case-insensitive). */
                 search?: string | null;

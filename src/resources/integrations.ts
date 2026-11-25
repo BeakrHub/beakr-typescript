@@ -17,7 +17,7 @@ export type TrackedItemsPage = ResponseOf<
 >;
 /** One item a source tracks, and what became of it. */
 export type TrackedItem = TrackedItemsPage["data"][number];
-/** The state of a tracked item: pending, ingested, skipped, failed or removed. */
+/** The state of a tracked item: pending, ingested, partial, skipped, failed or removed. */
 export type TrackedItemState = TrackedItem["state"];
 /** What sending a source's items to Knowledge again did. */
 export type SourceRecompiled = ResponseOf<
@@ -197,12 +197,14 @@ export class Integrations extends Resource {
 
   /**
    * One page of the items a project source tracks, and what became of each:
-   * `state` is `pending` (not read into Knowledge yet), `ingested`, `skipped`,
-   * `failed` (its compile did not finish) or `removed`. A skipped or failed
-   * item carries `reason_code` and `reason`, including when Knowledge read the
-   * item and found nothing to add (`nothing_to_add`) and why a compile failed
-   * (`compile_failed`, `compile_partial`, `compile_not_converging`,
-   * `import_gave_up`).
+   * `state` is `pending` (not read into Knowledge yet), `ingested`, `partial`
+   * (in Knowledge with `unfinished_changes` planned changes that did not land:
+   * `compile_partial` retried by the next sync, `compile_not_converging` could
+   * not be applied), `skipped`, `failed` (nothing of its version reached
+   * Knowledge) or `removed`. A skipped, failed or partial item carries
+   * `reason_code` and `reason`, including when Knowledge read the item and
+   * found nothing to add (`nothing_to_add`) and why a compile failed
+   * (`compile_failed`, `import_gave_up`).
    * `counts` cover the whole source; `matched` is how many the filters keep.
    * A sync's own outcomes (`jobs.get(syncJobId)`, `result.outcomes`) link here
    * with `since` set to the sync's start. Scope `projects:read`.
