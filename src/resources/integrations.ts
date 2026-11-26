@@ -17,8 +17,28 @@ export type TrackedItemsPage = ResponseOf<
 >;
 /** One item a source tracks, and what became of it. */
 export type TrackedItem = TrackedItemsPage["data"][number];
-/** The state of a tracked item: pending, ingested, skipped, failed or removed. */
+/** The state of a tracked item: pending, ingested, partial, skipped, failed or removed. */
 export type TrackedItemState = TrackedItem["state"];
+/** What sending a source's items to Knowledge again did. */
+export type SourceRecompiled = ResponseOf<
+  "/v1/projects/{project_id}/sources/{attachment_id}/recompile",
+  "post"
+>;
+
+export interface RecompileOptions {
+  /** The items to send again, by their tracked-items `external_id`. */
+  externalIds?: string[];
+  /** Every item the source tracks (up to 500 per request) instead of a list. */
+  all?: boolean;
+  /**
+   * `retry` (the default) sends again only items not in Knowledge at their
+   * current version; `full` also sends items already in Knowledge and has each
+   * whole document read again.
+   */
+  mode?: "retry" | "full";
+  /** Count what would be sent and send nothing. */
+  dryRun?: boolean;
+}
 /** Whether a source takes a history import, whether one runs, and how the last one ended. */
 export type HistoryImportStatus = ResponseOf<
   "/v1/projects/{project_id}/sources/{attachment_id}/history-import/status",
@@ -177,12 +197,16 @@ export class Integrations extends Resource {
 
   /**
    * One page of the items a project source tracks, and what became of each:
-   * `state` is `pending` (not read into Knowledge yet), `ingested`, `skipped`,
-   * `failed` (its compile did not finish) or `removed`. A skipped or failed
-   * item carries `reason_code` and `reason`, including when Knowledge read the
-   * item and found nothing to add (`nothing_to_add`) and why a compile failed
-   * (`compile_failed`, `compile_partial`, `compile_not_converging`,
-   * `import_gave_up`).
+   * `state` is `pending` (not read into Knowledge yet), `ingested`, `partial`
+   * (in Knowledge with `unfinished_changes` planned changes that did not land:
+   * `compile_partial` retried by the next sync, `compile_not_converging` could
+   * not be applied), `skipped`, `failed` (nothing of its version reached
+   * Knowledge) or `removed`. A skipped, failed or partial item carries
+   * `reason_code` and `reason`, including when Knowledge read the item and
+   * found nothing to add (`nothing_to_add`) and why a compile failed
+   * (`compile_failed`, `import_gave_up`, `retry_gave_up`). A pending item, and a
+   * partial one Beakr retries, says why it waits (`pending_reason`,
+   * `pending_reason_text`) and when Beakr tries next (`next_attempt_at`).
    * `counts` cover the whole source; `matched` is how many the filters keep.
    * A sync's own outcomes (`jobs.get(syncJobId)`, `result.outcomes`) link here
    * with `since` set to the sync's start. Scope `projects:read`.
@@ -196,6 +220,31 @@ export class Integrations extends Resource {
       method: "GET",
       path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/tracked-items`,
       query: { ...trackedItemsQuery(query), cursor: query.cursor, limit: query.limit },
+    });
+  }
+
+  /**
+   * Send a source's tracked items to Knowledge again, in any state: the items
+   * in `externalIds`, or every item with `all: true` (up to 500 per request;
+   * `over_cap` counts the rest). A sync starts at once through the attaching
+   * person's connection (`sync` is `started` with its `sync_job_id`); `dryRun`
+   * counts and sends nothing. Pending items still on their way into Knowledge
+   * are left out and counted in `in_progress_left`. Anyone who can edit the
+   * project may; one request per source every ten minutes (429
+   * `recompile_cooldown`). 409 `connection_unusable`, `knowledge_off` or
+   * `sync_running` when the source cannot be read, Knowledge is off for it, or a
+   * sync of it is running.
+   */
+  recompile(projectId: string, attachmentId: string, options: RecompileOptions): Promise<SourceRecompiled> {
+    const { externalIds, all = false, mode = "retry", dryRun = false } = options;
+    if ((externalIds === undefined) === !all) {
+      throw new TypeError("recompile: pass externalIds or all: true, not both or neither");
+    }
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/recompile`,
+      body: all ? { mode, dry_run: dryRun, all: true } : { mode, dry_run: dryRun, external_ids: externalIds },
+      idempotent: true,
     });
   }
 

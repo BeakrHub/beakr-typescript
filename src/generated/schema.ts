@@ -120,7 +120,7 @@ export interface paths {
         head?: never;
         /**
          * Update a file
-         * @description Change a file's `title`, `description` or `artifact_type`; fields left out are kept. Needs write access to the file.
+         * @description Change a file's `title`, `description` or `artifact_type`, or who wrote it and when (`authored_by`, `authored_at`; `""` clears one); fields left out are kept. Knowledge built from the file earlier keeps its attribution until it is compiled again. Needs write access to the file.
          */
         patch: operations["update_artifact_route_v1_artifacts__artifact_id__patch"];
         trace?: never;
@@ -3047,6 +3047,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/projects/{project_id}/sources/{attachment_id}/recompile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a source's items again
+         * @description Send a source's items to Knowledge again.
+         *
+         *     Sends chosen tracked items (`external_ids`), or every item (`all`), to
+         *     Knowledge again in any state: pending, failed, skipped, or already in
+         *     Knowledge (`mode: full`, for example after changing the source's guidance,
+         *     or when a compile took in too little). The items are marked and a sync of
+         *     the source starts at once, run through the connection of the person who
+         *     attached it; that sync reads each marked item from its service and compiles
+         *     it, whatever its version. Not held by Sync now's hourly cooldown: one
+         *     request per source every 10 minutes, up to 500 items each. Anyone who can
+         *     edit the project may ask. `dry_run` counts without sending. Usage counts
+         *     against the organization's Knowledge allowance as a sync does. Pending
+         *     items still on their way into Knowledge are left out (`in_progress_left`),
+         *     and while a sync of the source runs the request is refused (409
+         *     `sync_running`).
+         */
+        post: operations["recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel": {
         parameters: {
             query?: never;
@@ -4048,6 +4082,26 @@ export interface components {
             /** @description Kind of file. */
             artifact_type: components["schemas"]["ArtifactType"];
             /**
+             * Authored At
+             * @description When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.
+             */
+            readonly authored_at: string | null;
+            /**
+             * Authored By
+             * @description The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.
+             */
+            readonly authored_by: string | null;
+            /**
+             * Authored By User Id
+             * @description Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.
+             */
+            readonly authored_by_user_id: string | null;
+            /**
+             * Authors
+             * @description Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.
+             */
+            readonly authors: components["schemas"]["AuthorOut"][];
+            /**
              * Can Delete
              * @description Whether the caller can delete.
              * @default false
@@ -4385,6 +4439,10 @@ export interface components {
          *         created_at: Timestamp of the last create propagated from the resource row.
          * @example {
          *       "artifact_type": "protocol",
+         *       "authored_at": null,
+         *       "authored_by": null,
+         *       "authored_by_user_id": null,
+         *       "authors": [],
          *       "can_delete": true,
          *       "can_edit": true,
          *       "can_move": true,
@@ -4418,6 +4476,26 @@ export interface components {
             access_via?: string | null;
             /** @description Stored artifact type. */
             artifact_type: components["schemas"]["ArtifactType"];
+            /**
+             * Authored At
+             * @description When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.
+             */
+            readonly authored_at: string | null;
+            /**
+             * Authored By
+             * @description The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.
+             */
+            readonly authored_by: string | null;
+            /**
+             * Authored By User Id
+             * @description Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.
+             */
+            readonly authored_by_user_id: string | null;
+            /**
+             * Authors
+             * @description Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.
+             */
+            readonly authors: components["schemas"]["AuthorOut"][];
             /**
              * Can Delete
              * @description Whether the caller can delete.
@@ -4744,6 +4822,8 @@ export interface components {
          *         title: Optional new title for the artifact.
          *         artifact_type: Optional new artifact type.
          *         description: Optional new description for the artifact.
+         *         authored_by: Who wrote the file: one author or a list ([] or "" clears them).
+         *         authored_at: When the file was written ("" clears it).
          * @example {
          *       "description": "Extraction protocol, revision 4",
          *       "title": "protocol.pdf"
@@ -4752,6 +4832,16 @@ export interface components {
         ArtifactUpdate: {
             /** @description Optional new artifact type. */
             artifact_type?: components["schemas"]["ArtifactType"] | null;
+            /**
+             * Authored At
+             * @description When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.
+             */
+            authored_at?: string | null;
+            /**
+             * Authored By
+             * @description Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `""` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.
+             */
+            authored_by?: string | string[] | null;
             /**
              * Description
              * @description Optional new description for the artifact.
@@ -4859,6 +4949,28 @@ export interface components {
              * @example null
              */
             next_cursor?: string | null;
+        };
+        /**
+         * AuthorOut
+         * @description One author of a file, as recorded.
+         */
+        AuthorOut: {
+            /**
+             * Email
+             * @description The author's email, when given.
+             * @example dana@example.com
+             */
+            email?: string | null;
+            /**
+             * Name
+             * @description The author's name; an email when only that was given.
+             */
+            name: string;
+            /**
+             * User Id
+             * @description The org member this author matched, if any.
+             */
+            user_id?: string | null;
         };
         /**
          * BatchKnowledgeSummary
@@ -5016,6 +5128,16 @@ export interface components {
              * @default doc
              */
             artifact_type?: components["schemas"]["ArtifactType"];
+            /**
+             * Authored At
+             * @description When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.
+             */
+            authored_at?: string | null;
+            /**
+             * Authored By
+             * @description Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `""` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.
+             */
+            authored_by?: string | string[] | null;
             /**
              * Content Hash
              * @description Lowercase SHA-256 hex digest of the uploaded bytes
@@ -6218,6 +6340,26 @@ export interface components {
          * @description Created artifact info.
          */
         CreatedArtifactOut: {
+            /**
+             * Authored At
+             * @description When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.
+             */
+            authored_at?: string | null;
+            /**
+             * Authored By
+             * @description The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.
+             */
+            authored_by?: string | null;
+            /**
+             * Authored By User Id
+             * @description Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.
+             */
+            authored_by_user_id?: string | null;
+            /**
+             * Authors
+             * @description Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.
+             */
+            authors?: components["schemas"]["AuthorOut"][];
             /**
              * Folder Id
              * @description Id of the folder.
@@ -7616,11 +7758,17 @@ export interface components {
              * @description When the import finished (ISO 8601); null while working.
              */
             finished_at?: string | null;
+            /**
+             * Finishing
+             * @description Of in_knowledge: items partly in Knowledge whose planned changes left are retried.
+             * @default 0
+             */
+            finishing?: number;
             /** @description How Beakr is finishing the import; null for a running or an older import. */
             followup?: components["schemas"]["HistoryImportFollowupOut"] | null;
             /**
              * In Knowledge
-             * @description Items compiled into Knowledge.
+             * @description Items compiled into Knowledge, those partly in Knowledge included.
              */
             in_knowledge: number;
             /**
@@ -7638,6 +7786,12 @@ export interface components {
              * @description The import's items: in Knowledge, skipped, failed and left.
              */
             of: number;
+            /**
+             * Partly Applied
+             * @description Of in_knowledge: items partly in Knowledge with changes that couldn't be applied.
+             * @default 0
+             */
+            partly_applied?: number;
             /**
              * Removed
              * @description Items removed from the source (deleted or trashed); in no other count.
@@ -14511,7 +14665,7 @@ export interface components {
             locator?: string | null;
             /**
              * Source Recorded At
-             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.
+             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. For a file, the date it gives itself, else the date its upload recorded (`authored_at`). Absent for a source with no time of its own.
              * @default null
              */
             source_recorded_at?: string | null;
@@ -14692,6 +14846,89 @@ export interface components {
             version_id?: string | null;
         };
         /**
+         * SourceRecompileIn
+         * @description Which of a source's tracked items to send to Knowledge again, and how.
+         */
+        SourceRecompileIn: {
+            /**
+             * All
+             * @description Send every item the source tracks (up to 500 per request) instead of a list.
+             * @default false
+             */
+            all?: boolean;
+            /**
+             * Dry Run
+             * @description Count what would be sent and send nothing (for a confirm step).
+             * @default false
+             */
+            dry_run?: boolean;
+            /**
+             * External Ids
+             * @description The items to send again, by their tracked-items `external_id`. Leave out and set `all` to send every item the source tracks.
+             */
+            external_ids?: string[] | null;
+            /**
+             * Mode
+             * @description retry: send again only items not in Knowledge at their current version (pending, failed, skipped). full: send every chosen item, items in Knowledge included, and have the compiler read each whole document again.
+             * @enum {string}
+             */
+            mode: "retry" | "full";
+        };
+        /**
+         * SourceRecompileOut
+         * @description What sending a source's items to Knowledge again did.
+         */
+        SourceRecompileOut: {
+            /**
+             * Dry Run
+             * @description True when nothing was sent and only counted.
+             */
+            dry_run: boolean;
+            /**
+             * In Knowledge Left
+             * @description In retry mode, chosen items already in Knowledge and left alone; else 0.
+             */
+            in_knowledge_left: number;
+            /**
+             * In Progress Left
+             * @description Chosen pending items still on their way into Knowledge (their compile is queued or running, or they were read in the last 30 minutes), left out; send them again once they finish.
+             * @default 0
+             */
+            in_progress_left?: number;
+            /**
+             * Mode
+             * @description The mode the request used.
+             * @enum {string}
+             */
+            mode: "retry" | "full";
+            /**
+             * Not Found
+             * @description Requested external_ids this source does not track; nothing was sent for them.
+             */
+            not_found: string[];
+            /**
+             * Over Cap
+             * @description Chosen items past the 500-item limit, not sent; send them in a later request.
+             */
+            over_cap: number;
+            /**
+             * Requested
+             * @description Items marked to be sent again (the count a dry run would mark).
+             */
+            requested: number;
+            /**
+             * Sync
+             * @description started: a sync reading the marked items is running (follow it with sync_job_id). waiting_for_running_sync: a sync was already running; a new one starts when it ends. not_started: nothing was marked, or this was a dry run.
+             * @enum {string}
+             */
+            sync: "started" | "waiting_for_running_sync" | "not_started";
+            /**
+             * Sync Job Id
+             * @description The started sync's job id (GET /v1/jobs/{job_id}), or null.
+             */
+            sync_job_id?: string | null;
+        };
+        /**
          * SourceRecord
          * @description A structured public source record (``source_ref`` is reusable in writes).
          */
@@ -14793,6 +15030,57 @@ export interface components {
             status?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * @description On a citation of an uploaded file whose upload recorded its authors (`authored_by`): who wrote it. The file's recorded date is the citation's `evidence.source_recorded_at` when its text states no date of its own.
+             * @default null
+             */
+            written_by?: components["schemas"]["SourceWrittenBy"] | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SourceWrittenBy
+         * @description Who wrote a cited file, as its upload recorded it (`authored_by`).
+         */
+        SourceWrittenBy: {
+            /**
+             * Authors
+             * @description Each author, in the order recorded.
+             * @default null
+             */
+            authors?: components["schemas"]["SourceWrittenByAuthor"][] | null;
+            /**
+             * By Agent
+             * @description True when an agent wrote the file for these authors (`written_by_agent`).
+             * @default null
+             */
+            by_agent?: boolean | null;
+            /**
+             * Text
+             * @description One line for a reader: "Jane Doe", "Jane Doe and Bob Smith" or "an agent for Jane Doe and Bob Smith".
+             * @default null
+             */
+            text?: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * SourceWrittenByAuthor
+         * @description One author of a cited file, as its upload recorded them.
+         */
+        SourceWrittenByAuthor: {
+            /**
+             * Name
+             * @description The author's name, as recorded.
+             * @default null
+             */
+            name?: string | null;
+            /**
+             * Org Member
+             * @description True when the author is a member of the org.
+             * @default null
+             */
+            org_member?: boolean | null;
         } & {
             [key: string]: unknown;
         };
@@ -15455,6 +15743,11 @@ export interface components {
              */
             ingested: number;
             /**
+             * Partial
+             * @description Items in Knowledge with planned changes that did not land (not in ingested).
+             */
+            partial: number;
+            /**
              * Pending
              * @description Items tracked and not read into Knowledge yet.
              */
@@ -15498,13 +15791,34 @@ export interface components {
              */
             last_synced_at?: string | null;
             /**
+             * Next Attempt At
+             * @description When Beakr next reads or sends the item (ISO 8601), when known.
+             */
+            next_attempt_at?: string | null;
+            /**
+             * Older Version In Knowledge
+             * @description An earlier version of the item is in Knowledge while its newest one is pending, failed or skipped: the item is being updated, or its update failed.
+             * @default false
+             */
+            older_version_in_knowledge?: boolean;
+            /**
+             * Pending Reason
+             * @description For a pending item, or a partial one Beakr retries: why it is waiting, as a stable code. queued, compiling, waiting_for_compile (sent in the last half hour), retrying (partial; the next try lands the changes left), held_back (the source's last sync hit its limit or the quota), import_followup (a history import's follow-up sends it), resend_scheduled (its compile didn't finish; Beakr sends it again), waiting_for_sync (the source's next scheduled sync takes it) or auto_sync_off (nothing scheduled will; Sync now or send it again). Null for any other item.
+             */
+            pending_reason?: string | null;
+            /**
+             * Pending Reason Text
+             * @description The same, and what happens next, for a person to read.
+             */
+            pending_reason_text?: string | null;
+            /**
              * Reason
-             * @description Why a skipped item was set aside, or a failed one failed, for a person.
+             * @description Why a skipped item was set aside, a failed one failed, or a partial one is not finished, for a person.
              */
             reason?: string | null;
             /**
              * Reason Code
-             * @description Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Failed: compile_failed and compile_partial (the next sync sends it again), compile_not_converging (not sent again until it changes), import_gave_up (a history import stopped trying it). Null otherwise, and for items skipped before reasons were recorded.
+             * @description Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Partial: compile_partial (the next sync retries the changes left), compile_not_converging (they could not be applied; not sent again until it changes). Failed: compile_failed (the next sync sends it again), import_gave_up (a history import stopped trying it), retry_gave_up (Beakr sent it again 3 times and its compile never finished). Null otherwise, and for items skipped before reasons were recorded.
              */
             reason_code?: string | null;
             /**
@@ -15519,15 +15833,20 @@ export interface components {
             selected_reason?: string | null;
             /**
              * State
-             * @description pending (tracked, not read into Knowledge yet, or sent and compiling), ingested, skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source).
+             * @description The state of the item's newest version: pending (tracked, not read into Knowledge yet, or sent and compiling), ingested (in Knowledge), partial (in Knowledge, with unfinished_changes planned changes that did not land; reason_code compile_partial means the next sync retries them, compile_not_converging that they could not be applied), skipped (set aside; reason says why), failed (nothing of it reached Knowledge; reason says why and whether a sync sends it again) or removed (gone from the source). An older version may still be in Knowledge: see older_version_in_knowledge.
              * @enum {string}
              */
-            state: "pending" | "ingested" | "skipped" | "failed" | "removed";
+            state: "pending" | "ingested" | "partial" | "skipped" | "failed" | "removed";
             /**
              * Title
              * @description The item's title, or its key when it has none.
              */
             title: string;
+            /**
+             * Unfinished Changes
+             * @description For a partial item: how many planned changes to Knowledge did not land; null otherwise, or when the count is not known.
+             */
+            unfinished_changes?: number | null;
         };
         /** TrackedItemsPage */
         TrackedItemsPage: {
@@ -15700,6 +16019,16 @@ export interface components {
              * @default doc
              */
             artifact_type?: components["schemas"]["ArtifactType"];
+            /**
+             * Authored At
+             * @description When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.
+             */
+            authored_at?: string | null;
+            /**
+             * Authored By
+             * @description Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `""` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.
+             */
+            authored_by?: string | string[] | null;
             /**
              * Description
              * @description Description of the upload complete, in plain text.
@@ -16933,7 +17262,7 @@ export interface components {
             source_id?: string | null;
             /**
              * Source Recorded At
-             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.
+             * @description When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. For a file, the date it gives itself, else the date its upload recorded (`authored_at`). Absent for a source with no time of its own.
              * @default null
              */
             source_recorded_at?: string | null;
@@ -27118,6 +27447,60 @@ export interface operations {
             };
         };
     };
+    recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                attachment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SourceRecompileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceRecompileOut"];
+                };
+            };
+            /** @description Validation error: `error.details.errors` lists every failing field. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request was refused; `error.code` says why. */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Server error; retry with backoff and quote `error.request_id` if it persists. */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post: {
         parameters: {
             query?: never;
@@ -27172,8 +27555,8 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Keep items in this state only. */
-                state?: ("pending" | "ingested" | "skipped" | "failed" | "removed") | null;
-                /** @description Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed). */
+                state?: ("pending" | "ingested" | "partial" | "skipped" | "failed" | "removed") | null;
+                /** @description Keep skipped, failed or partial items with this reason (e.g. nothing_to_add, compile_failed, compile_partial). */
                 reason_code?: string | null;
                 /** @description Keep items whose title holds this text (case-insensitive). */
                 search?: string | null;

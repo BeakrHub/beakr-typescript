@@ -97,4 +97,33 @@ describe("tracked items", () => {
     expect(status.status).toBe("idle");
     expect(path(calls[0]!.url)).toBe("/v1/projects/p%2F1/sources/s1/history-import/status");
   });
+
+  it("sends named items again in the mode asked, and every item as a dry run", async () => {
+    const sent = { mode: "full", dry_run: false, requested: 2, in_knowledge_left: 0, over_cap: 0, not_found: [], sync: "started", sync_job_id: null };
+    const { fetch, calls } = mockFetch([json(sent), json({ ...sent, dry_run: true, sync: "not_started" })]);
+    const { beakr } = client(fetch);
+    const first = await beakr.integrations.recompile("p1", "s1", { externalIds: ["conn:t1"], mode: "full" });
+    expect(first.sync).toBe("started");
+    expect(calls[0]!.method).toBe("POST");
+    expect(path(calls[0]!.url)).toBe("/v1/projects/p1/sources/s1/recompile");
+    expect(calls[0]!.body).toEqual({ mode: "full", dry_run: false, external_ids: ["conn:t1"] });
+    await beakr.integrations.recompile("p1", "s1", { all: true, dryRun: true });
+    expect(calls[1]!.body).toEqual({ mode: "retry", dry_run: true, all: true });
+  });
+
+  it("refuses a recompile that names neither items nor all, or both", () => {
+    const { fetch } = mockFetch([]);
+    const { beakr } = client(fetch);
+    expect(() => beakr.integrations.recompile("p1", "s1", {})).toThrow(TypeError);
+    expect(() => beakr.integrations.recompile("p1", "s1", { externalIds: ["x"], all: true })).toThrow(TypeError);
+  });
+
+  it("filters partial items by their state", async () => {
+    const partial = { ...skipped, external_id: "conn:t4", state: "partial", reason_code: "compile_partial", unfinished_changes: 3 };
+    const { fetch, calls } = mockFetch([json(page([partial], null))]);
+    const { beakr } = client(fetch);
+    const first = await beakr.integrations.trackedItems("p1", "s1", { state: "partial" });
+    expect(first.data[0]!.unfinished_changes).toBe(3);
+    expect(query(calls[0]!.url)).toEqual({ state: "partial" });
+  });
 });

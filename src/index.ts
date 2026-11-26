@@ -141,6 +141,8 @@ export type {
   TrackedItemsQuery,
   TrackedItemState,
   HistoryImportStatus,
+  RecompileOptions,
+  SourceRecompiled,
 } from "./resources/integrations.js";
 export type {
   CreateLinkOptions,
