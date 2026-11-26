@@ -3,7 +3,7 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## @beakr/sdk 0.4.0 (2026-11-16)
+## @beakr/sdk 0.5.0 (2026-11-26)
 
 ### Changes
 
@@ -606,33 +606,26 @@ Each release lists the public API changes it supports, taken from the API change
   counted; a caller who reads part of it gets counts of those
   pages, measured on the call, and a part that could not be measured within its
   time limit is named as left out.
-- `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
-  cites where the caller can read it now carries `knowledge_reference` (how
-  Knowledge's newest citation of it names it), and its `source_ref` is then the
-  item reference a Knowledge write accepts as a citation. Cite such an item by
-  that `source_ref`; cite any other item as an `external_record`. A credential
-  confined to some projects sees only citations on pages in those projects.
-- `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
-  page and section write operations: an API key or token can cite a record in
-  a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
-  Send `{source_type: "external_record", url, title, meta: {system, record_id,
-  excerpt}, stance}` in `citations` (a section's, the change's or a card row's).
-  `url` must be an `http` or `https` link with a host and no user name or
-  password, at most 2,048 characters; `meta.system` names the system (at most 60
-  characters), `meta.record_id` is the record's id there, and `title` (which may
-  be sent as `source_title`) its name, at most 300 characters; a record needs a
-  `record_id` or a `title`, and `meta.excerpt` holds at most 1,000 characters.
-  Anything else is refused with `citation_not_citeable`; nothing is trimmed.
-  Beakr stores the citation as you give it and never opens the link. Reads name
-  the record `(System › record_id)` in the text, for example `(CDD Vault ›
-  MOL-1234)`, with its link in the source record's `location.url` and on the
-  Sources line, and mark its excerpt `(unverified)`; a later write cites the
-  record by that reference again (in the prose, a row's `evidence` or a
-  citation's `reference`). One record is one citation, keyed `record:<hash>`; to
-  cite it in the prose by a name of your own, give it a `key` such as
-  `record:mol-1234` and write `{{record:mol-1234}}`.
 
 ### Client changes
+
+What's new for code that uses `@beakr/sdk`:
+
+- Sources: `integrations.listForProject` lists the connections a project's
+  sources can be attached from. `trackedItems` shows each item's state,
+  including partial and failed items and why one is waiting. `recompile`
+  sends items to Knowledge again, and `historyImportStatus` shows how a
+  history import went.
+- Authors: uploads take `authoredBy` and `authoredAt`, and source records keep
+  who wrote a cited file.
+- Card types: on `knowledge` you can list, change, copy and promote card
+  types, rename their fields and retype cards. You can also read and change a
+  project's card type settings, history and suggestions.
+- Uploads: `uploads.uploadMany` adds a version to a file already at its path.
+- Citations: source records keep the passage around a quote, when it was
+  recorded, and whose words an excerpt is.
+
+In detail:
 
 - `integrations.trackedItems` documents `pending_reason`, `pending_reason_text`
   and `next_attempt_at` on pending items (typed from the schema).
@@ -702,6 +695,36 @@ Each release lists the public API changes it supports, taken from the API change
   `card_count` and `unlisted_types`; `knowledge.retypeCards(..., {
   suggestionId })` names the suggestion a move answers; and
   `projects.create({ name, card_types })` chooses a new project's card types.
+
+## @beakr/sdk 0.4.0 (2026-11-16)
+
+### Changes
+
+- `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
+  cites where the caller can read it now carries `knowledge_reference` (how
+  Knowledge's newest citation of it names it), and its `source_ref` is then the
+  item reference a Knowledge write accepts as a citation. Cite such an item by
+  that `source_ref`; cite any other item as an `external_record`. A credential
+  confined to some projects sees only citations on pages in those projects.
+- `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
+  page and section write operations: an API key or token can cite a record in
+  a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
+  Send `{source_type: "external_record", url, title, meta: {system, record_id,
+  excerpt}, stance}` in `citations` (a section's, the change's or a card row's).
+  `url` must be an `http` or `https` link with a host and no user name or
+  password, at most 2,048 characters; `meta.system` names the system (at most 60
+  characters), `meta.record_id` is the record's id there, and `title` (which may
+  be sent as `source_title`) its name, at most 300 characters; a record needs a
+  `record_id` or a `title`, and `meta.excerpt` holds at most 1,000 characters.
+  Anything else is refused with `citation_not_citeable`; nothing is trimmed.
+  Beakr stores the citation as you give it and never opens the link. Reads name
+  the record `(System › record_id)` in the text, for example `(CDD Vault ›
+  MOL-1234)`, with its link in the source record's `location.url` and on the
+  Sources line, and mark its excerpt `(unverified)`; a later write cites the
+  record by that reference again (in the prose, a row's `evidence` or a
+  citation's `reference`). One record is one citation, keyed `record:<hash>`; to
+  cite it in the prose by a name of your own, give it a `key` such as
+  `record:mol-1234` and write `{{record:mol-1234}}`.
 
 ## @beakr/sdk 0.3.0 (2026-11-15)
 
