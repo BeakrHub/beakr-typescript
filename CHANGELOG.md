@@ -7,6 +7,16 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: a
+  pending item, and a `partial` one Beakr retries, says why it is waiting and
+  what happens next: `pending_reason` (`queued`, `compiling`,
+  `waiting_for_compile`, `retrying`, `held_back`, `import_followup`,
+  `resend_scheduled`, `waiting_for_sync` or `auto_sync_off`), a sentence for a
+  person in `pending_reason_text`, and `next_attempt_at` when known. Beakr now
+  sends again any item pending for more than 6 hours with nothing queued or
+  compiling, whatever the source's auto-sync, at most 3 times; after that it
+  reads `failed` with the new `reason_code` `retry_gave_up`, or `partial` with
+  `compile_not_converging`.
 - `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items` has a
   new `state`, `partial`: an item whose latest compile wrote to Knowledge and
   left some planned changes undone. `unfinished_changes` says how many;
@@ -624,6 +634,8 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- `integrations.trackedItems` documents `pending_reason`, `pending_reason_text`
+  and `next_attempt_at` on pending items (typed from the schema).
 - `integrations.trackedItems` takes `state: "partial"` (`TrackedItemState`).
 - Uploads take `authoredBy` (one author or a list of up to 20) and `authoredAt`
   (who wrote a file and when): on the upload options, `uploads.complete`,
