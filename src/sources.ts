@@ -85,6 +85,25 @@ export interface SourceSection {
   date_precision?: string;
 }
 
+/** One author of a cited file, as its upload recorded it: a name, never an id. */
+export interface SourceWrittenByAuthor {
+  name: string;
+  /** The author matched a member of the organization. */
+  org_member?: boolean;
+}
+
+/**
+ * Who wrote a cited file, as its upload recorded it (`authored_by`). `text` is
+ * one line for a reader: "Jane Doe", "Jane Doe and Bob Smith" or "an agent for
+ * Jane Doe and Bob Smith".
+ */
+export interface SourceWrittenBy {
+  authors?: SourceWrittenByAuthor[];
+  /** An agent wrote the file for these authors (`written_by_agent`). */
+  by_agent?: boolean;
+  text?: string;
+}
+
 export interface SourceRecord {
   /** Opaque; reuse it in a Knowledge write citation. */
   source_ref?: string;
@@ -112,6 +131,8 @@ export interface SourceRecord {
    * download `handle` and nothing else.
    */
   retrieval?: { tool: string; arguments: Record<string, string | number> };
+  /** A citation of an uploaded file whose upload recorded its authors: who wrote it. */
+  written_by?: SourceWrittenBy;
 }
 
 type Row = Record<string, unknown>;
@@ -169,6 +190,58 @@ function publicRetrieval(retrieval: Row): SourceRecord["retrieval"] {
     clean[name] = value as string | number;
   }
   return { tool, arguments: clean };
+}
+
+/** `Jane Doe`, `Jane Doe and Bob Smith`, `Jane Doe, Bob Smith and Ana Li` (the engine's `display_authors`). */
+function displayAuthors(names: string[]): string | undefined {
+  if (!names.length) return undefined;
+  if (names.length === 1) return names[0];
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+const squash = (value: unknown): string => String(value ?? "").split(/\s+/).filter(Boolean).join(" ");
+
+/**
+ * The stored `meta.written_by` stamp as `SourceWrittenBy`. A page sources row
+ * (`GET /v1/knowledge/wiki/pages/{page_id}/sources`) carries a citation's
+ * `written_by` as the compiler stored it: one `{ name, user_id?, by_agent? }`
+ * entry per author (a list, or a single entry from early dev builds). This is
+ * the engine's own mapping (`compiler/source_authorship.public_written_by`): a
+ * member is reported as `org_member`, never by id.
+ */
+function writtenByFromStamp(entries: unknown[]): SourceWrittenBy | undefined {
+  const stamped = entries.map(asRow).filter((entry) => squash(entry["name"]) !== "");
+  if (!stamped.length) return undefined;
+  const authors = stamped.map((entry) => ({ name: squash(entry["name"]), org_member: Boolean(entry["user_id"]) }));
+  const byAgent = stamped.some((entry) => entry["by_agent"] === true);
+  const names = displayAuthors(authors.map((author) => author.name)) as string;
+  return { authors, by_agent: byAgent, text: byAgent ? `an agent for ${names}` : names };
+}
+
+/**
+ * `written_by` in its public form, from either the `SourceWrittenBy` a Knowledge
+ * read's source record carries or the stored stamp a page sources row carries.
+ * Each author keeps its `name` and `org_member` only.
+ */
+function publicWrittenBy(value: unknown): SourceWrittenBy | undefined {
+  if (Array.isArray(value)) return writtenByFromStamp(value);
+  const row = asRow(value);
+  if (!("authors" in row) && !("text" in row)) {
+    return squash(row["name"]) ? writtenByFromStamp([row]) : undefined;
+  }
+  const authors = (Array.isArray(row["authors"]) ? row["authors"] : [])
+    .map(asRow)
+    .filter((author) => !isEmpty(author["name"]))
+    .map((author) => {
+      const kept: SourceWrittenByAuthor = { name: String(author["name"]) };
+      if (typeof author["org_member"] === "boolean") kept.org_member = author["org_member"];
+      return kept;
+    });
+  const written: SourceWrittenBy = {};
+  if (authors.length) written.authors = authors;
+  if (typeof row["by_agent"] === "boolean") written.by_agent = row["by_agent"];
+  if (!isEmpty(row["text"])) written.text = String(row["text"]);
+  return authors.length || written.text ? written : undefined;
 }
 
 /** `provider` of a source uploaded to Beakr rather than synced from a connector. */
@@ -271,6 +344,10 @@ export function publicSource(source: Row, citationKey?: string): SourceRecord {
   }
   const call = publicRetrieval(retrieval);
   if (call) item["retrieval"] = call;
+  // Who wrote a file that records its authors; a page sources row carries the
+  // stored stamp, a Knowledge read's record the public object.
+  const writtenBy = publicWrittenBy(first("written_by"));
+  if (writtenBy) item["written_by"] = writtenBy;
   return Object.fromEntries(Object.entries(item).filter(([, v]) => !isEmpty(v))) as unknown as SourceRecord;
 }
 
