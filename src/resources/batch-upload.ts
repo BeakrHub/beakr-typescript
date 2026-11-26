@@ -38,6 +38,12 @@ export interface UploadManyOptions {
   onExisting?: "version" | "new";
   /** Mark the batch's files as an agent's work rather than a person's. */
   writtenByAgent?: boolean;
+  /**
+   * Who wrote the files and when, for every file (`UploadFileOptions.authoredBy`);
+   * an entry's own `authoredBy`/`authoredAt` wins.
+   */
+  authoredBy?: string | string[];
+  authoredAt?: string;
   signal?: AbortSignal;
 }
 
@@ -126,6 +132,10 @@ export async function uploadBatch(
       ...(f.entry.relativePath && f.entry.relativePath !== f.entry.path
         ? { relative_path: f.entry.relativePath }
         : {}),
+      ...cleanBody({
+        authored_by: f.entry.authoredBy ?? options.authoredBy,
+        authored_at: f.entry.authoredAt ?? options.authoredAt,
+      }),
     });
   }
   return transport.request<BatchUpload>({

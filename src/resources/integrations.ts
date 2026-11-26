@@ -10,7 +10,61 @@ export type SourceSyncCancelled = ResponseOf<
   "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel",
   "post"
 >;
+/** One page of a source's tracked items, with the whole source's counts. */
+export type TrackedItemsPage = ResponseOf<
+  "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items",
+  "get"
+>;
+/** One item a source tracks, and what became of it. */
+export type TrackedItem = TrackedItemsPage["data"][number];
+/** The state of a tracked item: pending, ingested, partial, skipped, failed or removed. */
+export type TrackedItemState = TrackedItem["state"];
+/** What sending a source's items to Knowledge again did. */
+export type SourceRecompiled = ResponseOf<
+  "/v1/projects/{project_id}/sources/{attachment_id}/recompile",
+  "post"
+>;
+
+export interface RecompileOptions {
+  /** The items to send again, by their tracked-items `external_id`. */
+  externalIds?: string[];
+  /** Every item the source tracks (up to 500 per request) instead of a list. */
+  all?: boolean;
+  /**
+   * `retry` (the default) sends again only items not in Knowledge at their
+   * current version; `full` also sends items already in Knowledge and has each
+   * whole document read again.
+   */
+  mode?: "retry" | "full";
+  /** Count what would be sent and send nothing. */
+  dryRun?: boolean;
+}
+/** Whether a source takes a history import, whether one runs, and how the last one ended. */
+export type HistoryImportStatus = ResponseOf<
+  "/v1/projects/{project_id}/sources/{attachment_id}/history-import/status",
+  "get"
+>;
 type ToolCallBody = NonNullable<BodyOf<"/v1/integrations/tools/{tool_name}/call", "post">>;
+
+export interface TrackedItemsQuery {
+  /** Only items in this state; skipped items carry `reason_code` and `reason`. */
+  state?: TrackedItemState;
+  /** Only skipped items set aside for this reason (e.g. `nothing_to_add`). */
+  reasonCode?: string;
+  /** Only items whose title holds this text (case-insensitive). */
+  search?: string;
+  /** Only items a sync read, or Knowledge decided on, at or after this time (ISO 8601). */
+  since?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+const trackedItemsQuery = (query: Omit<TrackedItemsQuery, "cursor" | "limit">) => ({
+  state: query.state,
+  reason_code: query.reasonCode,
+  search: query.search,
+  since: query.since,
+});
 
 export interface ToolsQuery {
   /** Only this provider's tools (`slack`, `google-drive`, ...). */
@@ -42,6 +96,25 @@ export class Integrations extends Resource {
   /** Every connection you can see, following cursors. */
   iter(pageSize?: number): AsyncGenerator<JsonObject> {
     return this.transport.paginate({ method: "GET", path: "/v1/integrations" }, pageSize);
+  }
+
+  /**
+   * One page of the connections a project's sources can be attached from: your
+   * own and the organization's active connections, the ones
+   * `POST /v1/projects/{project_id}/sources` takes as `connector_id`. Items have
+   * the shape `list` gives, with `projects` naming only this project's sources.
+   * A key limited to projects may call it for one of them, where the
+   * organization-wide `list` is refused (403). Scope `integrations:read`.
+   */
+  listForProject(
+    projectId: string,
+    query: { cursor?: string; limit?: number } = {},
+  ): Promise<{ data: JsonObject[]; next_cursor?: string | null; has_more?: boolean }> {
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/projects/${enc(projectId)}/integrations`,
+      query: { cursor: query.cursor, limit: query.limit },
+    });
   }
 
   /** Returns `connect_url`; open it in a browser to finish connecting. */
@@ -120,6 +193,93 @@ export class Integrations extends Resource {
       method: "POST",
       path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/sync/cancel`,
     });
+  }
+
+  /**
+   * One page of the items a project source tracks, and what became of each:
+   * `state` is `pending` (not read into Knowledge yet), `ingested`, `partial`
+   * (in Knowledge with `unfinished_changes` planned changes that did not land:
+   * `compile_partial` retried by the next sync, `compile_not_converging` could
+   * not be applied), `skipped`, `failed` (nothing of its version reached
+   * Knowledge) or `removed`. A skipped, failed or partial item carries
+   * `reason_code` and `reason`, including when Knowledge read the item and
+   * found nothing to add (`nothing_to_add`) and why a compile failed
+   * (`compile_failed`, `import_gave_up`, `retry_gave_up`). A pending item, and a
+   * partial one Beakr retries, says why it waits (`pending_reason`,
+   * `pending_reason_text`) and when Beakr tries next (`next_attempt_at`).
+   * `counts` cover the whole source; `matched` is how many the filters keep.
+   * A sync's own outcomes (`jobs.get(syncJobId)`, `result.outcomes`) link here
+   * with `since` set to the sync's start. Scope `projects:read`.
+   */
+  trackedItems(
+    projectId: string,
+    attachmentId: string,
+    query: TrackedItemsQuery = {},
+  ): Promise<TrackedItemsPage> {
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/tracked-items`,
+      query: { ...trackedItemsQuery(query), cursor: query.cursor, limit: query.limit },
+    });
+  }
+
+  /**
+   * Send a source's tracked items to Knowledge again, in any state: the items
+   * in `externalIds`, or every item with `all: true` (up to 500 per request;
+   * `over_cap` counts the rest). A sync starts at once through the attaching
+   * person's connection (`sync` is `started` with its `sync_job_id`); `dryRun`
+   * counts and sends nothing. Pending items still on their way into Knowledge
+   * are left out and counted in `in_progress_left`. Anyone who can edit the
+   * project may; one request per source every ten minutes (429
+   * `recompile_cooldown`). 409 `connection_unusable`, `knowledge_off` or
+   * `sync_running` when the source cannot be read, Knowledge is off for it, or a
+   * sync of it is running.
+   */
+  recompile(projectId: string, attachmentId: string, options: RecompileOptions): Promise<SourceRecompiled> {
+    const { externalIds, all = false, mode = "retry", dryRun = false } = options;
+    if ((externalIds === undefined) === !all) {
+      throw new TypeError("recompile: pass externalIds or all: true, not both or neither");
+    }
+    return this.transport.request({
+      method: "POST",
+      path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/recompile`,
+      body: all ? { mode, dry_run: dryRun, all: true } : { mode, dry_run: dryRun, external_ids: externalIds },
+      idempotent: true,
+    });
+  }
+
+  /**
+   * Whether a source takes a history import (`supported`), whether one is
+   * waiting or running (`status`: `idle`, `pending`, `running`, `cancelling`)
+   * and how far it has got (`progress`), and how an import ended: `outcome` for
+   * the running one and `last_outcome` for the last one, each counting its
+   * items `in_knowledge`, `skipped`, `failed` and `left` with their reasons,
+   * `removed`, `state` (`working` or `finished`), `finished_at`, `followup` and a
+   * `summary` sentence. Scope `projects:read`; a key limited to projects may
+   * call it for one of them.
+   */
+  historyImportStatus(projectId: string, attachmentId: string): Promise<HistoryImportStatus> {
+    return this.transport.request({
+      method: "GET",
+      path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/history-import/status`,
+    });
+  }
+
+  /** Every tracked item of a project source that the filters keep, following cursors. */
+  iterTrackedItems(
+    projectId: string,
+    attachmentId: string,
+    query: Omit<TrackedItemsQuery, "cursor" | "limit"> = {},
+    pageSize?: number,
+  ): AsyncGenerator<TrackedItem> {
+    return this.transport.paginate(
+      {
+        method: "GET",
+        path: `/v1/projects/${enc(projectId)}/sources/${enc(attachmentId)}/tracked-items`,
+        query: trackedItemsQuery(query),
+      },
+      pageSize,
+    );
   }
 
   disconnect(connectorId: string): Promise<JsonObject> {

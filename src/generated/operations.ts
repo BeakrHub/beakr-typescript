@@ -143,6 +143,7 @@ export const OPERATIONS = {
   "projects.deleteProject": { method: "DELETE", path: "/v1/projects/{project_id}" },
   "projects.getCrossProjectGuard": { method: "GET", path: "/v1/projects/{project_id}/cross-project-guard" },
   "projects.setCrossProjectGuard": { method: "PUT", path: "/v1/projects/{project_id}/cross-project-guard" },
+  "integrations.listProjectIntegrations": { method: "GET", path: "/v1/projects/{project_id}/integrations" },
   "interviews.draftInterviewFromReviews": { method: "POST", path: "/v1/projects/{project_id}/interviews/from-reviews" },
   "projects.createProjectMembershipInvitation": { method: "POST", path: "/v1/projects/{project_id}/invite" },
   "projects.getProjectKnowledgeProfile": { method: "GET", path: "/v1/projects/{project_id}/knowledge-profile" },
@@ -161,7 +162,10 @@ export const OPERATIONS = {
   "projects.getModelRefusalSummary": { method: "GET", path: "/v1/projects/{project_id}/model-refusals/summary" },
   "projects.listProjectPendingInvitations": { method: "GET", path: "/v1/projects/{project_id}/pending-invitations" },
   "projects.revokeProjectMembershipInvitation": { method: "DELETE", path: "/v1/projects/{project_id}/pending-invitations/{invitation_id}" },
+  "integrations.getHistoryImportStatus": { method: "GET", path: "/v1/projects/{project_id}/sources/{attachment_id}/history-import/status" },
+  "integrations.recompileProjectSource": { method: "POST", path: "/v1/projects/{project_id}/sources/{attachment_id}/recompile" },
   "integrations.cancelSourceSync": { method: "POST", path: "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel" },
+  "integrations.listTrackedItems": { method: "GET", path: "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items" },
   "threads.listSharedThreads": { method: "GET", path: "/v1/projects/{project_id}/threads" },
   "openapi.publicOpenapi": { method: "GET", path: "/v1/public/openapi.json" },
   "runs.startChatRun": { method: "POST", path: "/v1/runs" },
@@ -565,10 +569,46 @@ export class IntegrationsApi {
     return this.transport.request(request);
   }
 
+  /** GET /v1/projects/{project_id}/integrations (List integrations usable in a project) */
+  listProjectIntegrations(args: { path: operations["list_project_integrations_v1_projects__project_id__integrations_get"]["parameters"]["path"]; query?: NonNullable<operations["list_project_integrations_v1_projects__project_id__integrations_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_project_integrations_v1_projects__project_id__integrations_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/integrations`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/projects/{project_id}/integrations, following its cursor. */
+  listProjectIntegrationsAll(args: { path: operations["list_project_integrations_v1_projects__project_id__integrations_get"]["parameters"]["path"]; query?: NonNullable<operations["list_project_integrations_v1_projects__project_id__integrations_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_project_integrations_v1_projects__project_id__integrations_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/integrations`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
+  }
+
+  /** GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status (Get a source's history import status) */
+  getHistoryImportStatus(args: { path: operations["get_history_import_status_v1_projects__project_id__sources__attachment_id__history_import_status_get"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["get_history_import_status_v1_projects__project_id__sources__attachment_id__history_import_status_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/history-import/status`, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** POST /v1/projects/{project_id}/sources/{attachment_id}/recompile (Send a source's items again) */
+  recompileProjectSource(args: { path: operations["recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post"]["parameters"]["path"]; body: NonNullable<operations["recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post"]["requestBody"]>["content"]["application/json"] }, options?: CallOptions): Promise<OperationResponse<operations["recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post"]>> {
+    const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/recompile`, body: args?.body, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
   /** POST /v1/projects/{project_id}/sources/{attachment_id}/sync/cancel (Cancel a source's running sync) */
   cancelSourceSync(args: { path: operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"]["parameters"]["path"] }, options?: CallOptions): Promise<OperationResponse<operations["cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post"]>> {
     const request: RequestOptions = { method: "POST", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/sync/cancel`, idempotent: true, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
     return this.transport.request(request);
+  }
+
+  /** GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items (List a source's tracked items) */
+  listTrackedItems(args: { path: operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]["parameters"]["path"]; query?: NonNullable<operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]["parameters"]["query"]> }, options?: CallOptions): Promise<OperationResponse<operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/tracked-items`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.request(request);
+  }
+
+  /** Every item of GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items, following its cursor. */
+  listTrackedItemsAll(args: { path: operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]["parameters"]["path"]; query?: NonNullable<operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]["parameters"]["query"]> }, options?: CallOptions & { pageSize?: number }): AsyncGenerator<PageItem<operations["list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get"]>> {
+    const request: RequestOptions = { method: "GET", path: `/v1/projects/${enc(String(args.path.project_id))}/sources/${enc(String(args.path.attachment_id))}/tracked-items`, query: args?.query as Record<string, QueryValue> | undefined, idempotencyKey: options?.idempotencyKey, signal: options?.signal, headers: options?.headers };
+    return this.transport.paginate(request, options?.pageSize);
   }
 }
 
