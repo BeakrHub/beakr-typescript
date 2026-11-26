@@ -85,6 +85,23 @@ export interface SourceSection {
   date_precision?: string;
 }
 
+/**
+ * Who wrote an inline `conversation`, `agent_note` or `user_note` citation, by
+ * name only: never the person's id (the engine's `citation_filer` public form).
+ */
+export interface SourceFiledBy {
+  user_name?: string;
+  agent?: string;
+  client?: string;
+  run?: string;
+  session?: string;
+  /** One line for a reader, such as "Jane Doe via claude-code/2.1.304". */
+  text?: string;
+}
+
+/** The fields of `filed_by` a public record keeps: names, never ids. */
+const PUBLIC_FILER_FIELDS = ["user_name", "agent", "client", "run", "session", "text"] as const;
+
 /** One author of a cited file, as its upload recorded it: a name, never an id. */
 export interface SourceWrittenByAuthor {
   name: string;
@@ -131,6 +148,8 @@ export interface SourceRecord {
    * download `handle` and nothing else.
    */
   retrieval?: { tool: string; arguments: Record<string, string | number> };
+  /** Who wrote an inline conversation, agent-note or user-note citation, by name only. */
+  filed_by?: SourceFiledBy;
   /** A citation of an uploaded file whose upload recorded its authors: who wrote it. */
   written_by?: SourceWrittenBy;
 }
@@ -344,6 +363,12 @@ export function publicSource(source: Row, citationKey?: string): SourceRecord {
   }
   const call = publicRetrieval(retrieval);
   if (call) item["retrieval"] = call;
+  // Who wrote an inline citation; a page sources row carries it in `meta`.
+  const filer = asRow(first("filed_by"));
+  const filedBy = cleaned<SourceFiledBy>(
+    Object.fromEntries(PUBLIC_FILER_FIELDS.map((field) => [field, str(filer[field])])),
+  );
+  if (filedBy) item["filed_by"] = filedBy;
   // Who wrote a file that records its authors; a page sources row carries the
   // stored stamp, a Knowledge read's record the public object.
   const writtenBy = publicWrittenBy(first("written_by"));

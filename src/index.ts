@@ -97,6 +97,7 @@ export {
   type PassageExcerptKind,
   type SourceEvidence,
   type SourceExcerpt,
+  type SourceFiledBy,
   type SourceLocation,
   type SourceRecord,
   type SourceSection,
