@@ -15166,8 +15166,14 @@ export interface components {
              */
             current_revision?: number | null;
             /**
+             * No Draft Explanation
+             * @description With no_row_change, the model's reason in one sentence, to show the reviewer. Null otherwise.
+             * @default null
+             */
+            no_draft_explanation?: string | null;
+            /**
              * No Draft Reason
-             * @description Why options is empty: no_section (the flag names no section of the page as it is now), rows_not_found (a card-table flag whose rows could not be found), empty_section, refused, truncated, unparseable, timed_out, edits_not_found or no_valid_options. Null when there are options.
+             * @description Why options is empty: no_section (the flag names no section of the page as it is now), rows_not_found (a card-table flag whose rows could not be found), no_row_change (the model found no row of the card table to change; see no_draft_explanation), empty_section, refused, truncated, unparseable, timed_out, edits_not_found or no_valid_options. Null when there are options.
              * @default null
              */
             no_draft_reason?: string | null;
