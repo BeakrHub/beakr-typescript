@@ -3,6 +3,16 @@
 Releases of `@beakr/sdk`, the Beakr TypeScript SDK.
 Each release lists the public API changes it supports, taken from the API changelog.
 
+## @beakr/sdk 0.6.0 (2026-11-27)
+
+### Changes
+
+- `POST /v1/knowledge/wiki/proposals/{proposal_id}/resolutions`: on a flag on a
+  card's Facts or Connections table where no row needs to change, the answer
+  says so instead of failing: `options` is empty, `no_draft_reason` is the new
+  `no_row_change`, and the new `no_draft_explanation` field holds the reason in
+  one sentence, to show the reviewer (dismiss the flag if the card is right).
+  `no_draft_explanation` is null in every other answer.
 ## @beakr/sdk 0.5.0 (2026-11-26)
 
 ### Changes
